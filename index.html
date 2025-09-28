@@ -30,7 +30,64 @@
         .earth-logo {
             animation: spin-slow 20s linear infinite;
         }
-        
+
+        @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+}
+
+@keyframes wing-left {
+    0%, 100% { transform: rotate(0deg) scaleX(1); }
+    50% { transform: rotate(-15deg) scaleX(1.2); }
+}
+
+@keyframes wing-right {
+    0%, 100% { transform: rotate(0deg) scaleX(1); }
+    50% { transform: rotate(15deg) scaleX(1.2); }
+}
+
+@keyframes flicker {
+    0%, 100% { opacity: 1; transform: scaleY(1); }
+    50% { opacity: 0.7; transform: scaleY(1.3); }
+}
+
+@keyframes flicker-delay-1 {
+    0%, 100% { opacity: 0.8; transform: scaleY(1); }
+    50% { opacity: 1; transform: scaleY(1.2); }
+}
+
+@keyframes flicker-delay-2 {
+    0%, 100% { opacity: 0.9; transform: scaleY(1); }
+    50% { opacity: 0.6; transform: scaleY(1.4); }
+}
+
+@keyframes spark-float-1 {
+    0% { transform: translate(50px, 50px); opacity: 0; }
+    20% { opacity: 1; }
+    100% { transform: translate(30px, -30px); opacity: 0; }
+}
+
+@keyframes spark-float-2 {
+    0% { transform: translate(50px, 50px); opacity: 0; }
+    30% { opacity: 1; }
+    100% { transform: translate(70px, -40px); opacity: 0; }
+}
+
+@keyframes spark-float-3 {
+    0% { transform: translate(50px, 50px); opacity: 0; }
+    40% { opacity: 1; }
+    100% { transform: translate(10px, -50px); opacity: 0; }
+}
+
+.animate-float { animation: float 3s ease-in-out infinite; }
+.animate-wing-left { animation: wing-left 2s ease-in-out infinite; }
+.animate-wing-right { animation: wing-right 2s ease-in-out infinite; }
+.animate-flicker { animation: flicker 1.5s ease-in-out infinite; }
+.animate-flicker-delay-1 { animation: flicker-delay-1 2s ease-in-out infinite; }
+.animate-flicker-delay-2 { animation: flicker-delay-2 2.5s ease-in-out infinite; }
+.animate-spark-float-1 { animation: spark-float-1 3s ease-out infinite; }
+.animate-spark-float-2 { animation: spark-float-2 3s ease-out infinite 0.5s; }
+.animate-spark-float-3 { animation: spark-float-3 3s ease-out infinite 1s; }
         .golden-ring {
             position: absolute;
             width: 120%;
@@ -650,23 +707,75 @@ const [resetEmail, setResetEmail] = useState('');
     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
         <div className="dark-card p-8 w-full max-w-md bg-gray-800">
                         <div className="text-center mb-6">
-    <div className="relative inline-block mb-4">
-    <svg viewBox="0 0 40 40" className="h-20 w-20">
-        <path d="M20 35 Q15 30 15 25 T20 15 T25 25 T20 35" 
-              fill="url(#phoenix-gradient-login)"/>
-        <path d="M12 20 Q20 10 28 20" 
-              stroke="#fbbf24" 
-              strokeWidth="2" 
-              fill="none"
-              className="animate-pulse"/>
-        <defs>
-            <linearGradient id="phoenix-gradient-login" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#ef4444"/>
-                <stop offset="50%" stopColor="#f97316"/>
-                <stop offset="100%" stopColor="#fbbf24"/>
-            </linearGradient>
-        </defs>
-    </svg>
+<div className="relative inline-block mb-4">
+    <div className="relative h-24 w-24">
+        {/* Animated flame background */}
+        <div className="absolute inset-0 animate-pulse">
+            <div className="absolute inset-0 bg-gradient-to-t from-yellow-500 via-orange-500 to-red-500 opacity-30 blur-xl animate-spin-slow"></div>
+        </div>
+        
+        {/* Main Phoenix */}
+        <svg viewBox="0 0 100 100" className="relative z-10 h-full w-full animate-float">
+            {/* Phoenix body */}
+            <path d="M50 70 Q35 55 35 40 Q35 25 50 10 Q65 25 65 40 Q65 55 50 70Z" 
+                  fill="url(#phoenix-body)"
+                  filter="url(#glow)"/>
+            
+            {/* Left wing */}
+            <path d="M35 40 Q15 35 10 45 Q15 50 25 48 Q30 45 35 40" 
+                  fill="url(#wing-gradient)"
+                  className="animate-wing-left origin-center"/>
+            
+            {/* Right wing */}
+            <path d="M65 40 Q70 45 75 48 Q85 50 90 45 Q85 35 65 40" 
+                  fill="url(#wing-gradient)"
+                  className="animate-wing-right origin-center"/>
+            
+            {/* Flame feathers */}
+            <path d="M50 10 Q48 5 50 0 Q52 5 50 10" fill="#fbbf24" className="animate-flicker"/>
+            <path d="M45 12 Q43 8 42 5 Q44 8 45 12" fill="#f97316" className="animate-flicker-delay-1"/>
+            <path d="M55 12 Q56 8 58 5 Q57 8 55 12" fill="#f97316" className="animate-flicker-delay-2"/>
+            
+            {/* Eye */}
+            <circle cx="46" cy="35" r="2" fill="#fff" className="animate-pulse"/>
+            
+            {/* Tail feathers */}
+            <path d="M50 70 Q45 75 40 80 Q45 77 50 70" fill="#ef4444" className="animate-flicker"/>
+            <path d="M50 70 Q55 75 60 80 Q55 77 50 70" fill="#ef4444" className="animate-flicker-delay-1"/>
+            
+            <defs>
+                <linearGradient id="phoenix-body" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#fbbf24">
+                        <animate attributeName="stop-color" values="#fbbf24;#f97316;#ef4444;#fbbf24" dur="3s" repeatCount="indefinite"/>
+                    </stop>
+                    <stop offset="50%" stopColor="#f97316"/>
+                    <stop offset="100%" stopColor="#ef4444">
+                        <animate attributeName="stop-color" values="#ef4444;#fbbf24;#f97316;#ef4444" dur="3s" repeatCount="indefinite"/>
+                    </stop>
+                </linearGradient>
+                
+                <linearGradient id="wing-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.8"/>
+                    <stop offset="100%" stopColor="#ef4444" stopOpacity="0.3"/>
+                </linearGradient>
+                
+                <filter id="glow">
+                    <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                    <feMerge>
+                        <feMergeNode in="coloredBlur"/>
+                        <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                </filter>
+            </defs>
+        </svg>
+        
+        {/* Floating sparks */}
+        <div className="absolute inset-0">
+            <div className="spark-1 absolute h-1 w-1 bg-yellow-400 rounded-full animate-spark-float-1"></div>
+            <div className="spark-2 absolute h-1 w-1 bg-orange-400 rounded-full animate-spark-float-2"></div>
+            <div className="spark-3 absolute h-1 w-1 bg-red-400 rounded-full animate-spark-float-3"></div>
+        </div>
+    </div>
 </div>
     <h1 className="text-3xl font-bold text-white">CLOCKWORK</h1>
     <p className="text-gray-400 text-sm uppercase tracking-wider">Universal Health Management Platform</p>
