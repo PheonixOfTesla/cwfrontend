@@ -24,16 +24,16 @@
     <style>
         :root {
     /* Keep variable names, change colors only */
-    --clockwork-primary: #244398;  /* was #3b82f6 */
-    --clockwork-secondary: #60E0E0;  /* was #60a5fa */
-    --clockwork-accent: #60E0E0;  /* was #fbbf24 */
-    --clockwork-dark: #1a2f6f;  /* was #0f172a */
-    --clockwork-darker: #0f1c3a;  /* was #020617 */
-    --clockwork-light: #EBFBFF;  /* was #1e293b */
-    --clockwork-gray: #818386;  /* was #64748b */
-    --clockwork-text: #1f2937;  /* was #e2e8f0 */
-    --clockwork-success: #10b981;
-    --clockwork-error: #ef4444;
+    --ClockWork-primary: #244398;  /* was #3b82f6 */
+    --ClockWork-secondary: #60E0E0;  /* was #60a5fa */
+    --ClockWork-accent: #60E0E0;  /* was #fbbf24 */
+    --ClockWork-dark: #1a2f6f;  /* was #0f172a */
+    --ClockWork-darker: #0f1c3a;  /* was #020617 */
+    --ClockWork-light: #EBFBFF;  /* was #1e293b */
+    --ClockWork-gray: #818386;  /* was #64748b */
+    --ClockWork-text: #1f2937;  /* was #e2e8f0 */
+    --ClockWork-success: #10b981;
+    --ClockWork-error: #ef4444;
 }
         
         * {
@@ -61,7 +61,7 @@
         }
         
         .coastal-button {
-            background: var(--coastal-blue);
+            background: var(--clockwork-primary);
             color: white;
             padding: 0.75rem 1.5rem;
             border-radius: 8px;
@@ -96,7 +96,7 @@
         
         .coastal-input:focus {
             outline: none;
-            border-color: var(--coastal-blue);
+            border-color: var(--clockwork-primary);
             box-shadow: 0 0 0 3px rgba(36,67,152,0.1);
         }
         
@@ -104,7 +104,7 @@
             width: 20px;
             height: 20px;
             border: 2px solid #e5e7eb;
-            border-top: 2px solid var(--coastal-blue);
+            border-top: 2px solid var(--clockwork-primary);
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
@@ -439,13 +439,12 @@ const DateHandler = {
                         <div className="flex justify-between items-center py-4">
                             <div className="flex items-center gap-4">
                             <div className="flex items-center gap-2">
-                            <img 
-                                src="https://res.cloudinary.com/dgpt2oxmi/image/upload/v1758591404/bzhq4dvtiskrhj2tv9js.png"
+                            <span style="font-size: 2rem;">🌐</span>
                                 alt="CF"
                                 className="h-8 w-8 object-contain"
                             />
-                            <h1 className="text-xl font-bold" style={{color: "var(--coastal-blue)"}}>
-                                COASTAL FITNESS
+                            <h1 className="text-xl font-bold" style={{color: "var(--clockwork-primary)"}}>
+                                ClockWork
                             </h1>
                         </div>
                                 
@@ -602,13 +601,12 @@ const [resetEmail, setResetEmail] = useState('');
                 <div className="coastal-gradient flex items-center justify-center p-4">
                     <div className="coastal-card p-8 w-full max-w-md">
                         <div className="text-center mb-6">
-                            <img
-                        src="https://res.cloudinary.com/dgpt2oxmi/image/upload/v1758591404/bzhq4dvtiskrhj2tv9js.png"
-                        alt="Coastal Fitness Logo"
+                           <span style="font-size: 2rem;">🌐</span>
+                        alt="ClockWork Logo"
                         className="w-20 h-20 md:w-24 md:h-24 mx-auto mb-4 object-contain"
                     />
-                            <h1 className="text-3xl font-bold" style={{color: 'var(--coastal-blue)'}}>
-                                COASTAL FITNESS
+                            <h1 className="text-3xl font-bold" style={{color: 'var(--clockwork-primary)'}}>
+                                ClockWork
                             </h1>
                             <p className="text-gray-600 text-sm">FITNESS AND CORRECTION</p>
                         </div>
@@ -4973,7 +4971,7 @@ const Reports = ({ user, isClient, showSuccess, showError }) => {
     // Enhanced report generators
     const generateComprehensiveProgressReport = (clientName, metrics, rawData) => {
         let report = `═══════════════════════════════════════════════════════════════\n`;
-        report += `               COASTAL FITNESS COMPREHENSIVE PROGRESS REPORT\n`;
+        report += `               ClockWork COMPREHENSIVE PROGRESS REPORT\n`;
         report += `═══════════════════════════════════════════════════════════════\n\n`;
         report += `CLIENT: ${clientName}\n`;
         report += `REPORT DATE: ${new Date().toLocaleDateString()}\n`;
@@ -5102,7 +5100,7 @@ const Reports = ({ user, isClient, showSuccess, showError }) => {
     };
     
     const generateDetailedWorkoutReport = (clientName, workouts, metrics) => {
-        let report = `COASTAL FITNESS WORKOUT ANALYSIS REPORT\n`;
+        let report = `ClockWork WORKOUT ANALYSIS REPORT\n`;
         report += `════════════════════════════════════════\n\n`;
         report += `Client: ${clientName}\n`;
         report += `Report Date: ${new Date().toLocaleDateString()}\n\n`;
@@ -5151,7 +5149,7 @@ const Reports = ({ user, isClient, showSuccess, showError }) => {
     };
     
     const generateDetailedNutritionReport = (clientName, nutrition, metrics) => {
-        let report = `COASTAL FITNESS NUTRITION ANALYSIS REPORT\n`;
+        let report = `ClockWork NUTRITION ANALYSIS REPORT\n`;
         report += `═══════════════════════════════════════════\n\n`;
         report += `Client: ${clientName}\n`;
         report += `Report Date: ${new Date().toLocaleDateString()}\n\n`;
