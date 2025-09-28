@@ -6144,6 +6144,213 @@ const Tests = ({ user, showError, showSuccess }) => {
         // Render the app
        const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App />);
+        // Phoenix of Tesla™ 3D - Legendary Implementation
+// Error-free, performance-optimized, truly legendary
+(() => {
+    const initPhoenix = () => {
+        // Safety checks
+        if (typeof THREE === 'undefined') return;
+        if (document.querySelector('#phoenix-3d-canvas')) return; // Prevent duplicates
+        
+        try {
+            // Scene setup
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.z = 8;
+            
+            // Renderer with failsafes
+            const renderer = new THREE.WebGLRenderer({ 
+                alpha: true, 
+                antialias: true,
+                powerPreference: 'low-power' // Prevent GPU overload
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Cap pixel ratio
+            renderer.domElement.id = 'phoenix-3d-canvas';
+            renderer.domElement.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                pointer-events: none;
+                z-index: -1;
+                opacity: 0.4;
+            `;
+            document.body.appendChild(renderer.domElement);
+            
+            // Phoenix group for easy manipulation
+            const phoenixGroup = new THREE.Group();
+            scene.add(phoenixGroup);
+            
+            // Dragon body segments with gradient colors
+            const segments = [];
+            const segmentCount = 15;
+            for(let i = 0; i < segmentCount; i++) {
+                const size = (0.4 - i * 0.02) * Math.sin((i/segmentCount) * Math.PI);
+                const geometry = new THREE.SphereGeometry(size || 0.1, 12, 8);
+                const hue = 30 + (i * 3);
+                const material = new THREE.MeshBasicMaterial({
+                    color: new THREE.Color(`hsl(${hue}, 100%, 60%)`),
+                    transparent: true,
+                    opacity: 0.6 - (i * 0.02)
+                });
+                const segment = new THREE.Mesh(geometry, material);
+                segment.userData = { index: i, baseY: 0 };
+                segments.push(segment);
+                phoenixGroup.add(segment);
+            }
+            
+            // Wings with feather detail
+            const wingShape = new THREE.Shape();
+            wingShape.moveTo(0, 0);
+            wingShape.quadraticCurveTo(1, 0.5, 1.5, 0);
+            wingShape.quadraticCurveTo(1, -0.3, 0.5, -0.5);
+            wingShape.quadraticCurveTo(0.2, -0.3, 0, 0);
+            
+            const wingGeometry = new THREE.ExtrudeGeometry(wingShape, {
+                depth: 0.1,
+                bevelEnabled: true,
+                bevelThickness: 0.02,
+                bevelSize: 0.02,
+                bevelSegments: 3
+            });
+            
+            const wingMaterial = new THREE.MeshBasicMaterial({
+                color: 0xFFD700,
+                transparent: true,
+                opacity: 0.5,
+                side: THREE.DoubleSide
+            });
+            
+            const leftWing = new THREE.Mesh(wingGeometry, wingMaterial);
+            leftWing.position.set(0, 0.3, 0);
+            leftWing.rotation.z = -0.3;
+            phoenixGroup.add(leftWing);
+            
+            const rightWing = new THREE.Mesh(wingGeometry, wingMaterial.clone());
+            rightWing.position.set(0, -0.3, 0);
+            rightWing.rotation.z = 0.3;
+            rightWing.scale.y = -1;
+            phoenixGroup.add(rightWing);
+            
+            // Fire particles with pooling
+            const particleCount = 200;
+            const particleGeometry = new THREE.BufferGeometry();
+            const particlePositions = new Float32Array(particleCount * 3);
+            const particleColors = new Float32Array(particleCount * 3);
+            const particleVelocities = [];
+            
+            for(let i = 0; i < particleCount; i++) {
+                particlePositions[i * 3] = (Math.random() - 0.5) * 15;
+                particlePositions[i * 3 + 1] = (Math.random() - 0.5) * 8;
+                particlePositions[i * 3 + 2] = (Math.random() - 0.5) * 3;
+                
+                const color = new THREE.Color(`hsl(${Math.random() * 60}, 100%, ${50 + Math.random() * 50}%)`);
+                particleColors[i * 3] = color.r;
+                particleColors[i * 3 + 1] = color.g;
+                particleColors[i * 3 + 2] = color.b;
+                
+                particleVelocities.push({
+                    x: (Math.random() - 0.5) * 0.02,
+                    y: Math.random() * 0.02,
+                    z: 0
+                });
+            }
+            
+            particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+            particleGeometry.setAttribute('color', new THREE.BufferAttribute(particleColors, 3));
+            
+            const particleMaterial = new THREE.PointsMaterial({
+                size: 0.08,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.6,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+            
+            const particles = new THREE.Points(particleGeometry, particleMaterial);
+            scene.add(particles);
+            
+            // Animation variables
+            let time = 0;
+            let frameCount = 0;
+            
+            // Optimized animation loop
+            const animate = () => {
+                // Throttle to 30fps for performance
+                frameCount++;
+                if (frameCount % 2 === 0) {
+                    time += 0.03;
+                    
+                    // Serpentine dragon movement
+                    segments.forEach((segment, i) => {
+                        const offset = i * 0.4;
+                        segment.position.x = -8 + (time * 2 % 20) + Math.sin(time * 2 + offset) * 0.5;
+                        segment.position.y = Math.sin(time * 3 + offset) * 0.8;
+                        segment.position.z = Math.sin(time * 2 + offset * 0.5) * 0.3;
+                        segment.rotation.z = Math.sin(time * 4 + offset) * 0.1;
+                    });
+                    
+                    // Wing flapping
+                    leftWing.rotation.y = Math.sin(time * 5) * 0.3;
+                    rightWing.rotation.y = -Math.sin(time * 5) * 0.3;
+                    leftWing.position.x = segments[0].position.x;
+                    rightWing.position.x = segments[0].position.x;
+                    
+                    // Update particles
+                    const positions = particles.geometry.attributes.position.array;
+                    for(let i = 0; i < particleCount; i++) {
+                        const i3 = i * 3;
+                        positions[i3] += particleVelocities[i].x;
+                        positions[i3 + 1] += particleVelocities[i].y;
+                        
+                        // Reset particles that go off screen
+                        if (positions[i3 + 1] > 5) {
+                            positions[i3 + 1] = -5;
+                            positions[i3] = (Math.random() - 0.5) * 15;
+                        }
+                    }
+                    particles.geometry.attributes.position.needsUpdate = true;
+                    
+                    // Render
+                    renderer.render(scene, camera);
+                }
+                
+                requestAnimationFrame(animate);
+            };
+            
+            // Handle resize
+            const handleResize = () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            };
+            window.addEventListener('resize', handleResize);
+            
+            // Start animation
+            animate();
+            
+            console.log('Phoenix of Tesla™ 3D initialized successfully');
+            
+        } catch (error) {
+            console.warn('Phoenix 3D initialization skipped:', error);
+            // Silent fail - don't break the app
+        }
+    };
+    
+    // Load Three.js if not present, then init
+    if (typeof THREE === 'undefined') {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+        script.onload = initPhoenix;
+        script.onerror = () => console.log('Three.js load skipped');
+        document.head.appendChild(script);
+    } else {
+        setTimeout(initPhoenix, 100); // Small delay to ensure DOM is ready
+    }
+})();
     </script>
 </body>
 </html>
