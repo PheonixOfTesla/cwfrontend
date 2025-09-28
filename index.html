@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="ClockWork - Universal Business Platform">
-    <meta name="theme-color" content="#244398">
+    <meta name="theme-color" content="#1e3a8a">
     <title>ClockWork</title>
     
     <!-- Production React 18 -->
@@ -22,15 +22,36 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
     <style>
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .earth-logo {
+            animation: spin-slow 20s linear infinite;
+        }
+        
+        .golden-ring {
+            position: absolute;
+            width: 120%;
+            height: 120%;
+            border: 3px solid #fbbf24;
+            border-radius: 50%;
+            top: -10%;
+            left: -10%;
+            border-top-color: transparent;
+            border-bottom-color: transparent;
+        }
+        
         :root {
-            --clockwork-primary: #244398;
-            --clockwork-secondary: #60E0E0;
+            --clockwork-primary: #3b82f6;
+            --clockwork-secondary: #60a5fa;
             --clockwork-accent: #fbbf24;
-            --clockwork-dark: #1a2f6f;
-            --clockwork-darker: #0f1c3a;
-            --clockwork-light: #EBFBFF;
-            --clockwork-gray: #818386;
-            --clockwork-text: #1f2937;
+            --clockwork-dark: #1f2937;
+            --clockwork-darker: #111827;
+            --clockwork-card: #2d3748;
+            --clockwork-input: #1a202c;
+            --clockwork-text: #e5e7eb;
             --clockwork-success: #10b981;
             --clockwork-error: #ef4444;
         }
@@ -43,27 +64,33 @@
         }
         
         body {
-            background: #f8fafc;
-            color: #1f2937;
+            background: #111827;
+            color: #e5e7eb;
         }
         
         .coastal-gradient {
-            background: linear-gradient(135deg, #244398 0%, #60E0E0 100%);
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #60a5fa 100%);
             min-height: 100vh;
         }
         
         .coastal-card {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            background: #2d3748;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
             transition: all 0.3s ease;
         }
         
+        .dark-card {
+            background: #1f2937;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+        
         .coastal-button {
-            background: var(--clockwork-primary);
+            background: #3b82f6;
             color: white;
             padding: 0.75rem 1.5rem;
-            border-radius: 8px;
+            border-radius: 12px;
             font-weight: 600;
             transition: all 0.3s ease;
             border: none;
@@ -75,35 +102,41 @@
         }
         
         .coastal-button:hover {
-            background: var(--clockwork-dark);
+            background: #2563eb;
             transform: translateY(-1px);
         }
         
         .coastal-button:disabled {
-            background: #9ca3af;
+            background: #4b5563;
             cursor: not-allowed;
         }
         
         .coastal-input {
             width: 100%;
-            padding: 0.75rem 1rem;
-            border: 2px solid #e5e7eb;
-            border-radius: 8px;
+            padding: 1rem;
+            border: none;
+            border-radius: 12px;
             font-size: 1rem;
             transition: all 0.3s ease;
+            background: #1a202c;
+            color: #e5e7eb;
+        }
+        
+        .coastal-input::placeholder {
+            color: #6b7280;
         }
         
         .coastal-input:focus {
             outline: none;
-            border-color: var(--clockwork-primary);
-            box-shadow: 0 0 0 3px rgba(36,67,152,0.1);
+            background: #2d3748;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.3);
         }
         
         .loading-spinner {
             width: 20px;
             height: 20px;
-            border: 2px solid #e5e7eb;
-            border-top: 2px solid var(--clockwork-primary);
+            border: 2px solid #4b5563;
+            border-top: 2px solid #3b82f6;
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
@@ -116,7 +149,7 @@
         .modal-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.5);
+            background: rgba(0,0,0,0.7);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -125,13 +158,14 @@
         }
         
         .modal-content {
-            background: white;
-            border-radius: 12px;
+            background: #2d3748;
+            border-radius: 20px;
             padding: 2rem;
             max-width: 90%;
             max-height: 90vh;
             overflow-y: auto;
             animation: fadeIn 0.3s ease-out;
+            color: #e5e7eb;
         }
         
         @keyframes fadeIn {
@@ -139,11 +173,11 @@
             to { opacity: 1; transform: scale(1); }
         }
         
-        .badge-client { background: #dbeafe; color: #1e40af; }
-        .badge-specialist { background: #d1fae5; color: #059669; }
-        .badge-admin { background: #fef3c7; color: #d97706; }
-        .badge-owner { background: #e9d5ff; color: #7c3aed; }
-        .badge-engineer { background: #fee2e2; color: #dc2626; }
+        .badge-client { background: #1e3a8a; color: #93c5fd; }
+        .badge-specialist { background: #059669; color: #d1fae5; }
+        .badge-admin { background: #d97706; color: #fef3c7; }
+        .badge-owner { background: #7c3aed; color: #e9d5ff; }
+        .badge-engineer { background: #dc2626; color: #fee2e2; }
         
         .star-rating {
             display: inline-flex;
@@ -156,11 +190,11 @@
         }
         
         .star-rating .star.empty {
-            color: #e5e7eb;
+            color: #4b5563;
         }
         
         .progress-bar {
-            background: #e5e7eb;
+            background: #4b5563;
             border-radius: 9999px;
             height: 0.5rem;
             overflow: hidden;
@@ -173,10 +207,11 @@
         }
         
         .metric-card {
-            background: white;
+            background: #2d3748;
             border-radius: 12px;
             padding: 1.5rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            color: #e5e7eb;
         }
         
         .wellness-indicator {
@@ -184,7 +219,7 @@
             align-items: center;
             gap: 0.5rem;
             padding: 0.75rem;
-            background: #f3f4f6;
+            background: #1f2937;
             border-radius: 8px;
         }
         
@@ -596,19 +631,17 @@ const [resetEmail, setResetEmail] = useState('');
         setLoading(false);
     }
 };      
-            return (
-                <div className="coastal-gradient flex items-center justify-center p-4">
-                    <div className="coastal-card p-8 w-full max-w-md">
+           return (
+    <div className="coastal-gradient flex items-center justify-center p-4">
+        <div className="dark-card p-8 w-full max-w-md">
                         <div className="text-center mb-6">
-                           <span style={{fontSize: '2rem'}}>💪</span>
-                        alt="ClockWork Logo"
-                        className="w-20 h-20 md:w-24 md:h-24 mx-auto mb-4 object-contain"
-                    />
-                            <h1 className="text-3xl font-bold" style={{color: 'var(--clockwork-primary)'}}>
-                                ClockWork
-                            </h1>
-                            <p className="text-gray-600 text-sm">Health Management Platform</p>
-                        </div>
+    <div className="relative inline-block mb-4">
+        <span className="earth-logo" style={{fontSize: '4rem', display: 'inline-block'}}>🌍</span>
+        <div className="golden-ring"></div>
+    </div>
+    <h1 className="text-3xl font-bold text-white">CLOCKWORK</h1>
+    <p className="text-gray-400 text-sm uppercase tracking-wider">Universal Business Platform</p>
+</div>
                         
                         {!isResetting && (
                         <div className="flex mb-6">
@@ -995,7 +1028,7 @@ submitData = {
     
     return (
         <div className="space-y-6">
-            <div className="coastal-card p-6">
+            <div className="dark-card p-6">
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-2xl font-bold">
                         {isClient ? 'My Goals & Habits' : 'Goals & Habits'}
@@ -1031,7 +1064,7 @@ submitData = {
             </div>
             
             {showForm && (
-                <div className="coastal-card p-6">
+                <div className="dark-card p-6">
                     <h3 className="text-xl font-semibold mb-4">
                         {editingItem ? 'Edit' : 'Create'} {formType === 'goal' ? 'Goal' : 'Habit'}
                     </h3>
@@ -1140,7 +1173,7 @@ submitData = {
             )}
             
             {selectedClient && habits.length > 0 && (
-                <div className="coastal-card p-6">
+                <div className="dark-card p-6">
                     <h3 className="text-lg font-semibold mb-4">Daily Habits</h3>
                     <div className="overflow-x-auto">
                         <table className="w-full">
@@ -1521,7 +1554,7 @@ submitData = {
             
             return (
                 <div className="space-y-6">
-                    <div className="coastal-card p-6">
+                    <div className="dark-card p-6">
                         <h2 className="text-2xl font-bold mb-4">
                             {isClient ? 'My Dashboard' : 'Client Dashboard'}
                         </h2>
@@ -1606,7 +1639,7 @@ submitData = {
                             </div>
                             
                             {/* Wellness Summary */}
-                            <div className="coastal-card p-6">
+                            <div className="dark-card p-6">
                                 <h3 className="text-xl font-bold mb-4">Wellness Summary</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="wellness-indicator">
@@ -1650,7 +1683,7 @@ submitData = {
                             </div>
                             
                             {/* Progress Chart */}
-                            <div className="coastal-card p-6">
+                            <div className="dark-card p-6">
                                 <h3 className="text-xl font-bold mb-4">Progress Tracking</h3>
                                 <div style={{height: '300px'}}>
                                     <canvas ref={chartRef}></canvas>
@@ -2466,7 +2499,7 @@ const ungroupExercise = (index) => {
             
             return (
                 <div className="space-y-6">
-                    <div className="coastal-card p-6">
+                    <div className="dark-card p-6">
                         <div className="flex justify-between items-center mb-4">
                             <h2 className="text-2xl font-bold">
                                 {isClient ? 'My Workouts' : 'Workouts'}
@@ -2496,7 +2529,7 @@ const ungroupExercise = (index) => {
                     </div>
                     
                     {showForm && (
-                        <div className="coastal-card p-6">
+                        <div className="dark-card p-6">
                             <h3 className="text-xl font-semibold mb-4">Create Workout</h3>
                             <form onSubmit={handleSubmit}>
                               <div className="space-y-4 mb-4">
@@ -3066,7 +3099,7 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
     
     return (
         <div className="space-y-6">
-            <div className="coastal-card p-6">
+            <div className="dark-card p-6">
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-2xl font-bold">Exercise Library</h2>
                     {canEdit && (
@@ -3128,7 +3161,7 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
             </div>
             
             {showForm && canEdit && (
-                <div className="coastal-card p-6">
+                <div className="dark-card p-6">
                     <h3 className="text-xl font-semibold mb-4">
                         {editingExercise ? 'Edit Exercise' : 'Add Exercise to Library'}
                     </h3>
@@ -3703,7 +3736,7 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
             
             return (
                 <div className="space-y-6">
-                    <div className="coastal-card p-6">
+                    <div className="dark-card p-6">
                         <div className="flex justify-between items-center mb-4">
                             <h2 className="text-2xl font-bold">
                                 {isClient ? 'My Measurements' : 'Measurements'}
@@ -3733,7 +3766,7 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
                     </div>
                     
                     {showForm && (
-                        <div className="coastal-card p-6">
+                        <div className="dark-card p-6">
                             <h3 className="text-xl font-semibold mb-4">Add Measurement</h3>
                             
                             <div className="flex gap-2 mb-4">
@@ -4222,7 +4255,7 @@ await API_CONFIG.request(endpoint, {
             
             return (
                 <div className="space-y-6">
-                    <div className="coastal-card p-6">
+                    <div className="dark-card p-6">
                         <div className="flex justify-between items-center mb-4">
                             <h2 className="text-2xl font-bold">
                                 {isClient ? 'My Nutrition' : 'Nutrition Plans'}
@@ -4262,7 +4295,7 @@ await API_CONFIG.request(endpoint, {
                     </div>
                     
                     {showForm && (
-                        <div className="coastal-card p-6">
+                        <div className="dark-card p-6">
                             <h3 className="text-xl font-semibold mb-4">Nutrition Plan</h3>
                             <form onSubmit={handleSubmit}>
                                 <div className="mb-6">
@@ -4405,7 +4438,7 @@ await API_CONFIG.request(endpoint, {
                         <>
                             {/* Macro Tracking Cards */}
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <div className="coastal-card p-6">
+                                <div className="dark-card p-6">
                                     <h4 className="font-semibold mb-2 flex items-center">
                                         <span className="text-2xl mr-2">🥩</span>
                                         Protein
@@ -4426,7 +4459,7 @@ await API_CONFIG.request(endpoint, {
                                     </div>
                                 </div>
                                 
-                                <div className="coastal-card p-6">
+                                <div className="dark-card p-6">
                                     <h4 className="font-semibold mb-2 flex items-center">
                                         <span className="text-2xl mr-2">🌾</span>
                                         Carbs
@@ -4447,7 +4480,7 @@ await API_CONFIG.request(endpoint, {
                                     </div>
                                 </div>
                                 
-                                <div className="coastal-card p-6">
+                                <div className="dark-card p-6">
                                     <h4 className="font-semibold mb-2 flex items-center">
                                         <span className="text-2xl mr-2">🥑</span>
                                         Fat
@@ -4468,7 +4501,7 @@ await API_CONFIG.request(endpoint, {
                                     </div>
                                 </div>
                                 
-                                <div className="coastal-card p-6">
+                                <div className="dark-card p-6">
                                     <h4 className="font-semibold mb-2 flex items-center">
                                         <span className="text-2xl mr-2">🔥</span>
                                         Calories
@@ -4492,7 +4525,7 @@ await API_CONFIG.request(endpoint, {
                             
                             {/* Meal Plan Display */}
                             {nutrition.mealPlan && Object.values(nutrition.mealPlan).some(meal => meal) && (
-                                <div className="coastal-card p-6">
+                                <div className="dark-card p-6">
                                     <h3 className="text-xl font-bold mb-4">Daily Meal Plan</h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {nutrition.mealPlan.breakfast && (
@@ -5229,7 +5262,7 @@ const Reports = ({ user, isClient, showSuccess, showError }) => {
     
     return (
         <div className="space-y-6">
-            <div className="coastal-card p-6">
+            <div className="dark-card p-6">
                 <h2 className="text-2xl font-bold mb-4">
                     {isClient ? 'My Reports' : 'Generate Reports'}
                 </h2>
@@ -5439,7 +5472,7 @@ const Tests = ({ user, showError, showSuccess }) => {
     
     return (
         <div className="space-y-6">
-            <div className="coastal-card p-6">
+            <div className="dark-card p-6">
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-2xl font-bold">Tests & Assessments</h2>
                     {selectedClient && (
@@ -5465,7 +5498,7 @@ const Tests = ({ user, showError, showSuccess }) => {
             </div>
             
             {showForm && (
-                <div className="coastal-card p-6">
+                <div className="dark-card p-6">
                     <h3 className="text-xl font-semibold mb-4">
                         {editingTest ? 'Edit Assessment' : 'Log Assessment'}
                     </h3>
@@ -5696,7 +5729,7 @@ const Tests = ({ user, showError, showSuccess }) => {
             
             return (
                 <div className="space-y-6">
-                    <div className="coastal-card p-6">
+                    <div className="dark-card p-6">
                         <div className="flex justify-between items-center mb-4">
                             <h2 className="text-2xl font-bold">User Management</h2>
                             <button onClick={() => setShowForm(true)} className="coastal-button">
@@ -5707,7 +5740,7 @@ const Tests = ({ user, showError, showSuccess }) => {
                     </div>
                     
                     {showForm && (
-                        <div className="coastal-card p-6">
+                        <div className="dark-card p-6">
                             <h3 className="text-xl font-semibold mb-4">
                                 {editingUser ? 'Edit User' : 'Create User'}
                             </h3>
