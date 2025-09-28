@@ -47,11 +47,11 @@
             --clockwork-primary: #3b82f6;
             --clockwork-secondary: #60a5fa;
             --clockwork-accent: #fbbf24;
-            --clockwork-dark: #1f2937;
-            --clockwork-darker: #111827;
-            --clockwork-card: #2d3748;
-            --clockwork-input: #1a202c;
-            --clockwork-text: #e5e7eb;
+            --clockwork-dark: #0f1419;   
+            --clockwork-darker: #000000;
+            --clockwork-card: #1a202c;
+            --clockwork-input: #111827; 
+            --clockwork-text: #ffffff;  
             --clockwork-success: #10b981;
             --clockwork-error: #ef4444;
         }
@@ -64,7 +64,7 @@
         }
         
         body {
-            background: #111827;
+            background: #0f1419;
             color: #e5e7eb;
         }
         
@@ -74,7 +74,7 @@
         }
         
         .dark-card {
-            background: #2d3748;
+           background: #1f2937;
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.5);
             transition: all 0.3s ease;
@@ -107,8 +107,9 @@
         }
         
         .coastal-button:disabled {
-            background: #4b5563;
+            background: #374151;
             cursor: not-allowed;
+            opacity: 0.6;
         }
         
         .coastal-input {
@@ -128,7 +129,7 @@
         
         .coastal-input:focus {
             outline: none;
-            background: #2d3748;
+           background: #1f2937;
             box-shadow: 0 0 0 3px rgba(59,130,246,0.3);
         }
         
@@ -149,7 +150,7 @@
         .modal-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.7);
+            background: rgba(0,0,0,0.85);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -158,7 +159,7 @@
         }
         
         .modal-content {
-            background: #2d3748;
+           background: #1f2937;
             border-radius: 20px;
             padding: 2rem;
             max-width: 90%;
@@ -173,7 +174,7 @@
             to { opacity: 1; transform: scale(1); }
         }
         
-        .badge-client { background: #1e3a8a; color: #93c5fd; }
+        .badge-client { background: #1e3a8a; color: #dbeafe; }
         .badge-specialist { background: #059669; color: #d1fae5; }
         .badge-admin { background: #d97706; color: #fef3c7; }
         .badge-owner { background: #7c3aed; color: #e9d5ff; }
@@ -194,7 +195,7 @@
         }
         
         .progress-bar {
-            background: #4b5563;
+            background: #374151;
             border-radius: 9999px;
             height: 0.5rem;
             overflow: hidden;
@@ -207,10 +208,10 @@
         }
         
         .metric-card {
-            background: #2d3748;
+           background: #1f2937;
             border-radius: 12px;
             padding: 1.5rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.5);
             color: #e5e7eb;
         }
         
@@ -468,7 +469,7 @@ const DateHandler = {
             }
             
             return (
-                <nav className="bg-gray-800 shadow-lg">
+                <nav className="bg-gray-900 shadow-xl border-b border-gray-700">
                     <div className="max-w-7xl mx-auto px-4">
                         <div className="flex justify-between items-center py-4">
                             <div className="flex items-center gap-4">
@@ -484,7 +485,7 @@ const DateHandler = {
                                 
                             </div>
                             <div className="flex items-center gap-4">
-                                <span className="text-sm text-gray-300">
+                                <span className="text-sm text-gray-200">
                                     {user.name} ({user.roles?.join(", ")})
                                 </span>
                                 <button onClick={onLogout} className="text-red-500 hover:text-red-600">
@@ -500,7 +501,7 @@ const DateHandler = {
                                     className={`px-4 py-2 rounded whitespace-nowrap ${
                                         activeTab === tab.id 
                                             ? "bg-blue-500 text-white" 
-                                            : "bg-gray-100 hover:bg-gray-200"
+                                            : "bg-gray-700 hover:bg-gray-600 text-gray-300"
                                     }`}
                                 >
                                     <span className="mr-2">{tab.icon}</span>
@@ -633,7 +634,7 @@ const [resetEmail, setResetEmail] = useState('');
 };      
            return (
     <div className="coastal-gradient flex items-center justify-center p-4">
-        <div className="dark-card p-8 w-full max-w-md">
+        <div className="dark-card p-8 w-full max-w-md bg-gray-800">
                         <div className="text-center mb-6">
     <div className="relative inline-block mb-4">
         <span className="earth-logo" style={{fontSize: '4rem', display: 'inline-block'}}>🌍</span>
@@ -783,7 +784,7 @@ const [resetEmail, setResetEmail] = useState('');
                             <button
                                 type="button"
                                 onClick={() => setIsResetting(false)}
-                                className="coastal-button bg-gray-8000 flex-1"
+                                className="coastal-button bg-gray-600 flex-1"
                             >
                                 Cancel
                             </button>
@@ -1164,7 +1165,7 @@ submitData = {
                             <button type="submit" className="coastal-button">
                                 {editingItem ? 'Update' : 'Create'} {formType === 'goal' ? 'Goal' : 'Habit'}
                             </button>
-                            <button type="button" onClick={resetForm} className="coastal-button bg-gray-8000">
+                            <button type="button" onClick={resetForm} className="coastal-button bg-gray-600 hover:bg-gray-700">
                                 Cancel
                             </button>
                         </div>
@@ -1213,7 +1214,7 @@ submitData = {
                                                         />
                                                     )}
                                                     {isScheduled && isFuture && (
-                                                        <span className="text-gray-400">-</span>
+                                                        <span className="text-gray-300">-</span>
                                                     )}
                                                     {!isScheduled && (
                                                         <span className="text-gray-300">•</span>
@@ -2770,7 +2771,7 @@ const ungroupExercise = (index) => {
             Delete Workout
         </button>
     )}
-    <button type="button" onClick={() => setShowForm(false)} className="coastal-button bg-gray-8000">
+    <button type="button" onClick={() => setShowForm(false)} className="coastal-button bg-gray-600 hover:bg-gray-700">
         Cancel
     </button>
 </div>
@@ -3412,7 +3413,7 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
                             <button type="submit" className="coastal-button">
                                 {editingExercise ? 'Update' : 'Save'} Exercise
                             </button>
-                            <button type="button" onClick={resetForm} className="coastal-button bg-gray-8000">
+                            <button type="button" onClick={resetForm} className="coastal-button bg-gray-600 hover:bg-gray-700">
                                 Cancel
                             </button>
                         </div>
@@ -4040,7 +4041,7 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
                                     <button type="submit" className="coastal-button">
                                         Save Measurement
                                     </button>
-                                    <button type="button" onClick={() => setShowForm(false)} className="coastal-button bg-gray-8000">
+                                    <button type="button" onClick={() => setShowForm(false)} className="coastal-button bg-gray-600 hover:bg-gray-700">
                                         Cancel
                                     </button>
                                 </div>
@@ -4086,18 +4087,18 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
     </div>
                                         <div className="space-y-2">
                                             <div className="flex justify-between">
-                                                <span className="text-gray-400">Weight:</span>
+                                                <span className="text-gray-300">Weight:</span>
                                                 <span className="font-medium">{measurement.weight} lbs</span>
                                             </div>
                                             {measurement.bodyFat && (
                                                 <div className="flex justify-between">
-                                                    <span className="text-gray-400">Body Fat:</span>
+                                                    <span className="text-gray-300">Body Fat:</span>
                                                     <span className="font-medium">{measurement.bodyFat}%</span>
                                                 </div>
                                             )}
                                             {measurement.bloodPressure && (
                                                 <div className="flex justify-between">
-                                                    <span className="text-gray-400">BP:</span>
+                                                    <span className="text-gray-300">BP:</span>
                                                     <span className="font-medium">{measurement.bloodPressure}</span>
                                                 </div>
                                             )}
@@ -4115,7 +4116,7 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
                                     </div>
                                 ))
                             ) : (
-                                <div className="col-span-full text-center text-gray-500 py-8">
+                                <div className="col-span-full text-center text-gray-400 py-8">
                                     No measurements recorded yet. Click "Add Measurement" to get started.
                                 </div>
                             )}
@@ -4426,7 +4427,7 @@ await API_CONFIG.request(endpoint, {
                                     <button type="submit" className="coastal-button">
                                         Save Plan
                                     </button>
-                                    <button type="button" onClick={() => setShowForm(false)} className="coastal-button bg-gray-8000">
+                                    <button type="button" onClick={() => setShowForm(false)} className="coastal-button bg-gray-600 hover:bg-gray-700">
                                         Cancel
                                     </button>
                                 </div>
@@ -5580,7 +5581,7 @@ const Tests = ({ user, showError, showSuccess }) => {
                                         notes: ''
                                     });
                                 }} 
-                                className="coastal-button bg-gray-8000"
+                                className="coastal-button bg-gray-600 hover:bg-gray-700"
                             >
                                 Cancel
                             </button>
@@ -5826,7 +5827,7 @@ const Tests = ({ user, showError, showSuccess }) => {
                                                 roles: []
                                             });
                                         }} 
-                                        className="coastal-button bg-gray-8000"
+                                        className="coastal-button bg-gray-600 hover:bg-gray-700"
                                     >
                                         Cancel
                                     </button>
