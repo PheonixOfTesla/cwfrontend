@@ -16,7 +16,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Chart.js for Analytics -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<!-- Three.js for 3D Phoenix -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     
     <!-- Font Awesome Icons -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -30,7 +33,64 @@
         .earth-logo {
             animation: spin-slow 20s linear infinite;
         }
-        
+
+        @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+}
+
+@keyframes wing-left {
+    0%, 100% { transform: rotate(0deg) scaleX(1); }
+    50% { transform: rotate(-15deg) scaleX(1.2); }
+}
+
+@keyframes wing-right {
+    0%, 100% { transform: rotate(0deg) scaleX(1); }
+    50% { transform: rotate(15deg) scaleX(1.2); }
+}
+
+@keyframes flicker {
+    0%, 100% { opacity: 1; transform: scaleY(1); }
+    50% { opacity: 0.7; transform: scaleY(1.3); }
+}
+
+@keyframes flicker-delay-1 {
+    0%, 100% { opacity: 0.8; transform: scaleY(1); }
+    50% { opacity: 1; transform: scaleY(1.2); }
+}
+
+@keyframes flicker-delay-2 {
+    0%, 100% { opacity: 0.9; transform: scaleY(1); }
+    50% { opacity: 0.6; transform: scaleY(1.4); }
+}
+
+@keyframes spark-float-1 {
+    0% { transform: translate(50px, 50px); opacity: 0; }
+    20% { opacity: 1; }
+    100% { transform: translate(30px, -30px); opacity: 0; }
+}
+
+@keyframes spark-float-2 {
+    0% { transform: translate(50px, 50px); opacity: 0; }
+    30% { opacity: 1; }
+    100% { transform: translate(70px, -40px); opacity: 0; }
+}
+
+@keyframes spark-float-3 {
+    0% { transform: translate(50px, 50px); opacity: 0; }
+    40% { opacity: 1; }
+    100% { transform: translate(10px, -50px); opacity: 0; }
+}
+
+.animate-float { animation: float 3s ease-in-out infinite; }
+.animate-wing-left { animation: wing-left 2s ease-in-out infinite; }
+.animate-wing-right { animation: wing-right 2s ease-in-out infinite; }
+.animate-flicker { animation: flicker 1.5s ease-in-out infinite; }
+.animate-flicker-delay-1 { animation: flicker-delay-1 2s ease-in-out infinite; }
+.animate-flicker-delay-2 { animation: flicker-delay-2 2.5s ease-in-out infinite; }
+.animate-spark-float-1 { animation: spark-float-1 3s ease-out infinite; }
+.animate-spark-float-2 { animation: spark-float-2 3s ease-out infinite 0.5s; }
+.animate-spark-float-3 { animation: spark-float-3 3s ease-out infinite 1s; }
         .golden-ring {
             position: absolute;
             width: 120%;
@@ -231,7 +291,8 @@
     </style>
 </head>
 <body>
-    <div id="root"></div>
+    <div id="phoenix-3d" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;"></div>
+    <div id="root" style="position: relative; z-index: 1;"></div>
     
     <script type="text/babel">
         const { useState, useEffect, useRef, useCallback, useMemo } = React;
@@ -470,28 +531,10 @@ const DateHandler = {
                     <div className="max-w-7xl mx-auto px-4">
                         <div className="flex justify-between items-center py-4">
                             <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-2">
-                           <div className="relative h-8 w-8">
-  <svg viewBox="0 0 40 40" className="absolute inset-0">
-    <path d="M20 35 Q15 30 15 25 T20 15 T25 25 T20 35" 
-          fill="url(#phoenix-gradient)"/>
-    <path d="M12 20 Q20 10 28 20" 
-          stroke="#fbbf24" 
-          strokeWidth="2" 
-          fill="none"
-          className="animate-pulse"/>
-    <defs>
-      <linearGradient id="phoenix-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stopColor="#ef4444"/>
-        <stop offset="50%" stopColor="#f97316"/>
-        <stop offset="100%" stopColor="#fbbf24"/>
-      </linearGradient>
-    </defs>
-  </svg>
+                                <div className="relative h-8 w-8">
+    <div id="nav-phoenix-3d" style={{width: '32px', height: '32px'}}></div>
 </div>
-                                alt="CF"
-                                className="h-8 w-8 object-contain"
-                            />
+                       
                             <h1 className="text-xl font-bold" style={{color: "var(--clockwork-primary)"}}>
                                 ClockWork
                             </h1>
@@ -651,22 +694,68 @@ const [resetEmail, setResetEmail] = useState('');
         <div className="dark-card p-8 w-full max-w-md bg-gray-800">
                         <div className="text-center mb-6">
     <div className="relative inline-block mb-4">
-    <svg viewBox="0 0 40 40" className="h-20 w-20">
-        <path d="M20 35 Q15 30 15 25 T20 15 T25 25 T20 35" 
-              fill="url(#phoenix-gradient-login)"/>
-        <path d="M12 20 Q20 10 28 20" 
-              stroke="#fbbf24" 
-              strokeWidth="2" 
-              fill="none"
-              className="animate-pulse"/>
-        <defs>
-            <linearGradient id="phoenix-gradient-login" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#ef4444"/>
-                <stop offset="50%" stopColor="#f97316"/>
-                <stop offset="100%" stopColor="#fbbf24"/>
-            </linearGradient>
-        </defs>
-    </svg>
+        <div id="login-phoenix-3d" style={{width: '150px', height: '150px', margin: '0 auto'}}></div>
+    </div>
+            {/* Phoenix body */}
+            <path d="M50 70 Q35 55 35 40 Q35 25 50 10 Q65 25 65 40 Q65 55 50 70Z" 
+                  fill="url(#phoenix-body)"
+                  filter="url(#glow)"/>
+            
+            {/* Left wing */}
+            <path d="M35 40 Q15 35 10 45 Q15 50 25 48 Q30 45 35 40" 
+                  fill="url(#wing-gradient)"
+                  className="animate-wing-left origin-center"/>
+            
+            {/* Right wing */}
+            <path d="M65 40 Q70 45 75 48 Q85 50 90 45 Q85 35 65 40" 
+                  fill="url(#wing-gradient)"
+                  className="animate-wing-right origin-center"/>
+            
+            {/* Flame feathers */}
+            <path d="M50 10 Q48 5 50 0 Q52 5 50 10" fill="#fbbf24" className="animate-flicker"/>
+            <path d="M45 12 Q43 8 42 5 Q44 8 45 12" fill="#f97316" className="animate-flicker-delay-1"/>
+            <path d="M55 12 Q56 8 58 5 Q57 8 55 12" fill="#f97316" className="animate-flicker-delay-2"/>
+            
+            {/* Eye */}
+            <circle cx="46" cy="35" r="2" fill="#fff" className="animate-pulse"/>
+            
+            {/* Tail feathers */}
+            <path d="M50 70 Q45 75 40 80 Q45 77 50 70" fill="#ef4444" className="animate-flicker"/>
+            <path d="M50 70 Q55 75 60 80 Q55 77 50 70" fill="#ef4444" className="animate-flicker-delay-1"/>
+            
+            <defs>
+                <linearGradient id="phoenix-body" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#fbbf24">
+                        <animate attributeName="stop-color" values="#fbbf24;#f97316;#ef4444;#fbbf24" dur="3s" repeatCount="indefinite"/>
+                    </stop>
+                    <stop offset="50%" stopColor="#f97316"/>
+                    <stop offset="100%" stopColor="#ef4444">
+                        <animate attributeName="stop-color" values="#ef4444;#fbbf24;#f97316;#ef4444" dur="3s" repeatCount="indefinite"/>
+                    </stop>
+                </linearGradient>
+                
+                <linearGradient id="wing-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.8"/>
+                    <stop offset="100%" stopColor="#ef4444" stopOpacity="0.3"/>
+                </linearGradient>
+                
+                <filter id="glow">
+                    <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                    <feMerge>
+                        <feMergeNode in="coloredBlur"/>
+                        <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                </filter>
+            </defs>
+        </svg>
+        
+        {/* Floating sparks */}
+        <div className="absolute inset-0">
+            <div className="spark-1 absolute h-1 w-1 bg-yellow-400 rounded-full animate-spark-float-1"></div>
+            <div className="spark-2 absolute h-1 w-1 bg-orange-400 rounded-full animate-spark-float-2"></div>
+            <div className="spark-3 absolute h-1 w-1 bg-red-400 rounded-full animate-spark-float-3"></div>
+        </div>
+    </div>
 </div>
     <h1 className="text-3xl font-bold text-white">CLOCKWORK</h1>
     <p className="text-gray-400 text-sm uppercase tracking-wider">Universal Health Management Platform</p>
@@ -5903,9 +5992,171 @@ const Tests = ({ user, showError, showSuccess }) => {
             );
         };
         
-        // Render the app
-       const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<App />);
+      // Render the app
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+
+        // 3D PHOENIX SYSTEM
+        function createPhoenix3D(containerId, scale = 1) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            
+            renderer.setSize(container.offsetWidth, container.offsetHeight);
+            renderer.setClearColor(0x000000, 0);
+            container.appendChild(renderer.domElement);
+            
+            camera.position.z = 5 * scale;
+            
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xff6600, 0.5);
+            scene.add(ambientLight);
+            
+            const pointLight = new THREE.PointLight(0xffa500, 2, 100);
+            pointLight.position.set(0, 2, 2);
+            scene.add(pointLight);
+            
+            // Phoenix Group
+            const phoenixGroup = new THREE.Group();
+            
+            // Body (elongated sphere)
+            const bodyGeometry = new THREE.SphereGeometry(0.5 * scale, 16, 16);
+            bodyGeometry.scale(1, 1.5, 0.7);
+            
+            const bodyMaterial = new THREE.MeshPhongMaterial({
+                color: 0xff6600,
+                emissive: 0xff3300,
+                emissiveIntensity: 0.5
+            });
+            
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            phoenixGroup.add(body);
+            
+            // Head
+            const headGeometry = new THREE.SphereGeometry(0.3 * scale, 16, 16);
+            const head = new THREE.Mesh(headGeometry, bodyMaterial);
+            head.position.y = 0.7 * scale;
+            phoenixGroup.add(head);
+            
+            // Wings
+            const wingGeometry = new THREE.ConeGeometry(0.4 * scale, 1 * scale, 4);
+            const wingMaterial = new THREE.MeshPhongMaterial({
+                color: 0xffa500,
+                emissive: 0xff6600,
+                emissiveIntensity: 0.3,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            const leftWing = new THREE.Mesh(wingGeometry, wingMaterial);
+            leftWing.position.set(-0.5 * scale, 0.2 * scale, 0);
+            leftWing.rotation.z = -Math.PI / 4;
+            phoenixGroup.add(leftWing);
+            
+            const rightWing = new THREE.Mesh(wingGeometry, wingMaterial);
+            rightWing.position.set(0.5 * scale, 0.2 * scale, 0);
+            rightWing.rotation.z = Math.PI / 4;
+            phoenixGroup.add(rightWing);
+            
+            // Tail feathers
+            const tailGeometry = new THREE.ConeGeometry(0.2 * scale, 0.8 * scale, 3);
+            const tail = new THREE.Mesh(tailGeometry, wingMaterial);
+            tail.position.y = -0.8 * scale;
+            tail.rotation.z = Math.PI;
+            phoenixGroup.add(tail);
+            
+            // Fire particles
+            const particleCount = 100;
+            const particleGeometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+            const colors = new Float32Array(particleCount * 3);
+            
+            for (let i = 0; i < particleCount; i++) {
+                positions[i * 3] = (Math.random() - 0.5) * 2 * scale;
+                positions[i * 3 + 1] = (Math.random() - 0.5) * 2 * scale;
+                positions[i * 3 + 2] = (Math.random() - 0.5) * 2 * scale;
+                
+                colors[i * 3] = 1;
+                colors[i * 3 + 1] = Math.random() * 0.5 + 0.5;
+                colors[i * 3 + 2] = 0;
+            }
+            
+            particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            particleGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            
+            const particleMaterial = new THREE.PointsMaterial({
+                size: 0.05 * scale,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.6,
+                blending: THREE.AdditiveBlending
+            });
+            
+            const particles = new THREE.Points(particleGeometry, particleMaterial);
+            scene.add(particles);
+            
+            scene.add(phoenixGroup);
+            
+            // Animation
+            let time = 0;
+            function animate() {
+                requestAnimationFrame(animate);
+                time += 0.01;
+                
+                // Rotate phoenix
+                phoenixGroup.rotation.y += 0.01;
+                
+                // Float animation
+                phoenixGroup.position.y = Math.sin(time * 2) * 0.1 * scale;
+                
+                // Wing flap
+                leftWing.rotation.z = -Math.PI / 4 + Math.sin(time * 3) * 0.2;
+                rightWing.rotation.z = Math.PI / 4 - Math.sin(time * 3) * 0.2;
+                
+                // Update particles
+                const positions = particles.geometry.attributes.position.array;
+                for (let i = 0; i < particleCount; i++) {
+                    positions[i * 3 + 1] += 0.01 * scale;
+                    if (positions[i * 3 + 1] > scale) {
+                        positions[i * 3 + 1] = -scale;
+                    }
+                }
+                particles.geometry.attributes.position.needsUpdate = true;
+                particles.rotation.y += 0.005;
+                
+                renderer.render(scene, camera);
+            }
+            
+            animate();
+        }
+
+        // Initialize Phoenix instances when DOM is ready
+        setTimeout(() => {
+            // Login page phoenix (larger)
+            if (document.getElementById('login-phoenix-3d')) {
+                createPhoenix3D('login-phoenix-3d', 1.5);
+            }
+            
+            // Navigation phoenix (smaller)
+            if (document.getElementById('nav-phoenix-3d')) {
+                createPhoenix3D('nav-phoenix-3d', 0.8);
+            }
+        }, 100);
+
+        // Re-initialize on route changes
+        window.addEventListener('hashchange', () => {
+            setTimeout(() => {
+                if (document.getElementById('login-phoenix-3d')) {
+                    createPhoenix3D('login-phoenix-3d', 1.5);
+                }
+                if (document.getElementById('nav-phoenix-3d')) {
+                    createPhoenix3D('nav-phoenix-3d', 0.8);
+                }
+            }, 100);
+        });
     </script>
 </body>
 </html>
