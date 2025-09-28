@@ -8,8 +8,8 @@
     <title>ClockWork</title>
     
     <!-- Production React 18 -->
-<script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
     <!-- Tailwind CSS -->
@@ -439,7 +439,7 @@ const DateHandler = {
                         <div className="flex justify-between items-center py-4">
                             <div className="flex items-center gap-4">
                             <div className="flex items-center gap-2">
-                            <span style="font-size: 2rem;">💪</span>
+                            <span style={{fontSize: '2rem'}}>💪</span>
                                 alt="CF"
                                 className="h-8 w-8 object-contain"
                             />
@@ -601,7 +601,7 @@ const [resetEmail, setResetEmail] = useState('');
                 <div className="coastal-gradient flex items-center justify-center p-4">
                     <div className="coastal-card p-8 w-full max-w-md">
                         <div className="text-center mb-6">
-                           <span style="font-size: 2rem;">💪</span>
+                           <span style={{fontSize: '2rem'}}>💪</span>
                         alt="ClockWork Logo"
                         className="w-20 h-20 md:w-24 md:h-24 mx-auto mb-4 object-contain"
                     />
@@ -5843,7 +5843,8 @@ const Tests = ({ user, showError, showSuccess }) => {
         };
         
         // Render the app
-        ReactDOM.render(<App />, document.getElementById('root'));
+       const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
     </script>
 </body>
 </html>
