@@ -73,7 +73,7 @@
             min-height: 100vh;
         }
         
-        .coastal-card {
+        .dark-card {
             background: #2d3748;
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.5);
@@ -406,7 +406,7 @@ const DateHandler = {
            
             
             return (
-                <div className="min-h-screen bg-gray-50">
+                <div className="min-h-screen bg-gray-800">
                     <Navigation 
     user={user}
     activeTab={activeTab}
@@ -468,7 +468,7 @@ const DateHandler = {
             }
             
             return (
-                <nav className="bg-white shadow-md">
+                <nav className="bg-gray-800 shadow-lg">
                     <div className="max-w-7xl mx-auto px-4">
                         <div className="flex justify-between items-center py-4">
                             <div className="flex items-center gap-4">
@@ -739,7 +739,7 @@ const [resetEmail, setResetEmail] = useState('');
             {isResetting && (
                 <div className="mt-4 p-4 bg-blue-50 rounded-lg">
                     <h3 className="text-lg font-semibold mb-3">Reset Password</h3>
-                    <p className="text-sm text-gray-600 mb-3">
+                    <p className="text-sm text-gray-400 mb-3">
                         Enter the 6-digit code sent to {resetEmail || 'your email'}
                     </p>
                     <form onSubmit={handlePasswordReset}>
@@ -783,7 +783,7 @@ const [resetEmail, setResetEmail] = useState('');
                             <button
                                 type="button"
                                 onClick={() => setIsResetting(false)}
-                                className="coastal-button bg-gray-500 flex-1"
+                                className="coastal-button bg-gray-8000 flex-1"
                             >
                                 Cancel
                             </button>
@@ -1030,7 +1030,7 @@ submitData = {
         <div className="space-y-6">
             <div className="dark-card p-6">
                 <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-2xl font-bold">
+                    <h2 className="text-2xl font-bold text-white">
                         {isClient ? 'My Goals & Habits' : 'Goals & Habits'}
                     </h2>
                     {!isClient && selectedClient && (
@@ -1164,7 +1164,7 @@ submitData = {
                             <button type="submit" className="coastal-button">
                                 {editingItem ? 'Update' : 'Create'} {formType === 'goal' ? 'Goal' : 'Habit'}
                             </button>
-                            <button type="button" onClick={resetForm} className="coastal-button bg-gray-500">
+                            <button type="button" onClick={resetForm} className="coastal-button bg-gray-8000">
                                 Cancel
                             </button>
                         </div>
@@ -1268,11 +1268,11 @@ submitData = {
                             const isDecreaseGoal = goal.startingValue > goal.target;
                             
                             return (
-                                <div key={goal._id} className="coastal-card p-6">
+                                <div key={goal._id} className="dark-card p-6">
                                     <div className="flex justify-between items-start mb-4">
                                         <div>
                                             <h3 className="text-lg font-semibold">{goal.name}</h3>
-                                            <p className="text-sm text-gray-600">
+                                            <p className="text-sm text-gray-400">
                                                 Progress: {goal.current} / {goal.target}
                                                 {isDecreaseGoal && (
                                                     <span className="text-xs text-gray-500 ml-2">
@@ -1287,7 +1287,7 @@ submitData = {
                                                     ✓ Complete
                                                 </span>
                                             ) : (
-                                                <span className={`text-sm ${daysRemaining < 7 ? 'text-red-600' : 'text-gray-600'}`}>
+                                                <span className={`text-sm ${daysRemaining < 7 ? 'text-red-600' : 'text-gray-400'}`}>
                                                     {daysRemaining > 0 ? `${daysRemaining} days left` : 'Overdue'}
                                                 </span>
                                             )}
@@ -1301,7 +1301,7 @@ submitData = {
                                                 style={{width: `${progress}%`, height: '100%'}}
                                             ></div>
                                         </div>
-                                        <p className="text-sm text-gray-600 mt-1">{progress}% Complete</p>
+                                        <p className="text-sm text-gray-400 mt-1">{progress}% Complete</p>
                                     </div>
                                     
                                     <div className="flex gap-2">
@@ -1351,7 +1351,7 @@ submitData = {
             )}
             
             {selectedClient && goals.length === 0 && habits.length === 0 && (
-                <div className="coastal-card p-8 text-center text-gray-500">
+                <div className="dark-card p-8 text-center text-gray-500">
                     <p>No goals or habits set up yet.</p>
                     {!isClient && <p className="mt-2">Click "Add Goal" or "Add Habit" to get started.</p>}
                 </div>
@@ -1581,7 +1581,7 @@ submitData = {
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                 <div className="metric-card">
                                     <div className="flex items-center justify-between mb-2">
-                                        <h3 className="text-sm font-medium text-gray-600">Workouts</h3>
+                                        <h3 className="text-sm font-medium text-gray-400">Workouts</h3>
                                         <span className="text-2xl">💪</span>
                                     </div>
                                     <p className="text-3xl font-bold">{stats.workouts.completed}/{stats.workouts.total}</p>
@@ -1592,13 +1592,13 @@ submitData = {
                                                 style={{width: `${stats.workouts.completionRate}%`}}
                                             ></div>
                                         </div>
-                                        <p className="text-sm text-gray-600 mt-1">{stats.workouts.completionRate}% Complete</p>
+                                        <p className="text-sm text-gray-400 mt-1">{stats.workouts.completionRate}% Complete</p>
                                     </div>
                                 </div>
                                 
                                 <div className="metric-card">
                                     <div className="flex items-center justify-between mb-2">
-                                        <h3 className="text-sm font-medium text-gray-600">Current Weight</h3>
+                                        <h3 className="text-sm font-medium text-gray-400">Current Weight</h3>
                                         <span className="text-2xl">⚖️</span>
                                     </div>
                                     <p className="text-3xl font-bold">
@@ -1613,7 +1613,7 @@ submitData = {
                                 
                                 <div className="metric-card">
                                     <div className="flex items-center justify-between mb-2">
-                                        <h3 className="text-sm font-medium text-gray-600">Body Fat</h3>
+                                        <h3 className="text-sm font-medium text-gray-400">Body Fat</h3>
                                         <span className="text-2xl">📊</span>
                                     </div>
                                     <p className="text-3xl font-bold">
@@ -1630,11 +1630,11 @@ submitData = {
                                 
                                 <div className="metric-card">
                                     <div className="flex items-center justify-between mb-2">
-                                        <h3 className="text-sm font-medium text-gray-600">Nutrition</h3>
+                                        <h3 className="text-sm font-medium text-gray-400">Nutrition</h3>
                                         <span className="text-2xl">🥗</span>
                                     </div>
                                     <p className="text-3xl font-bold">{stats.nutrition.adherence}%</p>
-                                    <p className="text-sm text-gray-600 mt-2">Daily Adherence</p>
+                                    <p className="text-sm text-gray-400 mt-2">Daily Adherence</p>
                                 </div>
                             </div>
                             
@@ -1644,7 +1644,7 @@ submitData = {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="wellness-indicator">
                                         <div>
-                                            <p className="text-sm text-gray-600">Mood Trend</p>
+                                            <p className="text-sm text-gray-400">Mood Trend</p>
                                             <p className="text-lg font-semibold">
                                                 {stats.wellness.lastMood ? `Last: ${stats.wellness.lastMood}/5` : 'No data'}
                                             </p>
@@ -1656,8 +1656,8 @@ submitData = {
                                     
                                     <div className="wellness-indicator">
                                         <div>
-                                            <p className="text-sm text-gray-600">Average Pain Level</p>
-                                            <p className="text-2xl font-bold">{stats.wellness.painLevel}</p>
+                                            <p className="text-sm text-gray-400">Average Pain Level</p>
+                                            <p className="text-2xl font-bold text-white">{stats.wellness.painLevel}</p>
                                             <p className="text-sm text-green-600">{getPainLevelText(stats.wellness.painLevel)}</p>
                                         </div>
                                         <div className="flex-1">
@@ -1672,8 +1672,8 @@ submitData = {
                                 </div>
                                 
                                 {stats.workouts.lastWorkout && (
-                                    <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                                        <p className="text-sm text-gray-600">Last Workout</p>
+                                    <div className="mt-4 p-4 bg-gray-800 rounded-lg">
+                                        <p className="text-sm text-gray-400">Last Workout</p>
                                         <p className="font-semibold">{stats.workouts.lastWorkout.name}</p>
                                         <p className="text-sm text-gray-500">
                                             {new Date(stats.workouts.lastWorkout.completedAt).toLocaleDateString()}
@@ -2501,7 +2501,7 @@ const ungroupExercise = (index) => {
                 <div className="space-y-6">
                     <div className="dark-card p-6">
                         <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-2xl font-bold">
+                            <h2 className="text-2xl font-bold text-white">
                                 {isClient ? 'My Workouts' : 'Workouts'}
                             </h2>
                             {!isClient && selectedClient && (
@@ -2626,10 +2626,10 @@ const ungroupExercise = (index) => {
                     {filteredLibraryExercises.length > 0 ? (
                         <div className="grid grid-cols-1 gap-2">
                             {filteredLibraryExercises.map(exercise => (
-                                <div key={exercise._id} className="flex justify-between items-center p-3 border rounded hover:bg-gray-50">
+                                <div key={exercise._id} className="flex justify-between items-center p-3 border rounded hover:bg-gray-800">
                                     <div>
                                         <h4 className="font-medium">{exercise.name}</h4>
-                                        <p className="text-sm text-gray-600">
+                                        <p className="text-sm text-gray-400">
                                             {exercise.muscleCategory} • {exercise.difficulty}
                                         </p>
                                     </div>
@@ -2654,7 +2654,7 @@ const ungroupExercise = (index) => {
     )}
                                     
                      {formData.exercises.map((exercise, index) => (
-    <div key={index} className="bg-gray-50 p-4 rounded mb-3">
+    <div key={index} className="bg-gray-800 p-4 rounded mb-3">
         <div className="space-y-2">
             <div className="grid grid-cols-6 gap-2">
                 <input
@@ -2666,7 +2666,7 @@ const ungroupExercise = (index) => {
                     required
                 />
                 <div>
-                    <label className="text-xs text-gray-600">Sets</label>
+                    <label className="text-xs text-gray-400">Sets</label>
                     <input
                         type="number"
                         className="coastal-input"
@@ -2676,7 +2676,7 @@ const ungroupExercise = (index) => {
                     />
                 </div>
                 <div>
-                    <label className="text-xs text-gray-600">Reps/Range</label>
+                    <label className="text-xs text-gray-400">Reps/Range</label>
                     <input
                         type="text"
                         className="coastal-input"
@@ -2687,7 +2687,7 @@ const ungroupExercise = (index) => {
                     />
                 </div>
                 <div>
-                    <label className="text-xs text-gray-600">Weight (lbs)</label>
+                    <label className="text-xs text-gray-400">Weight (lbs)</label>
                     <input
                         type="number"
                         className="coastal-input"
@@ -2696,7 +2696,7 @@ const ungroupExercise = (index) => {
                     />
                 </div>
                 <div>
-                    <label className="text-xs text-gray-600">Hold Time (sec)</label>
+                    <label className="text-xs text-gray-400">Hold Time (sec)</label>
                     <input
                         type="number"
                         className="coastal-input"
@@ -2770,7 +2770,7 @@ const ungroupExercise = (index) => {
             Delete Workout
         </button>
     )}
-    <button type="button" onClick={() => setShowForm(false)} className="coastal-button bg-gray-500">
+    <button type="button" onClick={() => setShowForm(false)} className="coastal-button bg-gray-8000">
         Cancel
     </button>
 </div>
@@ -2781,11 +2781,11 @@ const ungroupExercise = (index) => {
                     {selectedClient && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {workouts.map(workout => (
-                                <div key={workout._id} className="coastal-card p-6">
+                                <div key={workout._id} className="dark-card p-6">
                                     <div className="flex justify-between items-start mb-4">
                                         <div>
                                             <h3 className="text-lg font-semibold">{workout.name}</h3>
-                                            <p className="text-sm text-gray-600">
+                                            <p className="text-sm text-gray-400">
                                                 {workout.exercises?.length || 0} exercises
                                             </p>
                                             <p className="text-sm text-blue-600">
@@ -2848,7 +2848,7 @@ const ungroupExercise = (index) => {
                                     {exercise.weight > 0 && ` @ ${exercise.weight}lbs`}
                                 </div>
                                 {exercise.notes && (
-                                    <p className="text-xs text-gray-600 italic mt-1">
+                                    <p className="text-xs text-gray-400 italic mt-1">
                                         Note: {exercise.notes}
                                     </p>
                                 )}
@@ -3101,7 +3101,7 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
         <div className="space-y-6">
             <div className="dark-card p-6">
                 <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-2xl font-bold">Exercise Library</h2>
+                    <h2 className="text-2xl font-bold text-white">Exercise Library</h2>
                     {canEdit && (
                         <button 
                             onClick={() => setShowForm(!showForm)} 
@@ -3412,7 +3412,7 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
                             <button type="submit" className="coastal-button">
                                 {editingExercise ? 'Update' : 'Save'} Exercise
                             </button>
-                            <button type="button" onClick={resetForm} className="coastal-button bg-gray-500">
+                            <button type="button" onClick={resetForm} className="coastal-button bg-gray-8000">
                                 Cancel
                             </button>
                         </div>
@@ -3422,7 +3422,7 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {exercises.map(exercise => (
-                    <div key={exercise._id} className="coastal-card p-4">
+                    <div key={exercise._id} className="dark-card p-4">
                         {exercise.imageUrl && (
                             <img 
                                 src={exercise.imageUrl} 
@@ -3443,7 +3443,7 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
                                 {exercise.difficulty}
                             </span>
                         </div>
-                        <p className="text-sm text-gray-600 mb-3 line-clamp-2">{exercise.description}</p>
+                        <p className="text-sm text-gray-400 mb-3 line-clamp-2">{exercise.description}</p>
                         
                         <div className="flex justify-between items-center">
                             <button
@@ -3489,7 +3489,7 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
                 <div className="modal-overlay" onClick={() => setShowDetails(null)}>
                     <div className="modal-content max-w-3xl" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-between items-start mb-4">
-                            <h2 className="text-2xl font-bold">{showDetails.name}</h2>
+                            <h2 className="text-2xl font-bold text-white">{showDetails.name}</h2>
                             <button
                                 onClick={() => setShowDetails(null)}
                                 className="text-gray-500 hover:text-gray-700"
@@ -3508,20 +3508,20 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div>
-                                <p className="text-sm text-gray-600">Primary Muscle</p>
+                                <p className="text-sm text-gray-400">Primary Muscle</p>
                                 <p className="font-semibold">{showDetails.muscleCategory}</p>
                             </div>
                             <div>
-                                <p className="text-sm text-gray-600">Equipment</p>
+                                <p className="text-sm text-gray-400">Equipment</p>
                                 <p className="font-semibold">{equipmentTypes.find(e => e.value === showDetails.equipmentNeeded)?.label}</p>
                             </div>
                             <div>
-                                <p className="text-sm text-gray-600">Difficulty</p>
+                                <p className="text-sm text-gray-400">Difficulty</p>
                                 <p className="font-semibold">{showDetails.difficulty}</p>
                             </div>
                             {showDetails.secondaryMuscles?.length > 0 && (
                                 <div>
-                                    <p className="text-sm text-gray-600">Secondary Muscles</p>
+                                    <p className="text-sm text-gray-400">Secondary Muscles</p>
                                     <p className="font-semibold">{showDetails.secondaryMuscles.join(', ')}</p>
                                 </div>
                             )}
@@ -3738,7 +3738,7 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
                 <div className="space-y-6">
                     <div className="dark-card p-6">
                         <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-2xl font-bold">
+                            <h2 className="text-2xl font-bold text-white">
                                 {isClient ? 'My Measurements' : 'Measurements'}
                             </h2>
                            {selectedClient && (
@@ -3842,7 +3842,7 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
                                 
                                 {measurementType === 'circumference' && (
                                     <div>
-                                        <p className="text-sm text-gray-600 mb-4">All measurements in inches</p>
+                                        <p className="text-sm text-gray-400 mb-4">All measurements in inches</p>
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                                             <div>
                                                 <label className="block text-sm font-medium mb-2">Neck</label>
@@ -3940,7 +3940,7 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
                                 
                                 {measurementType === 'caliper' && (
                                     <div>
-                                        <p className="text-sm text-gray-600 mb-4">All measurements in millimeters</p>
+                                        <p className="text-sm text-gray-400 mb-4">All measurements in millimeters</p>
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                                             <div>
                                                 <label className="block text-sm font-medium mb-2">Chest</label>
@@ -4040,7 +4040,7 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
                                     <button type="submit" className="coastal-button">
                                         Save Measurement
                                     </button>
-                                    <button type="button" onClick={() => setShowForm(false)} className="coastal-button bg-gray-500">
+                                    <button type="button" onClick={() => setShowForm(false)} className="coastal-button bg-gray-8000">
                                         Cancel
                                     </button>
                                 </div>
@@ -4052,7 +4052,7 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {measurements.length > 0 ? (
                                 measurements.map(measurement => (
-                                    <div key={measurement._id} className="coastal-card p-6">
+                                    <div key={measurement._id} className="dark-card p-6">
     <div className="flex justify-between items-start mb-2">
         <h3 className="text-lg font-semibold">
          {DateHandler.toDisplay(measurement.date)}   
@@ -4086,18 +4086,18 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
     </div>
                                         <div className="space-y-2">
                                             <div className="flex justify-between">
-                                                <span className="text-gray-600">Weight:</span>
+                                                <span className="text-gray-400">Weight:</span>
                                                 <span className="font-medium">{measurement.weight} lbs</span>
                                             </div>
                                             {measurement.bodyFat && (
                                                 <div className="flex justify-between">
-                                                    <span className="text-gray-600">Body Fat:</span>
+                                                    <span className="text-gray-400">Body Fat:</span>
                                                     <span className="font-medium">{measurement.bodyFat}%</span>
                                                 </div>
                                             )}
                                             {measurement.bloodPressure && (
                                                 <div className="flex justify-between">
-                                                    <span className="text-gray-600">BP:</span>
+                                                    <span className="text-gray-400">BP:</span>
                                                     <span className="font-medium">{measurement.bloodPressure}</span>
                                                 </div>
                                             )}
@@ -4257,7 +4257,7 @@ await API_CONFIG.request(endpoint, {
                 <div className="space-y-6">
                     <div className="dark-card p-6">
                         <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-2xl font-bold">
+                            <h2 className="text-2xl font-bold text-white">
                                 {isClient ? 'My Nutrition' : 'Nutrition Plans'}
                             </h2>
                             {selectedClient && (
@@ -4426,7 +4426,7 @@ await API_CONFIG.request(endpoint, {
                                     <button type="submit" className="coastal-button">
                                         Save Plan
                                     </button>
-                                    <button type="button" onClick={() => setShowForm(false)} className="coastal-button bg-gray-500">
+                                    <button type="button" onClick={() => setShowForm(false)} className="coastal-button bg-gray-8000">
                                         Cancel
                                     </button>
                                 </div>
@@ -4443,7 +4443,7 @@ await API_CONFIG.request(endpoint, {
                                         <span className="text-2xl mr-2">🥩</span>
                                         Protein
                                     </h4>
-                                    <p className="text-2xl font-bold">
+                                    <p className="text-2xl font-bold text-white">
                                         {nutrition.protein?.current || 0}g / {nutrition.protein?.target || 0}g
                                     </p>
                                     <div className="mt-3">
@@ -4453,7 +4453,7 @@ await API_CONFIG.request(endpoint, {
                                                 style={{width: `${calculatePercentage(nutrition.protein?.current, nutrition.protein?.target)}%`}}
                                             ></div>
                                         </div>
-                                        <p className="text-sm text-gray-600 mt-1">
+                                        <p className="text-sm text-gray-400 mt-1">
                                             {calculatePercentage(nutrition.protein?.current, nutrition.protein?.target)}% of daily goal
                                         </p>
                                     </div>
@@ -4464,7 +4464,7 @@ await API_CONFIG.request(endpoint, {
                                         <span className="text-2xl mr-2">🌾</span>
                                         Carbs
                                     </h4>
-                                    <p className="text-2xl font-bold">
+                                    <p className="text-2xl font-bold text-white">
                                         {nutrition.carbs?.current || 0}g / {nutrition.carbs?.target || 0}g
                                     </p>
                                     <div className="mt-3">
@@ -4474,7 +4474,7 @@ await API_CONFIG.request(endpoint, {
                                                 style={{width: `${calculatePercentage(nutrition.carbs?.current, nutrition.carbs?.target)}%`}}
                                             ></div>
                                         </div>
-                                        <p className="text-sm text-gray-600 mt-1">
+                                        <p className="text-sm text-gray-400 mt-1">
                                             {calculatePercentage(nutrition.carbs?.current, nutrition.carbs?.target)}% of daily goal
                                         </p>
                                     </div>
@@ -4485,7 +4485,7 @@ await API_CONFIG.request(endpoint, {
                                         <span className="text-2xl mr-2">🥑</span>
                                         Fat
                                     </h4>
-                                    <p className="text-2xl font-bold">
+                                    <p className="text-2xl font-bold text-white">
                                         {nutrition.fat?.current || 0}g / {nutrition.fat?.target || 0}g
                                     </p>
                                     <div className="mt-3">
@@ -4495,7 +4495,7 @@ await API_CONFIG.request(endpoint, {
                                                 style={{width: `${calculatePercentage(nutrition.fat?.current, nutrition.fat?.target)}%`}}
                                             ></div>
                                         </div>
-                                        <p className="text-sm text-gray-600 mt-1">
+                                        <p className="text-sm text-gray-400 mt-1">
                                             {calculatePercentage(nutrition.fat?.current, nutrition.fat?.target)}% of daily goal
                                         </p>
                                     </div>
@@ -4506,7 +4506,7 @@ await API_CONFIG.request(endpoint, {
                                         <span className="text-2xl mr-2">🔥</span>
                                         Calories
                                     </h4>
-                                    <p className="text-2xl font-bold">
+                                    <p className="text-2xl font-bold text-white">
                                         {nutrition.calories?.current || 0} / {nutrition.calories?.target || 0}
                                     </p>
                                     <div className="mt-3">
@@ -4516,7 +4516,7 @@ await API_CONFIG.request(endpoint, {
                                                 style={{width: `${calculatePercentage(nutrition.calories?.current, nutrition.calories?.target)}%`}}
                                             ></div>
                                         </div>
-                                        <p className="text-sm text-gray-600 mt-1">
+                                        <p className="text-sm text-gray-400 mt-1">
                                             {calculatePercentage(nutrition.calories?.current, nutrition.calories?.target)}% of daily goal
                                         </p>
                                     </div>
@@ -4529,7 +4529,7 @@ await API_CONFIG.request(endpoint, {
                                     <h3 className="text-xl font-bold mb-4">Daily Meal Plan</h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {nutrition.mealPlan.breakfast && (
-                                            <div className="p-4 bg-gray-50 rounded-lg">
+                                            <div className="p-4 bg-gray-800 rounded-lg">
                                                 <h4 className="font-semibold mb-2">
                                                     <span className="mr-2">🍳</span>Breakfast
                                                 </h4>
@@ -4537,7 +4537,7 @@ await API_CONFIG.request(endpoint, {
                                             </div>
                                         )}
                                         {nutrition.mealPlan.lunch && (
-                                            <div className="p-4 bg-gray-50 rounded-lg">
+                                            <div className="p-4 bg-gray-800 rounded-lg">
                                                 <h4 className="font-semibold mb-2">
                                                     <span className="mr-2">🥗</span>Lunch
                                                 </h4>
@@ -4545,7 +4545,7 @@ await API_CONFIG.request(endpoint, {
                                             </div>
                                         )}
                                         {nutrition.mealPlan.dinner && (
-                                            <div className="p-4 bg-gray-50 rounded-lg">
+                                            <div className="p-4 bg-gray-800 rounded-lg">
                                                 <h4 className="font-semibold mb-2">
                                                     <span className="mr-2">🍽️</span>Dinner
                                                 </h4>
@@ -4553,7 +4553,7 @@ await API_CONFIG.request(endpoint, {
                                             </div>
                                         )}
                                         {nutrition.mealPlan.snacks && (
-                                            <div className="p-4 bg-gray-50 rounded-lg">
+                                            <div className="p-4 bg-gray-800 rounded-lg">
                                                 <h4 className="font-semibold mb-2">
                                                     <span className="mr-2">🍎</span>Snacks
                                                 </h4>
@@ -5295,7 +5295,7 @@ const Reports = ({ user, isClient, showSuccess, showError }) => {
                             <div className="text-center">
                                 <span className="text-3xl">📊</span>
                                 <h3 className="font-semibold mt-2">Progress Report</h3>
-                                <p className="text-sm text-gray-600 mt-1">Comprehensive analysis</p>
+                                <p className="text-sm text-gray-400 mt-1">Comprehensive analysis</p>
                             </div>
                         </div>
                         
@@ -5310,7 +5310,7 @@ const Reports = ({ user, isClient, showSuccess, showError }) => {
                             <div className="text-center">
                                 <span className="text-3xl">💪</span>
                                 <h3 className="font-semibold mt-2">Workout Analysis</h3>
-                                <p className="text-sm text-gray-600 mt-1">Exercise & strength data</p>
+                                <p className="text-sm text-gray-400 mt-1">Exercise & strength data</p>
                             </div>
                         </div>
                         
@@ -5325,7 +5325,7 @@ const Reports = ({ user, isClient, showSuccess, showError }) => {
                             <div className="text-center">
                                 <span className="text-3xl">🥗</span>
                                 <h3 className="font-semibold mt-2">Nutrition Analysis</h3>
-                                <p className="text-sm text-gray-600 mt-1">Macro & adherence data</p>
+                                <p className="text-sm text-gray-400 mt-1">Macro & adherence data</p>
                             </div>
                         </div>
                     </div>
@@ -5474,7 +5474,7 @@ const Tests = ({ user, showError, showSuccess }) => {
         <div className="space-y-6">
             <div className="dark-card p-6">
                 <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-2xl font-bold">Tests & Assessments</h2>
+                    <h2 className="text-2xl font-bold text-white">Tests & Assessments</h2>
                     {selectedClient && (
                         <button onClick={() => setShowForm(true)} className="coastal-button">
                             <i className="fas fa-plus mr-2"></i>
@@ -5580,7 +5580,7 @@ const Tests = ({ user, showError, showSuccess }) => {
                                         notes: ''
                                     });
                                 }} 
-                                className="coastal-button bg-gray-500"
+                                className="coastal-button bg-gray-8000"
                             >
                                 Cancel
                             </button>
@@ -5592,7 +5592,7 @@ const Tests = ({ user, showError, showSuccess }) => {
             {selectedClient && tests.length > 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {tests.map(test => (
-                        <div key={test._id} className="coastal-card p-6">
+                        <div key={test._id} className="dark-card p-6">
                             <div className="flex justify-between items-start mb-2">
                                 <div className="flex items-start gap-2">
                                     <span className="text-2xl">{getCategoryIcon(test.category)}</span>
@@ -5618,10 +5618,10 @@ const Tests = ({ user, showError, showSuccess }) => {
                                     </button>
                                 </div>
                             </div>
-                            <p className="text-sm text-gray-600 mb-3">
+                            <p className="text-sm text-gray-400 mb-3">
                                 {DateHandler.toDisplay(test.date || test.createdAt)}
                             </p>
-                            <div className="bg-gray-50 p-3 rounded mb-2">
+                            <div className="bg-gray-800 p-3 rounded mb-2">
                                 <p className="text-sm font-medium text-gray-700 mb-1">Results:</p>
                                 <p className="text-gray-800 whitespace-pre-wrap">{test.results}</p>
                             </div>
@@ -5637,7 +5637,7 @@ const Tests = ({ user, showError, showSuccess }) => {
             )}
             
             {selectedClient && tests.length === 0 && (
-                <div className="coastal-card p-8 text-center text-gray-500">
+                <div className="dark-card p-8 text-center text-gray-500">
                     <p>No assessments recorded yet.</p>
                     <p className="mt-2">Click "Add Assessment" to log test results or client notes.</p>
                 </div>
@@ -5731,7 +5731,7 @@ const Tests = ({ user, showError, showSuccess }) => {
                 <div className="space-y-6">
                     <div className="dark-card p-6">
                         <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-2xl font-bold">User Management</h2>
+                            <h2 className="text-2xl font-bold text-white">User Management</h2>
                             <button onClick={() => setShowForm(true)} className="coastal-button">
                                 <i className="fas fa-plus mr-2"></i>
                                 Add User
@@ -5826,7 +5826,7 @@ const Tests = ({ user, showError, showSuccess }) => {
                                                 roles: []
                                             });
                                         }} 
-                                        className="coastal-button bg-gray-500"
+                                        className="coastal-button bg-gray-8000"
                                     >
                                         Cancel
                                     </button>
@@ -5837,11 +5837,11 @@ const Tests = ({ user, showError, showSuccess }) => {
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {users.map(u => (
-                            <div key={u._id} className="coastal-card p-4">
+                            <div key={u._id} className="dark-card p-4">
                                 <div className="flex justify-between items-start mb-2">
                                     <div>
                                         <h3 className="font-semibold">{u.name}</h3>
-                                        <p className="text-sm text-gray-600">{u.email}</p>
+                                        <p className="text-sm text-gray-400">{u.email}</p>
                                     </div>
                                     <div className="flex gap-1">
                                         <button
