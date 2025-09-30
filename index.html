@@ -435,45 +435,138 @@ const DateHandler = {
 };
         
         // API Configuration - Railway Backend
-        const API_CONFIG = {
-           baseURL: 'https://cwbackend-production-314e.up.railway.app/api',
-            
-            getHeaders: () => ({
-                'Content-Type': 'application/json',
-                'Authorization': localStorage.getItem('token') ? `Bearer ${localStorage.getItem('token')}` : ''
-            }),
-            
-            async request(endpoint, options = {}) {
-                try {
-                    const response = await fetch(`${this.baseURL}${endpoint}`, {
-                        ...options,
-                        headers: {
-                            ...this.getHeaders(),
-                            ...options.headers
-                        }
-                    });
-                    
-                    const data = await response.json();
-                    
-                    if (!response.ok) {
-                        throw new Error(data.message || 'Request failed');
-                    }
-                    
-                    return data;
-                } catch (error) {
-                    console.error('API Error:', error);
-                    throw error;
+       const API_CONFIG = {
+    baseURL: 'https://cwbackend-production-314e.up.railway.app/api',
+    
+    getHeaders: () => ({
+        'Content-Type': 'application/json',
+        'Authorization': localStorage.getItem('token') ? `Bearer ${localStorage.getItem('token')}` : ''
+    }),
+    
+    async request(endpoint, options = {}) {
+        try {
+            const response = await fetch(`${this.baseURL}${endpoint}`, {
+                ...options,
+                headers: {
+                    ...this.getHeaders(),
+                    ...options.headers
                 }
+            });
+            
+            let data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.message || 'Request failed');
             }
-        };
+            
+            // GENIUS AUTO-UNWRAPPER
+            let unwrapped = data;
+            
+            if (data && typeof data === 'object' && 'data' in data) {
+                unwrapped = data.data;
+            } else if (data && typeof data === 'object' && 'result' in data) {
+                unwrapped = data.result;
+            } else if (data && typeof data === 'object' && 'response' in data) {
+                unwrapped = data.response;
+            }
+            
+            const endpointSignatures = {
+                singles: ['/users/profile', '/auth/login', '/auth/register', '/nutrition'],
+                arrays: ['/users', '/workouts', '/measurements', '/goals', '/tests', '/exercises', '/messages']
+            };
+
+            const expectsSingle = endpointSignatures.singles.some(sig => endpoint.includes(sig));
+            const expectsArray = !expectsSingle && (
+                endpointSignatures.arrays.some(sig => endpoint.includes(sig)) ||
+                endpoint.includes('/client/')
+            );
+            
+            if (expectsArray) {
+                if (Array.isArray(unwrapped)) {
+                    return unwrapped;
+                }
+                if (unwrapped && typeof unwrapped === 'object') {
+                    return [unwrapped];
+                }
+                return [];
+            } else if (expectsSingle) {
+                if (Array.isArray(unwrapped) && unwrapped.length > 0) {
+                    return unwrapped[0];
+                }
+                return unwrapped || null;
+            } else {
+                return unwrapped;
+            }
+            
+        } catch (error) {
+            console.error('API Error:', error);
+            throw error;
+        }
+    }
+};
+
+// Add ResponseHandler and ClientManager
+const ResponseHandler = {
+    extractArray(response) {
+        if (!response) return [];
+        if (Array.isArray(response)) return response;
+        if (response.data !== undefined) return this.extractArray(response.data);
+        if (response.items) return this.extractArray(response.items);
+        if (response.results) return this.extractArray(response.results);
+        if (typeof response === 'object') return [response];
+        return [];
+    },
+    
+    extractSingle(response) {
+        if (!response) return null;
+        if (response && response.data !== undefined) return response.data;
+        if (Array.isArray(response)) return response[0] || null;
+        return response;
+    }
+};
+
+const ClientManager = {
+    clients: [],
+    loaded: false,
+    
+    async loadClients() {
+        if (this.loaded && this.clients.length > 0) {
+            return this.clients;
+        }
+        
+        try {
+            const response = await API_CONFIG.request('/users');
+            const users = Array.isArray(response) ? response : (response.data || []);
+            this.clients = users.filter(user => user.roles?.includes('client'));
+            this.loaded = true;
+            return this.clients;
+        } catch (error) {
+            console.error('ClientManager: Failed to load clients', error);
+            return [];
+        }
+    },
+    
+    getClients() {
+        return this.clients;
+    },
+    
+    reset() {
+        this.clients = [];
+        this.loaded = false;
+    }
+};
+
+window.ResponseHandler = ResponseHandler;
+window.ClientManager = ClientManager;
         
         // Main App Component
         const App = () => {
             const [user, setUser] = useState(null);
-            const [loading, setLoading] = useState(true);
-            const [activeTab, setActiveTab] = useState('dashboard');
-            const [error, setError] = useState(null);
-            const [success, setSuccess] = useState(null);
+const [loading, setLoading] = useState(true);
+const [activeTab, setActiveTab] = useState('dashboard');
+const [globalSelectedClient, setGlobalSelectedClient] = useState(null);
+const [error, setError] = useState(null);
+const [success, setSuccess] = useState(null);
            
             
             // Check for saved token on mount
@@ -593,14 +686,13 @@ const DateHandler = {
                     )}
                     
                     <main className="max-w-7xl mx-auto px-4 py-6">
-                        {activeTab === 'dashboard' && <Dashboard user={user} isClient={isOnlyClient} />}
-{activeTab === 'workouts' && <Workouts user={user} isClient={isOnlyClient} showError={showError} showSuccess={showSuccess} />}
-{activeTab === 'measurements' && <Measurements user={user} isClient={isOnlyClient} showError={showError} showSuccess={showSuccess} />}
-{activeTab === 'nutrition' && <Nutrition user={user} isClient={isOnlyClient} showError={showError} showSuccess={showSuccess} />}
-{activeTab === 'goals' && <Goals user={user} isClient={isOnlyClient} showError={showError} showSuccess={showSuccess} />}
-{activeTab === 'reports' && <Reports user={user} isClient={isOnlyClient} showSuccess={showSuccess} />}
-{activeTab === 'exercises' && <ExerciseLibrary user={user} showError={showError} showSuccess={showSuccess} />}
-{activeTab === 'tests' && <Tests user={user} showError={showError} showSuccess={showSuccess} />}
+                        {activeTab === 'dashboard' && <Dashboard user={user} isClient={isOnlyClient} selectedClientId={globalSelectedClient} onClientChange={setGlobalSelectedClient} />}
+{activeTab === 'workouts' && <Workouts user={user} isClient={isOnlyClient} showError={showError} showSuccess={showSuccess} selectedClientId={globalSelectedClient} onClientChange={setGlobalSelectedClient} />}
+{activeTab === 'measurements' && <Measurements user={user} isClient={isOnlyClient} showError={showError} showSuccess={showSuccess} selectedClientId={globalSelectedClient} onClientChange={setGlobalSelectedClient} />}
+{activeTab === 'nutrition' && <Nutrition user={user} isClient={isOnlyClient} showError={showError} showSuccess={showSuccess} selectedClientId={globalSelectedClient} onClientChange={setGlobalSelectedClient} />}
+{activeTab === 'goals' && <Goals user={user} isClient={isOnlyClient} showError={showError} showSuccess={showSuccess} selectedClientId={globalSelectedClient} onClientChange={setGlobalSelectedClient} />}
+{activeTab === 'reports' && <Reports user={user} isClient={isOnlyClient} showSuccess={showSuccess} showError={showError} selectedClientId={globalSelectedClient} onClientChange={setGlobalSelectedClient} />}
+{activeTab === 'tests' && <Tests user={user} showError={showError} showSuccess={showSuccess} selectedClientId={globalSelectedClient} onClientChange={setGlobalSelectedClient} />}
 {activeTab === 'users' && <Users user={user} showError={showError} showSuccess={showSuccess} />}
                     </main>
                 </div>
@@ -1639,9 +1731,11 @@ submitData = {
     );
 };
         // Enhanced Dashboard Component
-        const Dashboard = ({ user, isClient }) => {
-            const [selectedClient, setSelectedClient] = useState(isClient ? user._id : null);
-            const [clients, setClients] = useState([]);
+        const Dashboard = ({ user, isClient, selectedClientId, onClientChange }) => {
+    const [selectedClient, setSelectedClient] = useState(
+        selectedClientId || (isClient ? user._id : null)
+    );
+    const [clients, setClients] = useState([]);
             const [stats, setStats] = useState({
                 workouts: { total: 0, completed: 0, completionRate: 0, lastWorkout: null },
                 measurements: { latest: null, change: { weight: 0, bodyFat: 0 }, history: [] },
@@ -1979,12 +2073,14 @@ submitData = {
             const [workout, setWorkout] = useState(null);
             const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
             const [currentSet, setCurrentSet] = useState(1);
-            const [sessionData, setSessionData] = useState({
-                startTime: new Date(),
-                exerciseData: [],
-                totalPainLevel: 0,
-                painCount: 0
-            });
+            const [previousWorkoutData, setPreviousWorkoutData] = useState({});
+const [currentSessionData, setCurrentSessionData] = useState({});
+const [sessionData, setSessionData] = useState({
+    startTime: new Date(),
+    exerciseData: [],
+    totalPainLevel: 0,
+    painCount: 0
+});
             const [showInstructions, setShowInstructions] = useState(true);
             const [showExerciseDetails, setShowExerciseDetails] = useState(false);
             const [isTimerRunning, setIsTimerRunning] = useState(false);
@@ -2558,13 +2654,9 @@ useEffect(() => {
     }
 }, [exerciseSearchTerm, libraryExercises]);
             const fetchClients = async () => {
-                try {
-                    const data = await API_CONFIG.request('/users?role=client');
-                    setClients(data.data || []);
-                } catch (error) {
-                    console.error('Error fetching clients:', error);
-                }
-            };
+    const clients = await ClientManager.loadClients();
+    setClients(clients);
+};
             
 
 const fetchWorkouts = async () => {
@@ -2990,15 +3082,16 @@ const ungroupExercise = (index) => {
             {index < formData.exercises.length - 1 && (
                 <div className="flex items-center gap-4">
                     <label className="text-sm font-medium">Exercise Grouping:</label>
-                    <select
-                        className="coastal-input flex-1"
-                        value={exercise.grouping || 'none'}
-                        onChange={(e) => updateExercise(index, 'grouping', e.target.value)}
-                    >
-                        <option value="none">No grouping</option>
-                        <option value="superset">Superset with next exercise</option>
-                        <option value="triset">Tri-set (link next 2 exercises)</option>
-                    </select>
+                   <select
+    className="dark-input flex-1"  // Keep dark theme
+    value={exercise.grouping || 'none'}
+    onChange={(e) => updateExercise(index, 'grouping', e.target.value)}
+>
+    <option value="none">No group</option>
+    {['A', 'B', 'C', 'D', 'E'].map(letter => (
+        <option key={letter} value={letter}>Group {letter}</option>
+    ))}
+</select>
                 </div>
             )}
             
