@@ -1167,10 +1167,11 @@ const [resetEmail, setResetEmail] = useState('');
 );
 };
        // Goals & Habits Component (Combined)
-const Goals = ({ user, isClient, showError, showSuccess, selectedClientId, onClientChange }) => {
+const Goals = ({ user, isClient, showError, showSuccess }) => {
     const [goals, setGoals] = useState([]);
     const [habits, setHabits] = useState([]);
     const [selectedClient, setSelectedClient] = useState(isClient ? user._id : null);
+    const Goals = ({ user, isClient, showError, showSuccess, selectedClientId, onClientChange }) => {
     const [clients, setClients] = useState([]);
     const [showForm, setShowForm] = useState(false);
     const [formType, setFormType] = useState('goal'); // 'goal' or 'habit'
@@ -1199,8 +1200,12 @@ useEffect(() => {
 }, [selectedClient, isClient, user]);
     
     const fetchClients = async () => {
-    const clients = await ClientManager.loadClients();
-    setClients(clients);
+    try {
+        const data = await API_CONFIG.request('/users?role=client');
+        setClients(data.data || []);  // <-- FIXED
+    } catch (error) {
+        console.error('Error fetching clients:', error);
+    }
 };
     
     const fetchGoals = async () => {
@@ -1415,13 +1420,11 @@ submitData = {
                 </div>
                 
                 {!isClient && (
-                    onChange={(e) => {
-    const newClientId = e.target.value;
-    setSelectedClient(newClientId);
-    if (onClientChange) {
-        onClientChange(newClientId);
-    }
-}}
+                    <select
+                        className="coastal-input"
+                        value={selectedClient || ''}
+                        onChange={(e) => setSelectedClient(e.target.value)}
+                    >
                         <option value="">Select a client...</option>
                         {clients.map(client => (
                             <option key={client._id} value={client._id}>
@@ -1765,9 +1768,13 @@ submitData = {
             }, [selectedClient, isClient]);
             
             const fetchClients = async () => {
-    const clients = await ClientManager.loadClients();
-    setClients(clients);
-};
+                try {
+                    const data = await API_CONFIG.request('/users?role=client');
+                    setClients(data.data || []);
+                } catch (error) {
+                    console.error('Error fetching clients:', error);
+                }
+            };
             
             const fetchStats = async () => {
                 try {
@@ -2581,9 +2588,10 @@ if (currentExercise.grouping === 'superset' && currentExerciseIndex < workout.ex
         };
         
         // Enhanced Workouts Component
-            const Workouts = ({ user, isClient, showError, showSuccess, selectedClientId, onClientChange }) => {
+        const Workouts = ({ user, isClient, showError, showSuccess }) => {
             const [workouts, setWorkouts] = useState([]);
-const [selectedClient, setSelectedClient] = useState(isClient ? user._id : null);  
+            const [selectedClient, setSelectedClient] = useState(isClient ? user._id : null);
+            const Workouts = ({ user, isClient, showError, showSuccess, selectedClientId, onClientChange }) => {
             const [clients, setClients] = useState([]);
             const [showForm, setShowForm] = useState(false);
             const [formData, setFormData] = useState({
@@ -2892,13 +2900,11 @@ const ungroupExercise = (index) => {
                         </div>
                         
                         {!isClient && (
-                           onChange={(e) => {
-    const newClientId = e.target.value;
-    setSelectedClient(newClientId);
-    if (onClientChange) {
-        onClientChange(newClientId);
-    }
-}}
+                            <select
+                                className="coastal-input"
+                                value={selectedClient || ''}
+                                onChange={(e) => setSelectedClient(e.target.value)}
+                            >
                                 <option value="">Select a client...</option>
                                 {clients.map(client => (
                                     <option key={client._id} value={client._id}>
@@ -3967,10 +3973,11 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
     );
 };
         // Enhanced Measurements Component with Circumference and Caliper
+        const Measurements = ({ user, isClient, showError, showSuccess }) => {
+            const [measurements, setMeasurements] = useState([]);
+            const [selectedClient, setSelectedClient] = useState(isClient ? user._id : null);
             const Measurements = ({ user, isClient, showError, showSuccess, selectedClientId, onClientChange }) => {
             const [clients, setClients] = useState([]);
-                const [measurements, setMeasurements] = useState([]);
-const [selectedClient, setSelectedClient] = useState(isClient ? user._id : null);
             const [showForm, setShowForm] = useState(false);
             const [measurementType, setMeasurementType] = useState('basic');
             const [editingMeasurement, setEditingMeasurement] = useState(null);
@@ -4023,7 +4030,10 @@ const [selectedClient, setSelectedClient] = useState(isClient ? user._id : null)
                 try {
                     const data = await API_CONFIG.request('/users?role=client');
                     setClients(data.data || []);
-                    };
+                } catch (error) {
+                    console.error('Error fetching clients:', error);
+                }
+            };
             
             const fetchMeasurements = async () => {
                 try {
@@ -4135,13 +4145,11 @@ const [selectedClient, setSelectedClient] = useState(isClient ? user._id : null)
                         </div>
                         
                         {!isClient && (
-                            onChange={(e) => {
-    const newClientId = e.target.value;
-    setSelectedClient(newClientId);
-    if (onClientChange) {
-        onClientChange(newClientId);
-    }
-}}
+                            <select
+                                className="coastal-input"
+                                value={selectedClient || ''}
+                                onChange={(e) => setSelectedClient(e.target.value)}
+                            >
                                 <option value="">Select a client...</option>
                                 {clients.map(client => (
                                     <option key={client._id} value={client._id}>
@@ -4513,9 +4521,10 @@ const [selectedClient, setSelectedClient] = useState(isClient ? user._id : null)
         };
         
         // Enhanced Nutrition Component with Meal Planning
+        const Nutrition = ({ user, isClient, showError, showSuccess }) => {
+            const [nutrition, setNutrition] = useState(null);
+            const [selectedClient, setSelectedClient] = useState(isClient ? user._id : null);
             const Nutrition = ({ user, isClient, showError, showSuccess, selectedClientId, onClientChange }) => {
-                const [nutrition, setNutrition] = useState(null);
-const [selectedClient, setSelectedClient] = useState(isClient ? user._id : null);
             const [clients, setClients] = useState([]);
             const [showForm, setShowForm] = useState(false);
             const [editingNutrition, setEditingNutrition] = useState(null);
@@ -4551,7 +4560,10 @@ const [selectedClient, setSelectedClient] = useState(isClient ? user._id : null)
                 try {
                     const data = await API_CONFIG.request('/users?role=client');
                     setClients(data.data || []);
-                    };
+                } catch (error) {
+                    console.error('Error fetching clients:', error);
+                }
+            };
             
       const fetchNutrition = async () => {
     try {
@@ -4669,13 +4681,11 @@ await API_CONFIG.request(endpoint, {
                         </div>
                         
                         {!isClient && (
-onChange={(e) => {
-    const newClientId = e.target.value;
-    setSelectedClient(newClientId);
-    if (onClientChange) {
-        onClientChange(newClientId);
-    }
-}}
+                            <select
+                                className="coastal-input"
+                                value={selectedClient || ''}
+                                onChange={(e) => setSelectedClient(e.target.value)}
+                            >
                                 <option value="">Select a client...</option>
                                 {clients.map(client => (
                                     <option key={client._id} value={client._id}>
@@ -4962,17 +4972,11 @@ onChange={(e) => {
         };
         
 // Enhanced Reports Component - Replace entire Reports component with this
+const Reports = ({ user, isClient, showSuccess, showError }) => {
+    const [selectedClient, setSelectedClient] = useState(isClient ? user._id : null);
     const Reports = ({ user, isClient, showSuccess, showError, selectedClientId, onClientChange }) => {
-        const [selectedClient, setSelectedClient] = useState(isClient ? user._id : null);
     const [clients, setClients] = useState([]);
     const [reportType, setReportType] = useState('progress');
-
-        // ADD THIS SYNC EFFECT:
-useEffect(() => {
-    if (selectedClientId !== undefined) {
-        setSelectedClient(selectedClientId);
-    }
-}, [selectedClientId]);
     
     useEffect(() => {
         if (!isClient && (user.roles?.includes('specialist') || user.roles?.includes('admin') || user.roles?.includes('owner'))) {
@@ -4984,7 +4988,10 @@ useEffect(() => {
         try {
             const data = await API_CONFIG.request('/users?role=client');
             setClients(data.data || []);
-        };
+        } catch (error) {
+            console.error('Error fetching clients:', error);
+        }
+    };
     
     const generateReport = async () => {
         if (!selectedClient) {
@@ -5664,13 +5671,11 @@ useEffect(() => {
                 </h2>
                 
                 {!isClient && (
-                    onChange={(e) => {
-    const newClientId = e.target.value;
-    setSelectedClient(newClientId);
-    if (onClientChange) {
-        onClientChange(newClientId);
-    }
-}}
+                    <select
+                        className="coastal-input mb-4"
+                        value={selectedClient || ''}
+                        onChange={(e) => setSelectedClient(e.target.value)}
+                    >
                         <option value="">Select a client...</option>
                         {clients.map(client => (
                             <option key={client._id} value={client._id}>
@@ -5745,9 +5750,12 @@ useEffect(() => {
         
         // Tests Component (unchanged)
        // Replace the Tests component (around line 4951) with this fixed version:
+
+const Tests = ({ user, showError, showSuccess }) => {
+    console.log('Tests component rendered!', user);  // ADD THIS LINE
+    const [tests, setTests] = useState([]);
+    const [selectedClient, setSelectedClient] = useState(null);
     const Tests = ({ user, showError, showSuccess, selectedClientId, onClientChange }) => {
-        const [tests, setTests] = useState([]);
-const [selectedClient, setSelectedClient] = useState(null);
     const [clients, setClients] = useState([]);
     const [showForm, setShowForm] = useState(false);
     const [editingTest, setEditingTest] = useState(null);
@@ -5767,25 +5775,21 @@ const [selectedClient, setSelectedClient] = useState(null);
         { value: 'other', label: 'Other Assessment', icon: '📝' }
     ];
     
-    // ADD THIS SYNC EFFECT:
-useEffect(() => {
-    if (selectedClientId !== undefined) {
-        setSelectedClient(selectedClientId);
-    }
-}, [selectedClientId]);
-
-useEffect(() => {
-    fetchClients();
-    if (selectedClient) {
-        fetchTests();
-    }
-}, [selectedClient]);
+    useEffect(() => {
+        fetchClients();
+        if (selectedClient) {
+            fetchTests();
+        }
+    }, [selectedClient]);
     
     const fetchClients = async () => {
         try {
             const data = await API_CONFIG.request('/users?role=client');
             setClients(data.data || []);
-        };
+        } catch (error) {
+            console.error('Error fetching clients:', error);
+        }
+    };
     
     const fetchTests = async () => {
         try {
