@@ -1171,6 +1171,7 @@ const Goals = ({ user, isClient, showError, showSuccess }) => {
     const [goals, setGoals] = useState([]);
     const [habits, setHabits] = useState([]);
     const [selectedClient, setSelectedClient] = useState(isClient ? user._id : null);
+    const Goals = ({ user, isClient, showError, showSuccess, selectedClientId, onClientChange }) => {
     const [clients, setClients] = useState([]);
     const [showForm, setShowForm] = useState(false);
     const [formType, setFormType] = useState('goal'); // 'goal' or 'habit'
@@ -1736,6 +1737,12 @@ submitData = {
         selectedClientId || (isClient ? user._id : null)
     );
     const [clients, setClients] = useState([]);
+            // ADD THIS SYNC EFFECT:
+    useEffect(() => {
+        if (selectedClientId !== undefined) {
+            setSelectedClient(selectedClientId);
+        }
+    }, [selectedClientId]);
             const [stats, setStats] = useState({
                 workouts: { total: 0, completed: 0, completionRate: 0, lastWorkout: null },
                 measurements: { latest: null, change: { weight: 0, bodyFat: 0 }, history: [] },
@@ -1933,11 +1940,13 @@ submitData = {
                         </h2>
                         
                         {!isClient && (
-                            <select
-                                className="coastal-input"
-                                value={selectedClient || ''}
-                                onChange={(e) => setSelectedClient(e.target.value)}
-                            >
+                           onChange={(e) => {
+        const newClientId = e.target.value;
+        setSelectedClient(newClientId);
+        if (onClientChange) {
+            onClientChange(newClientId);
+        }
+    }}
                                 <option value="">Select a client...</option>
                                 {clients.map(client => (
                                     <option key={client._id} value={client._id}>
@@ -2582,9 +2591,16 @@ if (currentExercise.grouping === 'superset' && currentExerciseIndex < workout.ex
         const Workouts = ({ user, isClient, showError, showSuccess }) => {
             const [workouts, setWorkouts] = useState([]);
             const [selectedClient, setSelectedClient] = useState(isClient ? user._id : null);
+            const Workouts = ({ user, isClient, showError, showSuccess, selectedClientId, onClientChange }) => {
             const [clients, setClients] = useState([]);
             const [showForm, setShowForm] = useState(false);
             const [formData, setFormData] = useState({
+                // ADD THIS SYNC EFFECT:
+    useEffect(() => {
+        if (selectedClientId !== undefined) {
+            setSelectedClient(selectedClientId);
+        }
+    }, [selectedClientId]);
     name: '',
  scheduledDate: new Date().toISOString().split('T')[0], // This was using DateHandler.getCurrentETDate()
     exercises: [],
@@ -3960,10 +3976,17 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
         const Measurements = ({ user, isClient, showError, showSuccess }) => {
             const [measurements, setMeasurements] = useState([]);
             const [selectedClient, setSelectedClient] = useState(isClient ? user._id : null);
+            const Measurements = ({ user, isClient, showError, showSuccess, selectedClientId, onClientChange }) => {
             const [clients, setClients] = useState([]);
             const [showForm, setShowForm] = useState(false);
             const [measurementType, setMeasurementType] = useState('basic');
             const [editingMeasurement, setEditingMeasurement] = useState(null);
+                // ADD THIS SYNC EFFECT:
+    useEffect(() => {
+        if (selectedClientId !== undefined) {
+            setSelectedClient(selectedClientId);
+        }
+    }, [selectedClientId]);
             const [formData, setFormData] = useState({
                 date: DateHandler.getCurrentETDate(),
                 weight: '',
@@ -4501,9 +4524,16 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
         const Nutrition = ({ user, isClient, showError, showSuccess }) => {
             const [nutrition, setNutrition] = useState(null);
             const [selectedClient, setSelectedClient] = useState(isClient ? user._id : null);
+            const Nutrition = ({ user, isClient, showError, showSuccess, selectedClientId, onClientChange }) => {
             const [clients, setClients] = useState([]);
             const [showForm, setShowForm] = useState(false);
             const [editingNutrition, setEditingNutrition] = useState(null);
+                // ADD THIS SYNC EFFECT:
+    useEffect(() => {
+        if (selectedClientId !== undefined) {
+            setSelectedClient(selectedClientId);
+        }
+    }, [selectedClientId]);
             const [formData, setFormData] = useState({
                 protein: { target: 0, current: 0 },
                 carbs: { target: 0, current: 0 },
@@ -4944,6 +4974,7 @@ await API_CONFIG.request(endpoint, {
 // Enhanced Reports Component - Replace entire Reports component with this
 const Reports = ({ user, isClient, showSuccess, showError }) => {
     const [selectedClient, setSelectedClient] = useState(isClient ? user._id : null);
+    const Reports = ({ user, isClient, showSuccess, showError, selectedClientId, onClientChange }) => {
     const [clients, setClients] = useState([]);
     const [reportType, setReportType] = useState('progress');
     
@@ -5724,6 +5755,7 @@ const Tests = ({ user, showError, showSuccess }) => {
     console.log('Tests component rendered!', user);  // ADD THIS LINE
     const [tests, setTests] = useState([]);
     const [selectedClient, setSelectedClient] = useState(null);
+    const Tests = ({ user, showError, showSuccess, selectedClientId, onClientChange }) => {
     const [clients, setClients] = useState([]);
     const [showForm, setShowForm] = useState(false);
     const [editingTest, setEditingTest] = useState(null);
