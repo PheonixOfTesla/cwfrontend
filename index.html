@@ -6118,39 +6118,7 @@ const SetupProgressWidget = ({ user }) => {
         </div>
     );
 };
-            // Trial Countdown Banner
-const TrialBanner = ({ user }) => {
-    const [daysLeft, setDaysLeft] = useState(null);
-    
-    useEffect(() => {
-        if (user.trialActive && user.trialStartDate) {
-            const start = new Date(user.trialStartDate);
-            const end = new Date(start.getTime() + (SYSTEM_CONFIG.TRIAL_DAYS * 24 * 60 * 60 * 1000));
-            const remaining = Math.ceil((end - Date.now()) / (1000 * 60 * 60 * 24));
-            setDaysLeft(Math.max(0, remaining));
-        }
-    }, [user]);
-    
-    if (!user.trialActive || daysLeft === null) return null;
-    
-    return (
-        <div className={`${daysLeft <= 2 ? 'bg-red-900' : 'bg-blue-900'} bg-opacity-30 border ${daysLeft <= 2 ? 'border-red-500' : 'border-blue-500'} rounded-lg p-4 mb-6 flex items-center justify-between`}>
-            <div className="flex items-center gap-3">
-                <i className={`fas fa-clock text-2xl ${daysLeft <= 2 ? 'text-red-400' : 'text-blue-400'}`}></i>
-                <div>
-                    <p className="font-semibold text-white">
-                        {daysLeft > 0 ? `${daysLeft} days left in your free trial` : 'Trial expired'}
-                    </p>
-                    <p className="text-sm text-gray-400">Upgrade to continue using ClockWork</p>
-                </div>
-            </div>
-            <button className="coastal-button bg-green-500 hover:bg-green-600">
-                Upgrade Now
-            </button>
-        </div>
-    );
-};
-        
+            
         // Tests Component (unchanged)
        // Replace the Tests component (around line 4951) with this fixed version:
 
