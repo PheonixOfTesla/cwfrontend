@@ -5896,26 +5896,543 @@ const Calendar = ({ user, showError, showSuccess }) => {
                 </div>
             </div>
             
-            {/* Class Form Modal - placeholder for now */}
-            {showClassForm && (
-                <div className="modal-overlay" onClick={() => setShowClassForm(false)}>
-                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                        <h3 className="text-xl font-bold mb-4 text-white">Create Class (Coming Soon)</h3>
-                        <button onClick={() => setShowClassForm(false)} className="coastal-button">Close</button>
-                    </div>
-                </div>
-            )}
+            // Class Creation Modal
+const ClassFormModal = ({ user, onClose, onSuccess, showError }) => {
+    const [formData, setFormData] = useState({
+        name: '',
+        type: 'group',
+        date: DateHandler.getCurrentETDate(),
+        time: '09:00',
+        duration: 60,
+        capacity: 20,
+        instructorId: user._id,
+        pricing: {
+            amount: 0,
+            timing: 'pre-pay'
+        },
+        recurrence: 'none',
+        description: ''
+    });
+    
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            const classDate = new Date(`${formData.date}T${formData.time}`);
             
-            {/* Class Details Modal - placeholder */}
-            {selectedClass && (
-                <div className="modal-overlay" onClick={() => setSelectedClass(null)}>
-                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                        <h3 className="text-xl font-bold mb-4 text-white">{selectedClass.name}</h3>
-                        <p className="text-gray-300">Class details coming soon...</p>
-                        <button onClick={() => setSelectedClass(null)} className="coastal-button mt-4">Close</button>
+            await API_CONFIG.createClass(user.gymId, {
+                ...formData,
+                date: classDate.toISOString()
+            });
+            
+            onSuccess();
+        } catch (error) {
+            showError(error.message);
+        }
+    };
+    
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal-content max-w-2xl" onClick={(e) => e.stopPropagation()}>
+                <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-2xl font-bold text-white">Create Class</h3>
+                    <button onClick={onClose} className="text-gray-400 hover:text-white">
+                        <i className="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <form onSubmit={handleSubmit}>
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label className="block text-sm font-medium mb-2 text-gray-300">Class Name</label>
+                            <input
+                                type="text"
+                                className="coastal-input"
+                                value={formData.name}
+                                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                placeholder="e.g., Morning HIIT"
+                                required
+                            />
+                        </div>
+                        
+                        <div>
+                            <label className="block text-sm font-medium mb-2 text-gray-300">Class Type</label>
+                            <select
+                                className="coastal-input"
+                                value={formData.type}
+                                onChange={(e) => setFormData({...formData, type: e.target.value})}
+                            >
+                                <option value="group">Group Class</option>
+                                <option value="1on1">1-on-1 Session</option>
+                                <option value="appointment">Appointment</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label className="block text-sm font-medium mb-2 text-gray-300">Date</label>
+                            <input
+                                type="date"
+                                className="coastal-input"
+                                value={formData.date}
+                                onChange={(e) => setFormData({...formData, date: e.target.value})}
+                                required
+                            />
+                        </div>
+                        
+                        <div>
+                            <label className="block text-sm font-medium mb-2 text-gray-300">Time</label>
+                            <input
+                                type="time"
+                                className="coastal-input"
+                                value={formData.time}
+                                onChange={(e) => setFormData({...formData, time: e.target.value})}
+                                required
+                            />
+                        </div>
+                        
+                        <div>
+                            <label className="block text-sm font-medium mb-2 text-gray-300">Duration (minutes)</label>
+                            <input
+                                type="number"
+                                className="coastal-input"
+                                value={formData.duration}
+                                onChange={(e) => setFormData({...formData, duration: parseInt(e.target.value)})}
+                                min="15"
+                                step="15"
+                            />
+                        </div>
+                        
+                        <div>
+                            <label className="block text-sm font-medium mb-2 text-gray-300">Capacity</label>
+                            <input
+                                type="number"
+                                className="coastal-input"
+                                value={formData.capacity}
+                                onChange={(e) => setFormData({...formData, capacity: parseInt(e.target.value)})}
+                                min="1"
+                            />
+                        </div>
+                        
+                        <div>
+                            <label className="block text-sm font-medium mb-2 text-gray-300">Price ($)</label>
+                            <input
+                                type="number"
+                                className="coastal-input"
+                                value={formData.pricing.amount}
+                                onChange={(e) => setFormData({
+                                    ...formData, 
+                                    pricing: {...formData.pricing, amount: parseFloat(e.target.value)}
+                                })}
+                                min="0"
+                                step="0.01"
+                            />
+                        </div>
+                        
+                        <div>
+                            <label className="block text-sm font-medium mb-2 text-gray-300">Payment Timing</label>
+                            <select
+                                className="coastal-input"
+                                value={formData.pricing.timing}
+                                onChange={(e) => setFormData({
+                                    ...formData,
+                                    pricing: {...formData.pricing, timing: e.target.value}
+                                })}
+                            >
+                                <option value="pre-pay">Pre-Pay (before booking)</option>
+                                <option value="on-arrival">On Arrival</option>
+                                <option value="post-service">Post-Service</option>
+                                <option value="package">Package/Membership</option>
+                            </select>
+                        </div>
+                        
+                        <div className="col-span-2">
+                            <label className="block text-sm font-medium mb-2 text-gray-300">Recurrence</label>
+                            <select
+                                className="coastal-input"
+                                value={formData.recurrence}
+                                onChange={(e) => setFormData({...formData, recurrence: e.target.value})}
+                            >
+                                <option value="none">One-time only</option>
+                                <option value="daily">Daily</option>
+                                <option value="weekly">Weekly</option>
+                                <option value="monthly">Monthly</option>
+                            </select>
+                        </div>
+                        
+                        <div className="col-span-2">
+                            <label className="block text-sm font-medium mb-2 text-gray-300">Description (optional)</label>
+                            <textarea
+                                className="coastal-input"
+                                rows="3"
+                                value={formData.description}
+                                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                                placeholder="Class details, requirements, what to bring..."
+                            />
+                        </div>
+                    </div>
+                    
+                    <div className="flex gap-4">
+                        <button type="submit" className="coastal-button flex-1">
+                            <i className="fas fa-check mr-2"></i>Create Class
+                        </button>
+                        <button type="button" onClick={onClose} className="coastal-button bg-gray-600 hover:bg-gray-700">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+            
+            // Class Details & Booking Modal
+const ClassDetailsModal = ({ classData, user, isClient, canManage, onClose, onBook, showError, showSuccess }) => {
+    const [showPayment, setShowPayment] = useState(false);
+    const isBooked = classData.booked?.includes(user._id);
+    const isFull = classData.booked?.length >= classData.capacity;
+    const spotsLeft = classData.capacity - (classData.booked?.length || 0);
+    
+    const handleBooking = () => {
+        if (classData.pricing?.amount > 0 && classData.pricing?.timing === 'pre-pay') {
+            setShowPayment(true);
+        } else {
+            onBook(classData._id);
+            onClose();
+        }
+    };
+    
+    const handleDelete = async () => {
+        if (confirm('Delete this class?')) {
+            try {
+                await API_CONFIG.request(`/classes/${classData._id}`, { method: 'DELETE' });
+                showSuccess('Class deleted');
+                onClose();
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+    };
+    
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal-content max-w-xl" onClick={(e) => e.stopPropagation()}>
+                <div className="flex justify-between items-start mb-4">
+                    <div>
+                        <h3 className="text-2xl font-bold text-white">{classData.name}</h3>
+                        <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold mt-2 ${
+                            classData.type === 'group' ? 'bg-blue-500' :
+                            classData.type === '1on1' ? 'bg-green-500' : 'bg-purple-500'
+                        }`}>
+                            {classData.type === 'group' ? 'Group Class' : 
+                             classData.type === '1on1' ? '1-on-1 Session' : 'Appointment'}
+                        </span>
+                    </div>
+                    <button onClick={onClose} className="text-gray-400 hover:text-white">
+                        <i className="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <div className="space-y-4 mb-6">
+                    <div className="flex items-center gap-3 text-gray-300">
+                        <i className="fas fa-calendar text-blue-400"></i>
+                        <span>{new Date(classData.date).toLocaleDateString('en-US', {
+                            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                        })}</span>
+                    </div>
+                    
+                    <div className="flex items-center gap-3 text-gray-300">
+                        <i className="fas fa-clock text-blue-400"></i>
+                        <span>{new Date(classData.date).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</span>
+                        <span className="text-gray-500">({classData.duration || 60} min)</span>
+                    </div>
+                    
+                    <div className="flex items-center gap-3 text-gray-300">
+                        <i className="fas fa-users text-blue-400"></i>
+                        <span>{classData.booked?.length || 0} / {classData.capacity} enrolled</span>
+                        {isFull && <span className="text-red-400 text-sm font-semibold">FULL</span>}
+                        {!isFull && spotsLeft <= 3 && (
+                            <span className="text-yellow-400 text-sm">Only {spotsLeft} spots left!</span>
+                        )}
+                    </div>
+                    
+                    {classData.pricing?.amount > 0 && (
+                        <div className="flex items-center gap-3 text-gray-300">
+                            <i className="fas fa-dollar-sign text-green-400"></i>
+                            <span className="text-xl font-bold text-green-400">${classData.pricing.amount}</span>
+                            <span className="text-sm text-gray-500">
+                                ({classData.pricing.timing.replace('-', ' ')})
+                            </span>
+                        </div>
+                    )}
+                    
+                    {classData.description && (
+                        <div className="bg-gray-800 rounded-lg p-4">
+                            <p className="text-gray-300">{classData.description}</p>
+                        </div>
+                    )}
+                </div>
+                
+                <div className="flex gap-3">
+                    {isClient && !isBooked && !isFull && (
+                        <button onClick={handleBooking} className="coastal-button flex-1">
+                            <i className="fas fa-check mr-2"></i>
+                            Book This Class
+                        </button>
+                    )}
+                    
+                    {isClient && isBooked && (
+                        <button className="coastal-button bg-green-600 flex-1" disabled>
+                            <i className="fas fa-check-circle mr-2"></i>
+                            You're Booked!
+                        </button>
+                    )}
+                    
+                    {isClient && isFull && !isBooked && (
+                        <button className="coastal-button bg-gray-600 flex-1" disabled>
+                            <i className="fas fa-ban mr-2"></i>
+                            Class Full
+                        </button>
+                    )}
+                    
+                    {canManage && (
+                        <>
+                            <button onClick={() => alert('Edit coming soon')} className="coastal-button">
+                                <i className="fas fa-edit"></i>
+                            </button>
+                            <button onClick={handleDelete} className="coastal-button bg-red-600 hover:bg-red-700">
+                                <i className="fas fa-trash"></i>
+                            </button>
+                        </>
+                    )}
+                </div>
+                
+                {showPayment && (
+                    <PaymentModal
+                        amount={classData.pricing.amount}
+                        classData={classData}
+                        onSuccess={() => {
+                            onBook(classData._id);
+                            setShowPayment(false);
+                            onClose();
+                        }}
+                        onClose={() => setShowPayment(false)}
+                        showError={showError}
+                    />
+                )}
+            </div>
+        </div>
+    );
+};
+            // Payment Processing Modal
+const PaymentModal = ({ amount, classData, onSuccess, onClose, showError }) => {
+    const [processing, setProcessing] = useState(false);
+    const [cardInfo, setCardInfo] = useState({
+        number: '',
+        expiry: '',
+        cvc: '',
+        name: ''
+    });
+    
+    const handlePayment = async (e) => {
+        e.preventDefault();
+        setProcessing(true);
+        
+        try {
+            // In production, this would use Stripe.js
+            await API_CONFIG.processPayment({
+                amount: amount,
+                classId: classData._id,
+                paymentMethod: 'card',
+                cardInfo: cardInfo
+            });
+            
+            onSuccess();
+        } catch (error) {
+            showError(error.message);
+        } finally {
+            setProcessing(false);
+        }
+    };
+    
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
+            <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full">
+                <h3 className="text-xl font-bold mb-4 text-white">Complete Payment</h3>
+                
+                <div className="bg-blue-900 bg-opacity-30 rounded-lg p-4 mb-6">
+                    <div className="flex justify-between items-center">
+                        <span className="text-gray-300">Total Amount:</span>
+                        <span className="text-2xl font-bold text-green-400">${amount}</span>
                     </div>
                 </div>
-            )}
+                
+                <form onSubmit={handlePayment}>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium mb-2 text-gray-300">Card Number</label>
+                            <input
+                                type="text"
+                                className="coastal-input"
+                                placeholder="4242 4242 4242 4242"
+                                value={cardInfo.number}
+                                onChange={(e) => setCardInfo({...cardInfo, number: e.target.value})}
+                                required
+                            />
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium mb-2 text-gray-300">Expiry</label>
+                                <input
+                                    type="text"
+                                    className="coastal-input"
+                                    placeholder="MM/YY"
+                                    value={cardInfo.expiry}
+                                    onChange={(e) => setCardInfo({...cardInfo, expiry: e.target.value})}
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-2 text-gray-300">CVC</label>
+                                <input
+                                    type="text"
+                                    className="coastal-input"
+                                    placeholder="123"
+                                    value={cardInfo.cvc}
+                                    onChange={(e) => setCardInfo({...cardInfo, cvc: e.target.value})}
+                                    required
+                                />
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label className="block text-sm font-medium mb-2 text-gray-300">Cardholder Name</label>
+                            <input
+                                type="text"
+                                className="coastal-input"
+                                placeholder="John Doe"
+                                value={cardInfo.name}
+                                onChange={(e) => setCardInfo({...cardInfo, name: e.target.value})}
+                                required
+                            />
+                        </div>
+                    </div>
+                    
+                    <div className="flex gap-3 mt-6">
+                        <button 
+                            type="submit" 
+                            className="coastal-button flex-1"
+                            disabled={processing}
+                        >
+                            {processing ? 'Processing...' : `Pay $${amount}`}
+                        </button>
+                        <button 
+                            type="button" 
+                            onClick={onClose}
+                            className="coastal-button bg-gray-600 hover:bg-gray-700"
+                            disabled={processing}
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+                
+                <p className="text-xs text-gray-500 mt-4 text-center">
+                    <i className="fas fa-lock mr-1"></i>
+                    Secured by Stripe
+                </p>
+            </div>
+        </div>
+    );
+};
+            // Setup Progress Widget
+const SetupProgressWidget = ({ user }) => {
+    const [progress, setProgress] = useState(null);
+    const [percentage, setPercentage] = useState(0);
+    
+    useEffect(() => {
+        fetchProgress();
+    }, [user.gymId]);
+    
+    const fetchProgress = async () => {
+        try {
+            const data = await API_CONFIG.getGymProgress(user.gymId);
+            const setupProgress = data.setupProgress || {};
+            setProgress(setupProgress);
+            
+            const completed = Object.values(setupProgress).filter(Boolean).length;
+            setPercentage(Math.round((completed / SYSTEM_CONFIG.SETUP_STEPS.length) * 100));
+        } catch (error) {
+            console.error('Progress fetch failed:', error);
+        }
+    };
+    
+    if (!progress || percentage === 100) return null;
+    
+    return (
+        <div className="dark-card p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-white">Setup Progress</h3>
+                <div className="text-2xl font-bold text-blue-400">{percentage}%</div>
+            </div>
+            
+            <div className="progress-bar mb-4" style={{height: '12px'}}>
+                <div 
+                    className="progress-bar-fill bg-gradient-to-r from-blue-500 to-green-500"
+                    style={{width: `${percentage}%`}}
+                ></div>
+            </div>
+            
+            <div className="space-y-2">
+                {SYSTEM_CONFIG.SETUP_STEPS.map(step => (
+                    <div 
+                        key={step.id}
+                        className={`flex items-center gap-3 p-2 rounded ${
+                            progress[step.id] ? 'bg-green-900 bg-opacity-20' : 'bg-gray-800'
+                        }`}
+                    >
+                        <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
+                            progress[step.id] ? 'bg-green-500' : 'bg-gray-600'
+                        }`}>
+                            {progress[step.id] && <i className="fas fa-check text-white text-xs"></i>}
+                        </div>
+                        <span className={`text-sm ${progress[step.id] ? 'text-green-400' : 'text-gray-400'}`}>
+                            {step.label}
+                        </span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+            // Trial Countdown Banner
+const TrialBanner = ({ user }) => {
+    const [daysLeft, setDaysLeft] = useState(null);
+    
+    useEffect(() => {
+        if (user.trialActive && user.trialStartDate) {
+            const start = new Date(user.trialStartDate);
+            const end = new Date(start.getTime() + (SYSTEM_CONFIG.TRIAL_DAYS * 24 * 60 * 60 * 1000));
+            const remaining = Math.ceil((end - Date.now()) / (1000 * 60 * 60 * 24));
+            setDaysLeft(Math.max(0, remaining));
+        }
+    }, [user]);
+    
+    if (!user.trialActive || daysLeft === null) return null;
+    
+    return (
+        <div className={`${daysLeft <= 2 ? 'bg-red-900' : 'bg-blue-900'} bg-opacity-30 border ${daysLeft <= 2 ? 'border-red-500' : 'border-blue-500'} rounded-lg p-4 mb-6 flex items-center justify-between`}>
+            <div className="flex items-center gap-3">
+                <i className={`fas fa-clock text-2xl ${daysLeft <= 2 ? 'text-red-400' : 'text-blue-400'}`}></i>
+                <div>
+                    <p className="font-semibold text-white">
+                        {daysLeft > 0 ? `${daysLeft} days left in your free trial` : 'Trial expired'}
+                    </p>
+                    <p className="text-sm text-gray-400">Upgrade to continue using ClockWork</p>
+                </div>
+            </div>
+            <button className="coastal-button bg-green-500 hover:bg-green-600">
+                Upgrade Now
+            </button>
         </div>
     );
 };
