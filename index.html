@@ -1326,7 +1326,7 @@ useEffect(() => {
                 // For goals, ensure startingValue is set
 submitData = {
     ...formData,
-    // deadline removed - goals are open-ended
+    deadline: DateHandler.toDatabase(formData.deadline),
     scheduledDays: [],
     isHabit: false,
     startingValue: parseFloat(formData.startingValue) || parseFloat(formData.current) || 0,
@@ -1341,6 +1341,7 @@ submitData = {
             });
             
             showSuccess(editingItem ? 'Updated successfully' : 'Created successfully');
+            resetForm();
             fetchGoals();
         } catch (error) {
             showError(error.message);
@@ -1443,7 +1444,13 @@ submitData = {
         return Math.min(Math.round((current / target) * 100), 100);
     };
     
-   
+    const getDaysRemaining = (deadline) => {
+        const today = new Date();
+        const deadlineDate = new Date(deadline);
+        const timeDiff = deadlineDate - today;
+        const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+        return daysDiff;
+    };
     
     const toggleDay = (day) => {
         if (formData.scheduledDays.includes(day)) {
@@ -1568,7 +1575,17 @@ submitData = {
                                                 onChange={(e) => setFormData({...formData, startingValue: e.target.value})}
                                                 placeholder="e.g., 20"
                                             />
-                                        // Deadline field removed - goals are now open-ended
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium mb-2">Target Date</label>
+                                            <input
+                                                type="date"
+                                                className="coastal-input"
+                                                value={formData.deadline}
+                                                onChange={(e) => setFormData({...formData, deadline: e.target.value})}
+                                                required
+                                            />
+                                        </div>
                                     </div>
                                 </>
                             ) : (
@@ -1702,6 +1719,7 @@ submitData = {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {goals.map(goal => {
                             const progress = calculateProgress(goal.current, goal.target, goal.startingValue);
+                            const daysRemaining = getDaysRemaining(goal.deadline);
                             const isDecreaseGoal = goal.startingValue > goal.target;
                             
                             return (
@@ -1724,7 +1742,9 @@ submitData = {
                                                     ✓ Complete
                                                 </span>
                                             ) : (
-                            
+                                                <span className={`text-sm ${daysRemaining < 7 ? 'text-red-600' : 'text-gray-400'}`}>
+                                                    {daysRemaining > 0 ? `${daysRemaining} days left` : 'Overdue'}
+                                                </span>
                                             )}
                                         </div>
                                     </div>
@@ -1754,15 +1774,15 @@ submitData = {
                                                     onClick={() => {
                                                         setEditingItem(goal._id);
                                                         setFormType('goal');
-                                                       setFormData({
-    name: goal.name,
-    target: goal.target,
-    current: goal.current,
-    startingValue: goal.startingValue || 0,
-    // deadline removed
-    scheduledDays: [],
-    progressHistory: goal.progressHistory || []
-});
+                                                        setFormData({
+                                                            name: goal.name,
+                                                            target: goal.target,
+                                                            current: goal.current,
+                                                            startingValue: goal.startingValue || 0,
+                                                            deadline: goal.deadline.split('T')[0],
+                                                            scheduledDays: [],
+                                                            progressHistory: goal.progressHistory || []
+                                                        });
                                                         setShowForm(true);
                                                     }}
                                                     className="text-blue-500 hover:text-blue-600"
@@ -3063,7 +3083,16 @@ const ungroupExercise = (index) => {
         />
     </div>
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-// Deadline field removed - goals are now open-ended
+<div>
+    <label className="block text-sm font-medium mb-2">Scheduled Date</label>
+    <input
+        type="date"
+        className="coastal-input"
+        value={formData.scheduledDate}
+        onChange={(e) => setFormData({...formData, scheduledDate: e.target.value})}
+        min={DateHandler.getCurrentETDate()} // Allow today and future dates
+    />
+</div>
         <div className="flex items-end">
             <label className="flex items-center">
                 <input
