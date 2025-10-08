@@ -2669,7 +2669,7 @@ const [filteredLibraryExercises, setFilteredLibraryExercises] = useState([]);
             const fetchLibraryExercises = async () => {
     try {
         const data = await API_CONFIG.request('/exercises');
-        setLibraryExercises(data.data || []);
+        setLibraryExercises(data || []);
     } catch (error) {
         console.error('Error fetching library exercises:', error);
     }
