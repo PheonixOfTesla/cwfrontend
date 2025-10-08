@@ -1050,44 +1050,7 @@ const [resetEmail, setResetEmail] = useState('');
         setLoading(false);
     }
 };
-      const handlePasswordReset = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    
-    const resetCode = e.target.resetCode.value;
-    const newPassword = e.target.newPassword.value;
-    const confirmPassword = e.target.confirmPassword.value;
-    
-    if (newPassword !== confirmPassword) {
-        showError('Passwords do not match');
-        setLoading(false);
-        return;
-    }
-    
-    try {
-        const response = await fetch(`${API_CONFIG.baseURL}/auth/reset-password/${resetCode}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ password: newPassword })
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            showError('Password reset successful! Please login with your new password.');
-            setIsResetting(false);
-            setIsSignup(false);
-        } else {
-            showError(data.message || 'Invalid or expired reset code');
-        }
-    } catch (error) {
-        showError('Failed to reset password. Please try again.');
-    } finally {
-        setLoading(false);
-    }
-};      
+      
       const handlePasswordReset = async (e) => {
     e.preventDefault();
     setLoading(true);
