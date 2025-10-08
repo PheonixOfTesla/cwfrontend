@@ -242,11 +242,11 @@
         .coastal-input {
             width: 100%;
             padding: 1rem;
-            border: none;
+            border: 2px solid #374151;
             border-radius: 12px;
             font-size: 1rem;
             transition: all 0.3s ease;
-            background: #1a202c;
+            background: #1f2937;
             color: #e5e7eb;
         }
         
@@ -406,24 +406,29 @@ const DateHandler = {
     },
     
     toDisplay: (dateValue) => {
-        // THIS IS THE KEY FIX - Never return "Invalid Date"
-        if (!dateValue || dateValue === 'Invalid Date') {
-            return ''; // Return empty string instead of "Invalid Date"
+    // Enhanced display with better user feedback
+    if (!dateValue || dateValue === 'Invalid Date') {
+        return 'Not set'; // More informative than empty string
+    }
+    
+    try {
+        const date = new Date(dateValue);
+        if (isNaN(date.getTime())) {
+            return 'Not set'; // Clear feedback for invalid dates
         }
         
-        try {
-            const date = new Date(dateValue);
-            if (isNaN(date.getTime())) {
-                return ''; // Return empty string for invalid dates
-            }
-            
-            // Format the date
-            const options = { year: 'numeric', month: 'short', day: 'numeric' };
-            return date.toLocaleDateString('en-US', options);
-        } catch (e) {
-            return ''; // Return empty string on any error
-        }
-    },
+        // Format the date with better readability
+        const options = { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric',
+            timeZone: APP_TIMEZONE // Use app timezone
+        };
+        return date.toLocaleDateString('en-US', options);
+    } catch (e) {
+        return 'Not set'; // Consistent error handling
+    }
+},
     
     getCurrentETDate: () => {
         const now = new Date();
@@ -535,16 +540,16 @@ const ClientManager = {
         }
         
         try {
-            const response = await API_CONFIG.request('/users');
+            const response = await API_CONFIG.request('/users?role=client');
             const users = Array.isArray(response) ? response : (response.data || []);
-            this.clients = users.filter(user => user.roles?.includes('client'));
+            this.clients = users;
             this.loaded = true;
             return this.clients;
         } catch (error) {
             console.error('ClientManager: Failed to load clients', error);
             return [];
         }
-    },
+    },  // ← Make sure this comma is here!
     
     getClients() {
         return this.clients;
@@ -733,90 +738,121 @@ const [success, setSuccess] = useState(null);
                     )}
                     
                     <main className="max-w-7xl mx-auto px-4 py-6">
-                        {activeTab === 'dashboard' && <Dashboard user={user} isClient={isOnlyClient} selectedClientId={globalSelectedClient} onClientChange={setGlobalSelectedClient} />}
-{activeTab === 'workouts' && <Workouts user={user} isClient={isOnlyClient} showError={showError} showSuccess={showSuccess} selectedClientId={globalSelectedClient} onClientChange={setGlobalSelectedClient} />}
-{activeTab === 'measurements' && <Measurements user={user} isClient={isOnlyClient} showError={showError} showSuccess={showSuccess} selectedClientId={globalSelectedClient} onClientChange={setGlobalSelectedClient} />}
-{activeTab === 'nutrition' && <Nutrition user={user} isClient={isOnlyClient} showError={showError} showSuccess={showSuccess} selectedClientId={globalSelectedClient} onClientChange={setGlobalSelectedClient} />}
-{activeTab === 'goals' && <Goals user={user} isClient={isOnlyClient} showError={showError} showSuccess={showSuccess} selectedClientId={globalSelectedClient} onClientChange={setGlobalSelectedClient} />}
-{activeTab === 'calendar' && <Calendar user={user} showError={showError} showSuccess={showSuccess} />}
-{activeTab === 'reports' && <Reports user={user} isClient={isOnlyClient} showSuccess={showSuccess} showError={showError} selectedClientId={globalSelectedClient} onClientChange={setGlobalSelectedClient} />}
-{activeTab === 'tests' && <Tests user={user} showError={showError} showSuccess={showSuccess} selectedClientId={globalSelectedClient} onClientChange={setGlobalSelectedClient} />}
-{activeTab === 'users' && <Users user={user} showError={showError} showSuccess={showSuccess} />}
+    {activeTab === 'dashboard' && <Dashboard user={user} isClient={isOnlyClient} selectedClientId={globalSelectedClient} onClientChange={setGlobalSelectedClient} />}
+    {activeTab === 'workouts' && <Workouts user={user} isClient={isOnlyClient} showError={showError} showSuccess={showSuccess} selectedClientId={globalSelectedClient} onClientChange={setGlobalSelectedClient} />}
+    {activeTab === 'measurements' && <Measurements user={user} isClient={isOnlyClient} showError={showError} showSuccess={showSuccess} selectedClientId={globalSelectedClient} onClientChange={setGlobalSelectedClient} />}
+    {activeTab === 'nutrition' && <Nutrition user={user} isClient={isOnlyClient} showError={showError} showSuccess={showSuccess} selectedClientId={globalSelectedClient} onClientChange={setGlobalSelectedClient} />}
+    {activeTab === 'goals' && <Goals user={user} isClient={isOnlyClient} showError={showError} showSuccess={showSuccess} selectedClientId={globalSelectedClient} onClientChange={setGlobalSelectedClient} />}
+    {activeTab === 'calendar' && <Calendar user={user} showError={showError} showSuccess={showSuccess} />}
+    {activeTab === 'wearables' && <Wearables user={user} showError={showError} showSuccess={showSuccess} />}
+    {activeTab === 'reports' && <Reports user={user} isClient={isOnlyClient} showSuccess={showSuccess} showError={showError} selectedClientId={globalSelectedClient} onClientChange={setGlobalSelectedClient} />}
+    {activeTab === 'exercises' && <ExerciseLibrary user={user} showError={showError} showSuccess={showSuccess} />}
+    {activeTab === 'tests' && <Tests user={user} showError={showError} showSuccess={showSuccess} selectedClientId={globalSelectedClient} onClientChange={setGlobalSelectedClient} />}
+    {activeTab === 'users' && <Users user={user} showError={showError} showSuccess={showSuccess} />}
                     </main>
                 </div>
             );
         };
         
         // Navigation Component
-        const Navigation = ({ user, activeTab, setActiveTab, isProfessional, isClient, onLogout }) => {
-            const tabs = [
-    { id: "dashboard", label: "Dashboard", icon: "📊" },
-    { id: "workouts", label: "Workouts", icon: "💪" },
-    { id: "measurements", label: "Measurements", icon: "📏" },
-    { id: "nutrition", label: "Nutrition", icon: "🥗" },
-    { id: "goals", label: "Goals", icon: "🎯" },
-    { id: "calendar", label: "Calendar", icon: "📅" },  // ADD THIS
-    { id: "reports", label: "Reports", icon: "📄" }
-];
-            
-            if (isProfessional) {
-                tabs.push({ id: "exercises", label: "Exercise Library", icon: "📚" });
-                tabs.push({ id: "tests", label: "Tests", icon: "🧪" });
-            }
-            
-            if (user.roles?.includes("admin") || user.roles?.includes("owner")) {
-                tabs.push({ id: "users", label: "Users", icon: "👥" });
-            }
-            
-            return (
-                <nav className="bg-gray-900 shadow-xl border-b border-gray-700">
-                    <div className="max-w-7xl mx-auto px-4">
-                        <div className="flex justify-between items-center py-4">
-                            <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-2">
-                           <div className="relative h-8 w-8">
-  <svg viewBox="0 0 40 40" className="absolute inset-0">
-    <path d="M20 35 Q15 30 15 25 T20 15 T25 25 T20 35" 
-          fill="url(#phoenix-gradient)"/>
-    <path d="M12 20 Q20 10 28 20" 
-          stroke="#fbbf24" 
-          strokeWidth="2" 
-          fill="none"
-          className="animate-pulse"/>
-    <defs>
-      <linearGradient id="phoenix-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stopColor="#ef4444"/>
-        <stop offset="50%" stopColor="#f97316"/>
-        <stop offset="100%" stopColor="#fbbf24"/>
-      </linearGradient>
-    </defs>
-  </svg>
-</div>
-                                alt="CF"
-                                className="h-8 w-8 object-contain"
-                            />
-                            <h1 className="text-xl font-bold" style={{color: "var(--clockwork-primary)"}}>
-                                ClockWork
-                            </h1>
-                        </div>
-                            {/* Phoenix of Tesla Signature - INSERT AT LINE 637 */}
-                        <div className="hidden md:flex items-center gap-2 ml-4 opacity-50 hover:opacity-100 transition-opacity">
-                            <span className="text-xs text-yellow-500">Created by</span>
-                           <span 
-    className="text-xs font-bold"
-    style={{
-        background: 'linear-gradient(to right, #EAB308, #F97316)',
-        WebkitBackgroundClip: 'text',
-        WebkitTextFillColor: 'transparent',
-        backgroundClip: 'text',
-        color: 'transparent'
-    }}
->
-    Phoenix of Tesla™
-</span>
-                        </div>
-                        {/* END Phoenix Signature */}    
+       const Navigation = ({ user, activeTab, setActiveTab, isProfessional, isClient, onLogout }) => {
+    const tabs = [
+        { id: "dashboard", label: "Dashboard", icon: "📊" },
+        { id: "workouts", label: "Workouts", icon: "💪" },
+        { id: "measurements", label: "Measurements", icon: "📏" },
+        { id: "nutrition", label: "Nutrition", icon: "🥗" },
+        { id: "goals", label: "Goals", icon: "🎯" },
+        { id: "calendar", label: "Calendar", icon: "📅" },
+        { id: "wearables", label: "Wearables", icon: "⌚" },
+        { id: "reports", label: "Reports", icon: "📄" }
+    ];
+    
+    if (isProfessional) {
+        tabs.push({ id: "exercises", label: "Exercise Library", icon: "📚" });
+        tabs.push({ id: "tests", label: "Tests", icon: "🧪" });
+    }
+    
+    if (user.roles?.includes("admin") || user.roles?.includes("owner") || user.roles?.includes("engineer")) {
+        tabs.push({ id: "users", label: "Users", icon: "👥" });
+    }
+    
+    return (
+        <nav className="bg-gray-900 shadow-xl border-b border-gray-700">
+            <div className="max-w-7xl mx-auto px-4">
+                <div className="flex justify-between items-center py-4">
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                            <div className="relative h-10 w-10">
+                                <div className="relative h-full w-full">
+                                    {/* Animated flame background */}
+                                    <div className="absolute inset-0 animate-pulse">
+                                        <div className="absolute inset-0 bg-gradient-to-t from-yellow-500 via-orange-500 to-red-500 opacity-30 blur-xl animate-spin-slow"></div>
+                                    </div>
+                                    
+                                    {/* Main Phoenix */}
+                                    <svg viewBox="0 0 100 100" className="relative z-10 h-full w-full animate-float">
+                                        {/* Phoenix body */}
+                                        <path d="M50 70 Q35 55 35 40 Q35 25 50 10 Q65 25 65 40 Q65 55 50 70Z" 
+                                              fill="url(#phoenix-body)"
+                                              filter="url(#glow)"/>
+                                        
+                                        {/* Left wing */}
+                                        <path d="M35 40 Q15 35 10 45 Q15 50 25 48 Q30 45 35 40" 
+                                              fill="url(#wing-gradient)"
+                                              className="animate-wing-left origin-center"/>
+                                        
+                                        {/* Right wing */}
+                                        <path d="M65 40 Q70 45 75 48 Q85 50 90 45 Q85 35 65 40" 
+                                              fill="url(#wing-gradient)"
+                                              className="animate-wing-right origin-center"/>
+                                        
+                                        {/* Flame feathers */}
+                                        <path d="M50 10 Q48 5 50 0 Q52 5 50 10" fill="#fbbf24" className="animate-flicker"/>
+                                        <path d="M45 12 Q43 8 42 5 Q44 8 45 12" fill="#f97316" className="animate-flicker-delay-1"/>
+                                        <path d="M55 12 Q56 8 58 5 Q57 8 55 12" fill="#f97316" className="animate-flicker-delay-2"/>
+                                        
+                                        {/* Eye */}
+                                        <circle cx="46" cy="35" r="2" fill="#fff" className="animate-pulse"/>
+                                        
+                                        {/* Tail feathers */}
+                                        <path d="M50 70 Q45 75 40 80 Q45 77 50 70" fill="#ef4444" className="animate-flicker"/>
+                                        <path d="M50 70 Q55 75 60 80 Q55 77 50 70" fill="#ef4444" className="animate-flicker-delay-1"/>
+                                        
+                                        <defs>
+                                            <linearGradient id="phoenix-body" x1="0%" y1="0%" x2="0%" y2="100%">
+                                                <stop offset="0%" stopColor="#fbbf24">
+                                                    <animate attributeName="stop-color" values="#fbbf24;#f97316;#ef4444;#fbbf24" dur="3s" repeatCount="indefinite"/>
+                                                </stop>
+                                                <stop offset="50%" stopColor="#f97316"/>
+                                                <stop offset="100%" stopColor="#ef4444">
+                                                    <animate attributeName="stop-color" values="#ef4444;#fbbf24;#f97316;#ef4444" dur="3s" repeatCount="indefinite"/>
+                                                </stop>
+                                            </linearGradient>
+                                            
+                                            <linearGradient id="wing-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                                <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.8"/>
+                                                <stop offset="100%" stopColor="#ef4444" stopOpacity="0.3"/>
+                                            </linearGradient>
+                                            
+                                            <filter id="glow">
+                                                <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                                                <feMerge>
+                                                    <feMergeNode in="coloredBlur"/>
+                                                    <feMergeNode in="SourceGraphic"/>
+                                                </feMerge>
+                                            </filter>
+                                        </defs>
+                                    </svg>
+                                    
+                                    {/* Floating sparks */}
+                                    <div className="absolute inset-0">
+                                        <div className="spark-1 absolute h-1 w-1 bg-yellow-400 rounded-full animate-spark-float-1"></div>
+                                        <div className="spark-2 absolute h-1 w-1 bg-orange-400 rounded-full animate-spark-float-2"></div>
+                                        <div className="spark-3 absolute h-1 w-1 bg-red-400 rounded-full animate-spark-float-3"></div>
+                                    </div>
+                                </div>
                             </div>
+                            
                             <div className="flex items-center gap-4">
                                 <span className="text-sm text-gray-200">
                                     {user.name} ({user.roles?.join(", ")})
@@ -826,26 +862,29 @@ const [success, setSuccess] = useState(null);
                                 </button>
                             </div>
                         </div>
-                        <div className="flex gap-2 pb-2 overflow-x-auto">
-                            {tabs.map(tab => (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => setActiveTab(tab.id)}
-                                    className={`px-4 py-2 rounded whitespace-nowrap ${
-                                        activeTab === tab.id 
-                                            ? "bg-blue-500 text-white" 
-                                            : "bg-gray-700 hover:bg-gray-600 text-gray-300"
-                                    }`}
-                                >
-                                    <span className="mr-2">{tab.icon}</span>
-                                    {tab.label}
-                                </button>
-                            ))}
-                        </div>
                     </div>
-                </nav>
-            );
-        };
+                    
+                    <div className="flex gap-2 pb-2 overflow-x-auto">
+                        {tabs.map(tab => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`px-4 py-2 rounded whitespace-nowrap ${
+                                    activeTab === tab.id 
+                                        ? "bg-blue-500 text-white" 
+                                        : "bg-gray-700 hover:bg-gray-600 text-gray-300"
+                                }`}
+                            >
+                                <span className="mr-2">{tab.icon}</span>
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </nav>
+    );
+};
         
         // Login Page Component
         const LoginPage = ({ onLogin, showError }) => {
@@ -1065,19 +1104,19 @@ const [resetEmail, setResetEmail] = useState('');
                         
                         {!isResetting && (
                         <div className="flex mb-6">
-                            <button
-                                onClick={() => setIsSignup(false)}
-                                className={`flex-1 py-2 ${!isSignup ? 'bg-blue-500 text-white' : 'bg-gray-200'} rounded-l`}
-                            >
-                                Login
-                            </button>
-                            <button
-                                onClick={() => setIsSignup(true)}
-                                className={`flex-1 py-2 ${isSignup ? 'bg-blue-500 text-white' : 'bg-gray-200'} rounded-r`}
-                            >
-                                Sign Up
-                            </button>
-                        </div>
+    <button
+        onClick={() => setIsSignup(false)}
+        className={`flex-1 py-2 ${!isSignup ? 'bg-blue-500 text-white' : 'bg-gray-600 text-gray-200'} rounded-l`}
+    >
+        Login
+    </button>
+    <button
+        onClick={() => setIsSignup(true)}
+        className={`flex-1 py-2 ${isSignup ? 'bg-blue-500 text-white' : 'bg-gray-600 text-gray-200'} rounded-r`}
+    >
+        Sign Up
+    </button>
+</div>
                     )}
                         <form onSubmit={handleSubmit}>
                           {!isResetting && isSignup && (
@@ -1248,12 +1287,8 @@ useEffect(() => {
 }, [selectedClient, isClient, user]);
     
     const fetchClients = async () => {
-    try {
-        const data = await API_CONFIG.request('/users?role=client');
-        setClients(data.data || []);  // <-- FIXED
-    } catch (error) {
-        console.error('Error fetching clients:', error);
-    }
+    const clients = await ClientManager.loadClients();
+    setClients(clients);
 };
     
     const fetchGoals = async () => {
@@ -1810,13 +1845,9 @@ submitData = {
             }, [selectedClient, isClient]);
             
             const fetchClients = async () => {
-                try {
-                    const data = await API_CONFIG.request('/users?role=client');
-                    setClients(data.data || []);
-                } catch (error) {
-                    console.error('Error fetching clients:', error);
-                }
-            };
+    const clients = await ClientManager.loadClients();
+    setClients(clients);
+};
             
             const fetchStats = async () => {
                 try {
@@ -3371,7 +3402,7 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
             if (selectedDifficulty !== 'all') params.append('difficulty', selectedDifficulty);
             
             const data = await API_CONFIG.request(`/exercises?${params.toString()}`);
-            setExercises(data.data || []);
+           setExercises(Array.isArray(data) ? data : (data.data || []));
         } catch (error) {
             console.error('Error fetching exercises:', error);
         }
@@ -3950,7 +3981,7 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
                         
                         <div className="mb-4">
                             <h3 className="font-semibold mb-2">Description</h3>
-                            <p className="text-gray-700">{showDetails.description}</p>
+                            <p className="text-gray-300">{showDetails.description}</p>
                         </div>
                         
                         {showDetails.instructions?.length > 0 && (
@@ -3958,7 +3989,7 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
                                 <h3 className="font-semibold mb-2">Instructions</h3>
                                 <ol className="list-decimal list-inside space-y-1">
                                     {showDetails.instructions.map((instruction, index) => (
-                                        <li key={index} className="text-gray-700">{instruction}</li>
+                                        <li key={index} className="text-gray-300">{instruction}</li>
                                     ))}
                                 </ol>
                             </div>
@@ -3969,7 +4000,7 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
                                 <h3 className="font-semibold mb-2">Pro Tips</h3>
                                 <ul className="list-disc list-inside space-y-1">
                                     {showDetails.tips.map((tip, index) => (
-                                        <li key={index} className="text-gray-700">{tip}</li>
+                                        <li key={index} className="text-gray-300">{tip}</li>
                                     ))}
                                 </ul>
                             </div>
@@ -3980,7 +4011,7 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
                                 <h3 className="font-semibold mb-2">Common Mistakes to Avoid</h3>
                                 <ul className="list-disc list-inside space-y-1">
                                     {showDetails.commonMistakes.map((mistake, index) => (
-                                        <li key={index} className="text-gray-700">{mistake}</li>
+                                        <li key={index} className="text-gray-300">{mistake}</li>
                                     ))}
                                 </ul>
                             </div>
@@ -4053,13 +4084,9 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
             }, [selectedClient, isClient]);
             
             const fetchClients = async () => {
-                try {
-                    const data = await API_CONFIG.request('/users?role=client');
-                    setClients(data.data || []);
-                } catch (error) {
-                    console.error('Error fetching clients:', error);
-                }
-            };
+    const clients = await ClientManager.loadClients();
+    setClients(clients);
+};
             
             const fetchMeasurements = async () => {
                 try {
@@ -4576,13 +4603,9 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
             }, [selectedClient, isClient]);
             
             const fetchClients = async () => {
-                try {
-                    const data = await API_CONFIG.request('/users?role=client');
-                    setClients(data.data || []);
-                } catch (error) {
-                    console.error('Error fetching clients:', error);
-                }
-            };
+    const clients = await ClientManager.loadClients();
+    setClients(clients);
+};
             
       const fetchNutrition = async () => {
     try {
@@ -4989,6 +5012,409 @@ await API_CONFIG.request(endpoint, {
                 </div>
             );
         };
+        const Wearables = ({ user, showError, showSuccess }) => {
+    const [connections, setConnections] = useState([]);
+    const [wearableData, setWearableData] = useState([]);
+    const [insights, setInsights] = useState(null);
+    const [showManualEntry, setShowManualEntry] = useState(false);
+    const [selectedMetric, setSelectedMetric] = useState('steps');
+    const [manualData, setManualData] = useState({
+        date: new Date().toISOString().split('T')[0],
+        steps: '',
+        distance: '',
+        activeMinutes: '',
+        sleepDuration: '',
+        caloriesBurned: '',
+        restingHeartRate: ''
+    });
+    
+    const providers = [
+        { id: 'fitbit', name: 'Fitbit', icon: '🏃', color: 'bg-teal-500' },
+        { id: 'apple', name: 'Apple Watch', icon: '⌚', color: 'bg-gray-800' },
+        { id: 'garmin', name: 'Garmin', icon: '🏔️', color: 'bg-blue-600' },
+        { id: 'whoop', name: 'WHOOP', icon: '💪', color: 'bg-black' },
+        { id: 'oura', name: 'Oura Ring', icon: '💍', color: 'bg-purple-600' },
+        { id: 'polar', name: 'Polar', icon: '❄️', color: 'bg-red-500' }
+    ];
+    
+    const metrics = [
+        { id: 'steps', label: 'Steps', icon: '👣', unit: 'steps' },
+        { id: 'distance', label: 'Distance', icon: '📏', unit: 'miles' },
+        { id: 'activeMinutes', label: 'Active Minutes', icon: '⏱️', unit: 'min' },
+        { id: 'caloriesBurned', label: 'Calories', icon: '🔥', unit: 'cal' },
+        { id: 'sleepDuration', label: 'Sleep', icon: '😴', unit: 'hrs' },
+        { id: 'restingHeartRate', label: 'Resting HR', icon: '❤️', unit: 'bpm' },
+        { id: 'hrv', label: 'HRV', icon: '📊', unit: 'ms' }
+    ];
+    
+    useEffect(() => {
+        fetchConnections();
+        fetchWearableData();
+        fetchInsights();
+    }, []);
+    
+    // REPLACE the Wearables fetchConnections function (around line 4415) with this:
+
+const fetchConnections = async () => {
+    try {
+        const response = await API_CONFIG.request('/wearables/connections');
+        console.log('Wearables connections response:', response);
+        
+        // Handle multiple possible response formats
+        let connectionsData = [];
+        if (Array.isArray(response)) {
+            connectionsData = response;
+        } else if (response.connections && Array.isArray(response.connections)) {
+            connectionsData = response.connections;
+        } else if (response.data && Array.isArray(response.data)) {
+            connectionsData = response.data;
+        }
+        
+        setConnections(connectionsData);
+    } catch (error) {
+        console.error('Error fetching connections:', error);
+        // Don't show error - just set empty array
+        setConnections([]);
+    }
+};
+
+// REPLACE the fetchWearableData function with this:
+
+const fetchWearableData = async () => {
+    try {
+        const response = await API_CONFIG.request(`/wearables/user/${user._id}?days=30`);
+        console.log('Wearable data response:', response);
+        
+        // Handle multiple possible response formats
+        let wearableDataArray = [];
+        if (Array.isArray(response)) {
+            wearableDataArray = response;
+        } else if (response.data && Array.isArray(response.data)) {
+            wearableDataArray = response.data;
+        } else if (response.wearableData && Array.isArray(response.wearableData)) {
+            wearableDataArray = response.wearableData;
+        }
+        
+        setWearableData(wearableDataArray);
+    } catch (error) {
+        console.error('Error fetching wearable data:', error);
+        // Don't show error - just set empty array
+        setWearableData([]);
+    }
+};
+
+// REPLACE the fetchInsights function with this:
+
+const fetchInsights = async () => {
+    try {
+        const response = await API_CONFIG.request(`/wearables/insights/${user._id}?days=7`);
+        console.log('Insights response:', response);
+        
+        // Handle multiple possible response formats
+        let insightsData = null;
+        if (response.insights) {
+            insightsData = response.insights;
+        } else if (response.data) {
+            insightsData = response.data;
+        } else {
+            insightsData = response;
+        }
+        
+        setInsights(insightsData);
+    } catch (error) {
+        console.error('Error fetching insights:', error);
+        // Don't show error - just set null
+        setInsights(null);
+    }
+};
+    
+   const handleConnect = async (provider) => {
+    try {
+        const response = await fetch(`${API_CONFIG.baseURL}/wearables/connect/${provider}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.authUrl) {
+            // Redirect to the OAuth provider's authorization page
+            window.location.href = data.authUrl;
+        } else {
+            showError(data.error || 'Failed to initiate connection');
+        }
+    } catch (error) {
+        showError('Failed to connect: ' + error.message);
+    }
+};
+    
+    const handleDisconnect = async (provider) => {
+        if (confirm(`Disconnect ${provider}?`)) {
+            try {
+                await API_CONFIG.request(`/wearables/disconnect/${provider}`, {
+                    method: 'DELETE'
+                });
+                showSuccess(`${provider} disconnected`);
+                fetchConnections();
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+    };
+    
+    const handleManualSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            await API_CONFIG.request(`/wearables/user/${user._id}/manual`, {
+                method: 'POST',
+                body: JSON.stringify(manualData)
+            });
+            showSuccess('Data logged successfully');
+            setShowManualEntry(false);
+            fetchWearableData();
+            fetchInsights();
+        } catch (error) {
+            showError(error.message);
+        }
+    };
+    
+    const isConnected = (providerId) => {
+        return connections.some(c => c.provider === providerId && c.connected);
+    };
+    
+    // SAFE GETTER FUNCTIONS WITH NULL CHECKS
+    const safeGet = (obj, path, defaultValue = 0) => {
+        try {
+            const value = path.split('.').reduce((acc, part) => acc && acc[part], obj);
+            return value !== undefined && value !== null ? value : defaultValue;
+        } catch {
+            return defaultValue;
+        }
+    };
+    
+    return (
+        <div className="space-y-6">
+            <div className="dark-card p-6">
+                <h2 className="text-2xl font-bold mb-4 text-white">Wearable Devices</h2>
+                
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+                    {providers.map(provider => {
+                        const connected = isConnected(provider.id);
+                        return (
+                            <div key={provider.id} className={`p-4 rounded-lg border-2 ${
+                                connected ? 'border-green-500 bg-green-900 bg-opacity-20' : 'border-gray-600 bg-gray-800'
+                            }`}>
+                                <div className="text-center">
+                                    <div className="text-4xl mb-2">{provider.icon}</div>
+                                    <h3 className="font-semibold text-white">{provider.name}</h3>
+                                    {connected ? (
+                                        <button
+                                            onClick={() => handleDisconnect(provider.id)}
+                                            className="mt-2 text-sm text-red-400 hover:text-red-300"
+                                        >
+                                            Disconnect
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={() => handleConnect(provider.id)}
+                                            className="mt-2 coastal-button text-sm py-1 px-3"
+                                        >
+                                            Connect
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+                
+                <button
+                    onClick={() => setShowManualEntry(true)}
+                    className="coastal-button bg-purple-600 hover:bg-purple-700"
+                >
+                    <i className="fas fa-keyboard mr-2"></i>
+                    Manual Entry
+                </button>
+            </div>
+            
+            {/* FIXED INSIGHTS SECTION WITH PROPER NULL CHECKS */}
+            {insights && insights.averages && (
+                <div className="dark-card p-6">
+                    <h3 className="text-xl font-bold mb-4 text-white">7-Day Insights</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="metric-card">
+                            <div className="text-sm text-gray-400">Avg Steps</div>
+                            <div className="text-2xl font-bold text-white">
+                                {safeGet(insights, 'averages.steps', 0).toLocaleString()}
+                            </div>
+                            <div className={`text-sm ${
+                                safeGet(insights, 'trends.steps') === 'improving' ? 'text-green-400' :
+                                safeGet(insights, 'trends.steps') === 'declining' ? 'text-red-400' : 'text-gray-400'
+                            }`}>
+                                {safeGet(insights, 'trends.steps') === 'improving' && '↗️ Improving'}
+                                {safeGet(insights, 'trends.steps') === 'declining' && '↘️ Declining'}
+                                {safeGet(insights, 'trends.steps') === 'stable' && '→ Stable'}
+                                {!insights.trends?.steps && '—'}
+                            </div>
+                        </div>
+                        
+                        <div className="metric-card">
+                            <div className="text-sm text-gray-400">Avg Sleep</div>
+                            <div className="text-2xl font-bold text-white">
+                                {Math.floor(safeGet(insights, 'averages.sleep', 0) / 60)}h {safeGet(insights, 'averages.sleep', 0) % 60}m
+                            </div>
+                            <div className={`text-sm ${
+                                safeGet(insights, 'trends.sleep') === 'improving' ? 'text-green-400' :
+                                safeGet(insights, 'trends.sleep') === 'declining' ? 'text-red-400' : 'text-gray-400'
+                            }`}>
+                                {safeGet(insights, 'trends.sleep') === 'improving' && '↗️ Improving'}
+                                {safeGet(insights, 'trends.sleep') === 'declining' && '↘️ Declining'}
+                                {safeGet(insights, 'trends.sleep') === 'stable' && '→ Stable'}
+                                {!insights.trends?.sleep && '—'}
+                            </div>
+                        </div>
+                        
+                        <div className="metric-card">
+                            <div className="text-sm text-gray-400">Active Minutes</div>
+                            <div className="text-2xl font-bold text-white">
+                                {safeGet(insights, 'averages.activeMinutes', 0)}
+                            </div>
+                        </div>
+                        
+                        <div className="metric-card">
+                            <div className="text-sm text-gray-400">Resting HR</div>
+                            <div className="text-2xl font-bold text-white">
+                                {safeGet(insights, 'averages.restingHR', 0) || '--'}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {insights.streaks && (
+                        <div className="mt-4 grid grid-cols-2 gap-4">
+                            <div className="bg-blue-900 bg-opacity-30 rounded-lg p-3">
+                                <div className="text-sm text-gray-400">10K Steps Streak</div>
+                                <div className="text-xl font-bold text-white">
+                                    {safeGet(insights, 'streaks.steps.current', 0)} days
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                    Best: {safeGet(insights, 'streaks.steps.max', 0)} days
+                                </div>
+                            </div>
+                            
+                            <div className="bg-purple-900 bg-opacity-30 rounded-lg p-3">
+                                <div className="text-sm text-gray-400">7+ Hour Sleep Streak</div>
+                                <div className="text-xl font-bold text-white">
+                                    {safeGet(insights, 'streaks.sleep.current', 0)} days
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                    Best: {safeGet(insights, 'streaks.sleep.max', 0)} days
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+            
+            {/* Show message when no insights available */}
+            {!insights && (
+                <div className="dark-card p-6 text-center">
+                    <p className="text-gray-400">
+                        No insights available yet. Connect a wearable device or log manual data to see insights.
+                    </p>
+                </div>
+            )}
+            
+            {showManualEntry && (
+                <div className="modal-overlay" onClick={() => setShowManualEntry(false)}>
+                    <div className="modal-content max-w-2xl" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="text-xl font-bold mb-4 text-white">Manual Entry</h3>
+                        <form onSubmit={handleManualSubmit}>
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Date</label>
+                                    <input
+                                        type="date"
+                                        className="coastal-input"
+                                        value={manualData.date}
+                                        onChange={(e) => setManualData({...manualData, date: e.target.value})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Steps</label>
+                                    <input
+                                        type="number"
+                                        className="coastal-input"
+                                        value={manualData.steps}
+                                        onChange={(e) => setManualData({...manualData, steps: e.target.value})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Distance (miles)</label>
+                                    <input
+                                        type="number"
+                                        step="0.1"
+                                        className="coastal-input"
+                                        value={manualData.distance}
+                                        onChange={(e) => setManualData({...manualData, distance: e.target.value})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Active Minutes</label>
+                                    <input
+                                        type="number"
+                                        className="coastal-input"
+                                        value={manualData.activeMinutes}
+                                        onChange={(e) => setManualData({...manualData, activeMinutes: e.target.value})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Sleep (minutes)</label>
+                                    <input
+                                        type="number"
+                                        className="coastal-input"
+                                        value={manualData.sleepDuration}
+                                        onChange={(e) => setManualData({...manualData, sleepDuration: e.target.value})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Calories Burned</label>
+                                    <input
+                                        type="number"
+                                        className="coastal-input"
+                                        value={manualData.caloriesBurned}
+                                        onChange={(e) => setManualData({...manualData, caloriesBurned: e.target.value})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Resting HR</label>
+                                    <input
+                                        type="number"
+                                        className="coastal-input"
+                                        value={manualData.restingHeartRate}
+                                        onChange={(e) => setManualData({...manualData, restingHeartRate: e.target.value})}
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex gap-4">
+                                <button type="submit" className="coastal-button">Save Data</button>
+                                <button 
+                                    type="button" 
+                                    onClick={() => setShowManualEntry(false)}
+                                    className="coastal-button bg-gray-600 hover:bg-gray-700"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
         
 // Enhanced Reports Component - Replace entire Reports component with this
 const Reports = ({ user, isClient, showSuccess, showError }) => {
@@ -5003,13 +5429,9 @@ const Reports = ({ user, isClient, showSuccess, showError }) => {
     }, [isClient]);
     
     const fetchClients = async () => {
-        try {
-            const data = await API_CONFIG.request('/users?role=client');
-            setClients(data.data || []);
-        } catch (error) {
-            console.error('Error fetching clients:', error);
-        }
-    };
+    const clients = await ClientManager.loadClients();
+    setClients(clients);
+};
     
     const generateReport = async () => {
         if (!selectedClient) {
@@ -5782,15 +6204,46 @@ const Calendar = ({ user, showError, showSuccess }) => {
         }
     }, [user.gymId]);
     
-    const fetchClasses = async () => {
-        try {
-            const data = await API_CONFIG.getClasses(user.gymId);
-            setClasses(Array.isArray(data) ? data : (data.data || []));
-        } catch (error) {
-            console.error('Error fetching classes:', error);
-            setClasses([]);
+   const fetchClasses = async () => {
+    try {
+        // Check if user has a gymId
+        if (!user.gymId) {
+            console.log('No gymId found for user - using user._id as fallback');
+            // Try fetching with user ID instead
+            const response = await API_CONFIG.request(`/classes/user/${user._id}`);
+            console.log('Classes response (by user):', response);
+            
+            let classesData = [];
+            if (Array.isArray(response)) {
+                classesData = response;
+            } else if (response.classes && Array.isArray(response.classes)) {
+                classesData = response.classes;
+            } else if (response.data && Array.isArray(response.data)) {
+                classesData = response.data;
+            }
+            
+            setClasses(classesData);
+            return;
         }
-    };
+        
+        const response = await API_CONFIG.request(`/classes/gym/${user.gymId}`);
+        console.log('Classes response (by gym):', response);
+        
+        let classesData = [];
+        if (Array.isArray(response)) {
+            classesData = response;
+        } else if (response.classes && Array.isArray(response.classes)) {
+            classesData = response.classes;
+        } else if (response.data && Array.isArray(response.data)) {
+            classesData = response.data;
+        }
+        
+        setClasses(classesData);
+    } catch (error) {
+        console.error('Error fetching classes:', error);
+        setClasses([]);
+    }
+};
     
     const handleBookClass = async (classId) => {
         try {
@@ -6502,13 +6955,9 @@ const Tests = ({ user, showError, showSuccess }) => {
     }, [selectedClient]);
     
     const fetchClients = async () => {
-        try {
-            const data = await API_CONFIG.request('/users?role=client');
-            setClients(data.data || []);
-        } catch (error) {
-            console.error('Error fetching clients:', error);
-        }
-    };
+    const clients = await ClientManager.loadClients();
+    setClients(clients);
+};
     
     const fetchTests = async () => {
         try {
@@ -6769,335 +7218,247 @@ const Tests = ({ user, showError, showSuccess }) => {
     );
 };
      
-    // Users Component
+        // Users Component (unchanged)
         const Users = ({ user, showError, showSuccess }) => {
-    const [users, setUsers] = useState([]);
-    const [showForm, setShowForm] = useState(false);
-    const [editingUser, setEditingUser] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [formData, setFormData] = useState({
-        name: '',
-        email: '',
-        password: '',
-        confirmPassword: '',
-        roles: []
-    });
-    
-    useEffect(() => {
-        fetchUsers();
-    }, []);
-    
-    const fetchUsers = async () => {
-        setLoading(true);
-        try {
-            const data = await API_CONFIG.request('/users');
-            setUsers(data.data || []);
-        } catch (error) {
-            showError('Failed to fetch users');
-            console.error('Error fetching users:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-    
-    const resetForm = () => {
-        setFormData({
-            name: '',
-            email: '',
-            password: '',
-            confirmPassword: '',
-            roles: []
-        });
-        setShowForm(false);
-        setEditingUser(null);
-    };
-    
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        
-        // Validation
-        if (!editingUser) {
-            if (!formData.password) {
-                showError('Password is required');
-                return;
-            }
-            if (formData.password !== formData.confirmPassword) {
-                showError('Passwords do not match');
-                return;
-            }
-            if (formData.password.length < 6) {
-                showError('Password must be at least 6 characters');
-                return;
-            }
-        }
-        
-        if (formData.roles.length === 0) {
-            showError('Please select at least one role');
-            return;
-        }
-        
-        setLoading(true);
-        try {
-            if (editingUser) {
-                const response = await API_CONFIG.request(`/users/${editingUser._id}`, {
-                    method: 'PUT',
-                    body: JSON.stringify({
-                        name: formData.name,
-                        email: formData.email,
-                        roles: formData.roles
-                    })
-                });
-                setUsers(prev => prev.map(u => u._id === editingUser._id ? response.data : u));
-                showSuccess('User updated successfully');
-            } else {
-                const response = await API_CONFIG.request('/auth/register', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        name: formData.name,
-                        email: formData.email,
-                        password: formData.password,
-                        roles: formData.roles
-                    })
-                });
-                setUsers(prev => [...prev, response.data.user]);
-                showSuccess('User created successfully');
-            }
-            resetForm();
-        } catch (error) {
-            showError(error.message || 'Operation failed');
-        } finally {
-            setLoading(false);
-        }
-    };
-    
-    const handleEdit = (userToEdit) => {
-        setEditingUser(userToEdit);
-        setFormData({
-            name: userToEdit.name,
-            email: userToEdit.email,
-            password: '',
-            confirmPassword: '',
-            roles: [...userToEdit.roles]
-        });
-        setShowForm(true);
-    };
-    
-    const handleDelete = async (userId) => {
-        if (!confirm('Are you sure you want to delete this user?')) return;
-        
-        setLoading(true);
-        try {
-            await API_CONFIG.request(`/users/${userId}`, {
-                method: 'DELETE'
+             console.log('Users component rendered!', user);  // ADD THIS LINE
+            const [users, setUsers] = useState([]);
+            const [showForm, setShowForm] = useState(false);
+            const [editingUser, setEditingUser] = useState(null);
+            const [formData, setFormData] = useState({
+                name: '',
+                email: '',
+                password: '',
+                roles: []
             });
-            setUsers(prev => prev.filter(u => u._id !== userId));
-            showSuccess('User deleted successfully');
-        } catch (error) {
-            showError(error.message || 'Failed to delete user');
-        } finally {
-            setLoading(false);
+            
+            useEffect(() => {
+                fetchUsers();
+            }, []);
+            
+ const fetchUsers = async () => {
+    try {
+        const response = await API_CONFIG.request('/users');
+        console.log('Users response:', response);
+        
+        // Handle multiple possible response formats
+        let usersData = [];
+        if (Array.isArray(response)) {
+            usersData = response;
+        } else if (response.users && Array.isArray(response.users)) {
+            usersData = response.users;
+        } else if (response.data && Array.isArray(response.data)) {
+            usersData = response.data;
         }
-    };
-    
-    const toggleRole = (role) => {
-        setFormData(prev => ({
-            ...prev,
-            roles: prev.roles.includes(role)
-                ? prev.roles.filter(r => r !== role)
-                : [...prev.roles, role]
-        }));
-    };
-    
-    return (
-        <div className="space-y-6">
-            <div className="dark-card p-6">
-                <div className="flex justify-between items-center">
-                    <h2 className="text-2xl font-bold text-white">User Management</h2>
-                    <div className="flex gap-2">
-                        <button 
-                            onClick={fetchUsers} 
-                            className="coastal-button bg-gray-600 hover:bg-gray-700"
-                            disabled={loading}
-                        >
-                            <i className={`fas fa-sync-alt mr-2 ${loading ? 'fa-spin' : ''}`}></i>
-                            Refresh
-                        </button>
-                        <button 
-                            onClick={() => setShowForm(true)} 
-                            className="coastal-button"
-                            disabled={loading}
-                        >
-                            <i className="fas fa-plus mr-2"></i>
-                            Add User
-                        </button>
+        
+        setUsers(usersData);
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        showError('Failed to load users');
+        setUsers([]);
+    }
+};
+            
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                try {
+                    if (editingUser) {
+                        await API_CONFIG.request(`/users/${editingUser._id}`, {
+                            method: 'PUT',
+                            body: JSON.stringify(formData)
+                        });
+                        showSuccess('User updated successfully');
+                    } else {
+                        await API_CONFIG.request('/auth/register', {
+                            method: 'POST',
+                            body: JSON.stringify(formData)
+                        });
+                        showSuccess('User created successfully');
+                    }
+                    setShowForm(false);
+                    setEditingUser(null);
+                    fetchUsers();
+                    setFormData({
+                        name: '',
+                        email: '',
+                        password: '',
+                        roles: []
+                    });
+                } catch (error) {
+                    showError(error.message);
+                }
+            };
+            
+            const handleEdit = (user) => {
+                setEditingUser(user);
+                setFormData({
+                    name: user.name,
+                    email: user.email,
+                    password: '',
+                    roles: user.roles
+                });
+                setShowForm(true);
+            };
+            
+            const handleDelete = async (userId) => {
+                if (confirm('Are you sure you want to delete this user?')) {
+                    try {
+                        await API_CONFIG.request(`/users/${userId}`, {
+                            method: 'DELETE'
+                        });
+                        showSuccess('User deleted successfully');
+                        fetchUsers();
+                    } catch (error) {
+                        showError(error.message);
+                    }
+                }
+            };
+            
+            return (
+                <div className="space-y-6">
+                    <div className="dark-card p-6">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-2xl font-bold text-white">User Management</h2>
+                            <button onClick={() => setShowForm(true)} className="coastal-button">
+                                <i className="fas fa-plus mr-2"></i>
+                                Add User
+                            </button>
+                        </div>
+                    </div>
+                    
+                    {showForm && (
+                        <div className="dark-card p-6">
+                            <h3 className="text-xl font-semibold mb-4">
+                                {editingUser ? 'Edit User' : 'Create User'}
+                            </h3>
+                            <form onSubmit={handleSubmit}>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Name</label>
+                                        <input
+                                            type="text"
+                                            className="coastal-input"
+                                            value={formData.name}
+                                            onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Email</label>
+                                        <input
+                                            type="email"
+                                            className="coastal-input"
+                                            value={formData.email}
+                                            onChange={(e) => setFormData({...formData, email: e.target.value})}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                                
+                                {!editingUser && (
+                                    <div className="mb-4">
+                                        <label className="block text-sm font-medium mb-2">Password</label>
+                                        <input
+                                            type="password"
+                                            className="coastal-input"
+                                            value={formData.password}
+                                            onChange={(e) => setFormData({...formData, password: e.target.value})}
+                                            required
+                                        />
+                                    </div>
+                                )}
+                                
+                                <div className="mb-4">
+                                    <label className="block text-sm font-medium mb-2">Roles</label>
+                                    <div className="flex gap-4">
+                                        {['client', 'specialist', 'admin', 'owner', 'engineer'].map(role => (
+                                            <label key={role} className="flex items-center">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={formData.roles.includes(role)}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setFormData({
+                                                                ...formData,
+                                                                roles: [...formData.roles, role]
+                                                            });
+                                                        } else {
+                                                            setFormData({
+                                                                ...formData,
+                                                                roles: formData.roles.filter(r => r !== role)
+                                                            });
+                                                        }
+                                                    }}
+                                                    className="mr-2"
+                                                />
+                                                {role}
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                                
+                                <div className="flex gap-4">
+                                    <button type="submit" className="coastal-button">
+                                        {editingUser ? 'Update' : 'Create'} User
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => {
+                                            setShowForm(false);
+                                            setEditingUser(null);
+                                            setFormData({
+                                                name: '',
+                                                email: '',
+                                                password: '',
+                                                roles: []
+                                            });
+                                        }} 
+                                        className="coastal-button bg-gray-600 hover:bg-gray-700"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    )}
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {users.map(u => (
+                            <div key={u._id} className="dark-card p-4">
+                                <div className="flex justify-between items-start mb-2">
+                                    <div>
+                                        <h3 className="font-semibold">{u.name}</h3>
+                                        <p className="text-sm text-gray-400">{u.email}</p>
+                                    </div>
+                                    <div className="flex gap-1">
+                                        <button
+                                            onClick={() => handleEdit(u)}
+                                            className="text-blue-500 hover:text-blue-600"
+                                        >
+                                            <i className="fas fa-edit"></i>
+                                        </button>
+                                        {u._id !== user._id && (
+                                            <button
+                                                onClick={() => handleDelete(u._id)}
+                                                className="text-red-500 hover:text-red-600"
+                                            >
+                                                <i className="fas fa-trash"></i>
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="flex flex-wrap gap-1">
+                                    {u.roles.map(role => (
+                                        <span key={role} className={`px-2 py-1 rounded text-xs font-semibold badge-${role}`}>
+                                            {role}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
-            </div>
-            
-            {showForm && (
-                <div className="dark-card p-6">
-                    <h3 className="text-xl font-semibold mb-4">
-                        {editingUser ? 'Edit User' : 'Create User'}
-                    </h3>
-                    <form onSubmit={handleSubmit}>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div>
-                                <label className="block text-sm font-medium mb-2">Name *</label>
-                                <input
-                                    type="text"
-                                    className="coastal-input"
-                                    value={formData.name}
-                                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                                    required
-                                    disabled={loading}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium mb-2">Email *</label>
-                                <input
-                                    type="email"
-                                    className="coastal-input"
-                                    value={formData.email}
-                                    onChange={(e) => setFormData({...formData, email: e.target.value})}
-                                    required
-                                    disabled={loading}
-                                />
-                            </div>
-                        </div>
-                        
-                        {!editingUser && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                <div>
-                                    <label className="block text-sm font-medium mb-2">Password *</label>
-                                    <input
-                                        type="password"
-                                        className="coastal-input"
-                                        value={formData.password}
-                                        onChange={(e) => setFormData({...formData, password: e.target.value})}
-                                        required
-                                        minLength="6"
-                                        disabled={loading}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium mb-2">Confirm Password *</label>
-                                    <input
-                                        type="password"
-                                        className="coastal-input"
-                                        value={formData.confirmPassword}
-                                        onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
-                                        required
-                                        disabled={loading}
-                                    />
-                                </div>
-                            </div>
-                        )}
-                        
-                        <div className="mb-6">
-                            <label className="block text-sm font-medium mb-2">Roles *</label>
-                            <div className="flex flex-wrap gap-4">
-                                {['client', 'specialist', 'admin', 'owner', 'engineer'].map(role => (
-                                    <label key={role} className="flex items-center cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={formData.roles.includes(role)}
-                                            onChange={() => toggleRole(role)}
-                                            className="mr-2 cursor-pointer"
-                                            disabled={loading}
-                                        />
-                                        <span className="capitalize">{role}</span>
-                                    </label>
-                                ))}
-                            </div>
-                        </div>
-                        
-                        <div className="flex gap-3">
-                            <button 
-                                type="submit" 
-                                className="coastal-button"
-                                disabled={loading}
-                            >
-                                {loading ? (
-                                    <>
-                                        <i className="fas fa-spinner fa-spin mr-2"></i>
-                                        {editingUser ? 'Updating...' : 'Creating...'}
-                                    </>
-                                ) : (
-                                    <>
-                                        <i className={`fas ${editingUser ? 'fa-save' : 'fa-plus'} mr-2`}></i>
-                                        {editingUser ? 'Update' : 'Create'} User
-                                    </>
-                                )}
-                            </button>
-                            <button 
-                                type="button" 
-                                onClick={resetForm}
-                                className="coastal-button bg-gray-600 hover:bg-gray-700"
-                                disabled={loading}
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            )}
-            
-            {loading && !showForm ? (
-                <div className="flex justify-center items-center py-12">
-                    <i className="fas fa-spinner fa-spin text-4xl text-coastal-teal"></i>
-                </div>
-            ) : users.length === 0 ? (
-                <div className="dark-card p-12 text-center">
-                    <i className="fas fa-users text-6xl text-gray-600 mb-4"></i>
-                    <p className="text-gray-400">No users found</p>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {users.map(u => (
-                        <div key={u._id} className="dark-card p-4 hover:border-coastal-teal transition-colors">
-                            <div className="flex justify-between items-start mb-3">
-                                <div className="flex-1">
-                                    <h3 className="font-semibold text-lg text-white">{u.name}</h3>
-                                    <p className="text-sm text-gray-400 break-all">{u.email}</p>
-                                </div>
-                                <div className="flex gap-2 ml-2">
-                                    <button
-                                        onClick={() => handleEdit(u)}
-                                        className="text-blue-500 hover:text-blue-400 transition-colors"
-                                        title="Edit user"
-                                        disabled={loading}
-                                    >
-                                        <i className="fas fa-edit"></i>
-                                    </button>
-                                    {u._id !== user._id && (
-                                        <button
-                                            onClick={() => handleDelete(u._id)}
-                                            className="text-red-500 hover:text-red-400 transition-colors"
-                                            title="Delete user"
-                                            disabled={loading}
-                                        >
-                                            <i className="fas fa-trash"></i>
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                                {u.roles.map(role => (
-                                    <span 
-                                        key={role} 
-                                        className={`px-2 py-1 rounded text-xs font-semibold badge-${role}`}
-                                    >
-                                        {role}
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-};
+            );
+        };
         
         // Render the app
        const root = ReactDOM.createRoot(document.getElementById('root'));
