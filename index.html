@@ -5712,6 +5712,8 @@ await API_CONFIG.request(endpoint, {
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
     {providers.map(provider => {
         const connected = isConnected(provider.id);
+        const isAvailable = provider.id === 'fitbit' || provider.id === 'polar';
+        
         return (
             <div key={provider.id} className={`p-4 rounded-lg border-2 transition ${
                 connected ? 'border-green-500 bg-green-900 bg-opacity-20' : 'border-gray-600 hover:border-gray-500 bg-gray-800'
@@ -5719,10 +5721,14 @@ await API_CONFIG.request(endpoint, {
                 <div className="text-center">
                     <div className="text-4xl mb-2">{provider.icon}</div>
                     <h3 className="font-semibold text-white">{provider.name}</h3>
-                    {!provider.available && (
+                    {isAvailable ? (
+                        <span className="text-xs text-green-400 block mt-1 font-semibold">
+                            <i className="fas fa-check-circle mr-1"></i>Active
+                        </span>
+                    ) : (
                         <span className="text-xs text-yellow-400 block mt-1">Coming Soon</span>
                     )}
-                    {provider.available && (
+                    {isAvailable && (
                         connected ? (
                             <button
                                 onClick={() => handleDisconnect(provider.id)}
