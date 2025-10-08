@@ -1866,18 +1866,20 @@ submitData = {
         </div>
     );
 };
-        // Enhanced Dashboard Component
+        // Enhanced Dashboard Component - ULTIMATE VERSION
         const Dashboard = ({ user, isClient, selectedClientId, onClientChange }) => {
-    const [selectedClient, setSelectedClient] = useState(
-        selectedClientId || (isClient ? user._id : null)
-    );
-    const [clients, setClients] = useState([]);
+            const [selectedClient, setSelectedClient] = useState(
+                selectedClientId || (isClient ? user._id : null)
+            );
+            const [clients, setClients] = useState([]);
             const [stats, setStats] = useState({
                 workouts: { total: 0, completed: 0, completionRate: 0, lastWorkout: null },
                 measurements: { latest: null, change: { weight: 0, bodyFat: 0 }, history: [] },
                 wellness: { moodTrend: 0, painLevel: 0, lastMood: null },
-                nutrition: { adherence: 0, currentMacros: {} }
+                nutrition: { adherence: 0, currentMacros: {} },
+                wearables: { steps: 0, sleep: 0, heartRate: 0, recovery: 0 }
             });
+            const [goals, setGoals] = useState([]);
             const chartRef = useRef(null);
             const chartInstance = useRef(null);
             
@@ -1887,6 +1889,7 @@ submitData = {
                 }
                 if (selectedClient) {
                     fetchStats();
+                    fetchGoals();
                 }
                 return () => {
                     if (chartInstance.current) {
@@ -1897,28 +1900,44 @@ submitData = {
             }, [selectedClient, isClient]);
             
             const fetchClients = async () => {
-    const clients = await ClientManager.loadClients();
-    setClients(clients);
-};
+                const clients = await ClientManager.loadClients();
+                setClients(clients);
+            };
+            
+            const fetchGoals = async () => {
+                try {
+                    const data = await API_CONFIG.request(`/goals/client/${selectedClient}`);
+                    const allGoals = Array.isArray(data) ? data : (data.data || []);
+                    setGoals(allGoals.filter(g => !g.isHabit && !g.completed));
+                } catch (error) {
+                    console.error('Error fetching goals:', error);
+                }
+            };
             
             const fetchStats = async () => {
                 try {
-                    const [workouts, measurements, nutrition] = await Promise.all([
+                    const [workouts, measurements, nutrition, wearableData] = await Promise.all([
                         API_CONFIG.request(`/workouts/client/${selectedClient}`),
                         API_CONFIG.request(`/measurements/client/${selectedClient}`),
-                        API_CONFIG.request(`/nutrition/client/${selectedClient}`)
+                        API_CONFIG.request(`/nutrition/client/${selectedClient}`),
+                        API_CONFIG.request(`/wearables/user/${selectedClient}?days=7`).catch(() => ({ data: [] }))
                     ]);
                     
                     const workoutsData = Array.isArray(workouts) ? workouts : (workouts.data || []);
                     const measurementsData = Array.isArray(measurements) ? measurements : (measurements.data || []);
                     const nutritionData = nutrition;
+                    const wearablesArray = Array.isArray(wearableData) ? wearableData : (wearableData.data || []);
                     
                     const latestMeasurement = measurementsData[measurementsData.length - 1];
                     const previousMeasurement = measurementsData[measurementsData.length - 2];
                     const completedWorkouts = workoutsData.filter(w => w.completed);
                     const lastWorkout = completedWorkouts[completedWorkouts.length - 1];
                     
-                    // Calculate wellness metrics
+                    // Wearable aggregation
+                    const latestWearable = wearablesArray[wearablesArray.length - 1] || {};
+                    const avgSteps = wearablesArray.reduce((sum, w) => sum + (w.steps || 0), 0) / (wearablesArray.length || 1);
+                    const avgSleep = wearablesArray.reduce((sum, w) => sum + (w.sleepDuration || 0), 0) / (wearablesArray.length || 1);
+                    
                     const moodSum = completedWorkouts.reduce((sum, w) => sum + (w.moodFeedback || 3), 0);
                     const avgMood = completedWorkouts.length ? moodSum / completedWorkouts.length : 3;
                     
@@ -1943,12 +1962,18 @@ submitData = {
                         },
                         wellness: {
                             moodTrend: avgMood,
-                            painLevel: 1.5, // This would come from actual data
+                            painLevel: 1.5,
                             lastMood: lastWorkout?.moodFeedback
                         },
                         nutrition: {
                             adherence: nutritionData ? calculateNutritionAdherence(nutritionData) : 0,
                             currentMacros: nutritionData || {}
+                        },
+                        wearables: {
+                            steps: Math.round(avgSteps),
+                            sleep: Math.round(avgSleep),
+                            heartRate: latestWearable.restingHeartRate || 0,
+                            recovery: latestWearable.recoveryScore || 0
                         }
                     });
                     
@@ -1984,21 +2009,19 @@ submitData = {
                 
                 const ctx = chartRef.current.getContext('2d');
                 
-                // Prepare data for multiple metrics
                 const datasets = [{
                     label: 'Weight (lbs)',
                     data: measurements.map(m => m.weight),
-                    borderColor: '#244398',
+                    borderColor: '#3b82f6',
                     yAxisID: 'y',
                     tension: 0.4
                 }];
                 
-                // Add body fat if available
                 if (measurements.some(m => m.bodyFat)) {
                     datasets.push({
                         label: 'Body Fat (%)',
                         data: measurements.map(m => m.bodyFat || null),
-                        borderColor: '#60E0E0',
+                        borderColor: '#10b981',
                         yAxisID: 'y1',
                         tension: 0.4
                     });
@@ -2022,23 +2045,18 @@ submitData = {
                                 type: 'linear',
                                 display: true,
                                 position: 'left',
-                                title: {
-                                    display: true,
-                                    text: 'Weight (lbs)'
-                                }
+                                title: { display: true, text: 'Weight (lbs)', color: '#9ca3af' },
+                                ticks: { color: '#9ca3af' }
                             },
                             y1: {
                                 type: 'linear',
                                 display: measurements.some(m => m.bodyFat),
                                 position: 'right',
-                                title: {
-                                    display: true,
-                                    text: 'Body Fat (%)'
-                                },
-                                grid: {
-                                    drawOnChartArea: false
-                                }
-                            }
+                                title: { display: true, text: 'Body Fat (%)', color: '#9ca3af' },
+                                grid: { drawOnChartArea: false },
+                                ticks: { color: '#9ca3af' }
+                            },
+                            x: { ticks: { color: '#9ca3af' } }
                         }
                     }
                 });
@@ -2049,18 +2067,10 @@ submitData = {
                 return emojis[Math.floor(mood - 1)] || '😐';
             };
             
-            const getPainLevelText = (level) => {
-                if (level <= 2) return 'Excellent';
-                if (level <= 4) return 'Good';
-                if (level <= 6) return 'Moderate';
-                if (level <= 8) return 'Poor';
-                return 'Severe';
-            };
-            
             return (
                 <div className="space-y-6">
                     <div className="dark-card p-6">
-                        <h2 className="text-2xl font-bold mb-4">
+                        <h2 className="text-2xl font-bold mb-4 text-white">
                             {isClient ? 'My Dashboard' : 'Client Dashboard'}
                         </h2>
                         
@@ -2082,18 +2092,19 @@ submitData = {
                     
                     {selectedClient && (
                         <>
-                            {/* Primary Stats */}
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <div className="metric-card">
+                            {/* ULTIMATE 4-QUADRANT GRID */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                {/* Workouts */}
+                                <div className="metric-card bg-gradient-to-br from-blue-900 to-blue-800">
                                     <div className="flex items-center justify-between mb-2">
-                                        <h3 className="text-sm font-medium text-gray-400">Workouts</h3>
-                                        <span className="text-2xl">💪</span>
+                                        <h3 className="text-sm font-medium text-gray-300">Workouts</h3>
+                                        <span className="text-3xl">💪</span>
                                     </div>
-                                    <p className="text-3xl font-bold">{stats.workouts.completed}/{stats.workouts.total}</p>
-                                    <div className="mt-2">
-                                        <div className="progress-bar">
+                                    <p className="text-4xl font-bold text-white">{stats.workouts.completed}/{stats.workouts.total}</p>
+                                    <div className="mt-3">
+                                        <div className="progress-bar bg-gray-700">
                                             <div 
-                                                className="progress-bar-fill bg-blue-500"
+                                                className="progress-bar-fill bg-blue-400"
                                                 style={{width: `${stats.workouts.completionRate}%`}}
                                             ></div>
                                         </div>
@@ -2101,95 +2112,117 @@ submitData = {
                                     </div>
                                 </div>
                                 
-                                <div className="metric-card">
+                                {/* Weight */}
+                                <div className="metric-card bg-gradient-to-br from-green-900 to-green-800">
                                     <div className="flex items-center justify-between mb-2">
-                                        <h3 className="text-sm font-medium text-gray-400">Current Weight</h3>
-                                        <span className="text-2xl">⚖️</span>
+                                        <h3 className="text-sm font-medium text-gray-300">Current Weight</h3>
+                                        <span className="text-3xl">⚖️</span>
                                     </div>
-                                    <p className="text-3xl font-bold">
-                                        {stats.measurements.latest?.weight || '--'} lbs
+                                    <p className="text-4xl font-bold text-white">
+                                        {stats.measurements.latest?.weight || '--'} <span className="text-2xl text-gray-400">lbs</span>
                                     </p>
                                     <p className="text-sm mt-2">
-                                        <span className={stats.measurements.change.weight > 0 ? 'text-red-500' : 'text-green-500'}>
+                                        <span className={stats.measurements.change.weight > 0 ? 'text-red-400' : 'text-green-400'}>
                                             {stats.measurements.change.weight > 0 ? '↑' : '↓'} {Math.abs(stats.measurements.change.weight)} lbs
                                         </span>
                                     </p>
                                 </div>
                                 
-                                <div className="metric-card">
+                                {/* Nutrition */}
+                                <div className="metric-card bg-gradient-to-br from-yellow-900 to-yellow-800">
                                     <div className="flex items-center justify-between mb-2">
-                                        <h3 className="text-sm font-medium text-gray-400">Body Fat</h3>
-                                        <span className="text-2xl">📊</span>
+                                        <h3 className="text-sm font-medium text-gray-300">Nutrition</h3>
+                                        <span className="text-3xl">🥗</span>
                                     </div>
-                                    <p className="text-3xl font-bold">
-                                        {stats.measurements.latest?.bodyFat || '--'}%
-                                    </p>
-                                    {stats.measurements.change.bodyFat !== 0 && (
-                                        <p className="text-sm mt-2">
-                                            <span className={stats.measurements.change.bodyFat > 0 ? 'text-red-500' : 'text-green-500'}>
-                                                {stats.measurements.change.bodyFat > 0 ? '↑' : '↓'} {Math.abs(stats.measurements.change.bodyFat)}%
-                                            </span>
-                                        </p>
-                                    )}
+                                    <p className="text-4xl font-bold text-white">{stats.nutrition.adherence}%</p>
+                                    <p className="text-sm text-gray-400 mt-2">Daily Adherence</p>
                                 </div>
                                 
-                                <div className="metric-card">
+                                {/* Wearables */}
+                                <div className="metric-card bg-gradient-to-br from-purple-900 to-purple-800">
                                     <div className="flex items-center justify-between mb-2">
-                                        <h3 className="text-sm font-medium text-gray-400">Nutrition</h3>
-                                        <span className="text-2xl">🥗</span>
+                                        <h3 className="text-sm font-medium text-gray-300">Activity</h3>
+                                        <span className="text-3xl">⌚</span>
                                     </div>
-                                    <p className="text-3xl font-bold">{stats.nutrition.adherence}%</p>
-                                    <p className="text-sm text-gray-400 mt-2">Daily Adherence</p>
+                                    <p className="text-4xl font-bold text-white">{stats.wearables.steps.toLocaleString()}</p>
+                                    <p className="text-sm text-gray-400 mt-2">Avg Steps/Day</p>
                                 </div>
                             </div>
                             
-                            {/* Wellness Summary */}
-                            <div className="dark-card p-6">
-                                <h3 className="text-xl font-bold mb-4">Wellness Summary</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="wellness-indicator">
-                                        <div>
-                                            <p className="text-sm text-gray-400">Mood Trend</p>
-                                            <p className="text-lg font-semibold">
-                                                {stats.wellness.lastMood ? `Last: ${stats.wellness.lastMood}/5` : 'No data'}
-                                            </p>
-                                        </div>
-                                        <span className="mood-emoji">
-                                            {getMoodEmoji(stats.wellness.moodTrend)}
-                                        </span>
-                                    </div>
-                                    
-                                    <div className="wellness-indicator">
-                                        <div>
-                                            <p className="text-sm text-gray-400">Average Pain Level</p>
-                                            <p className="text-2xl font-bold text-white">{stats.wellness.painLevel}</p>
-                                            <p className="text-sm text-green-600">{getPainLevelText(stats.wellness.painLevel)}</p>
-                                        </div>
-                                        <div className="flex-1">
-                                            <div className="progress-bar">
-                                                <div 
-                                                    className="progress-bar-fill bg-gradient-to-r from-green-500 to-yellow-500"
-                                                    style={{width: `${(stats.wellness.painLevel / 10) * 100}%`}}
-                                                ></div>
-                                            </div>
-                                        </div>
+                            {/* SMART GOALS OVERVIEW WITH WEARABLE SYNC */}
+                            {goals.length > 0 && (
+                                <div className="dark-card p-6">
+                                    <h3 className="text-xl font-bold mb-4 text-white flex items-center gap-2">
+                                        🎯 Active Goals
+                                        <span className="text-sm text-gray-400 font-normal">({goals.length})</span>
+                                    </h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {goals.slice(0, 4).map(goal => {
+                                            const progress = Math.min(Math.round((goal.current / goal.target) * 100), 100);
+                                            const daysLeft = Math.ceil((new Date(goal.deadline) - new Date()) / (1000 * 60 * 60 * 24));
+                                            
+                                            return (
+                                                <div key={goal._id} className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <h4 className="font-semibold text-white">{goal.name}</h4>
+                                                        {daysLeft > 0 && (
+                                                            <span className={`text-xs px-2 py-1 rounded ${
+                                                                daysLeft < 7 ? 'bg-red-900 text-red-300' : 'bg-blue-900 text-blue-300'
+                                                            }`}>
+                                                                {daysLeft}d left
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-sm text-gray-400 mb-3">
+                                                        <span>{goal.current}</span>
+                                                        <span>/</span>
+                                                        <span>{goal.target}</span>
+                                                    </div>
+                                                    <div className="progress-bar bg-gray-700">
+                                                        <div 
+                                                            className="progress-bar-fill bg-gradient-to-r from-green-500 to-blue-500"
+                                                            style={{width: `${progress}%`}}
+                                                        ></div>
+                                                    </div>
+                                                    <p className="text-xs text-gray-500 mt-1">{progress}% Complete</p>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
-                                
-                                {stats.workouts.lastWorkout && (
-                                    <div className="mt-4 p-4 bg-gray-800 rounded-lg">
-                                        <p className="text-sm text-gray-400">Last Workout</p>
-                                        <p className="font-semibold">{stats.workouts.lastWorkout.name}</p>
-                                        <p className="text-sm text-gray-500">
-                                            {new Date(stats.workouts.lastWorkout.completedAt).toLocaleDateString()}
+                            )}
+                            
+                            {/* Wellness Summary */}
+                            <div className="dark-card p-6">
+                                <h3 className="text-xl font-bold mb-4 text-white">Wellness Summary</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="bg-gray-800 rounded-lg p-4">
+                                        <p className="text-sm text-gray-400 mb-1">Mood Trend</p>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-3xl">{getMoodEmoji(stats.wellness.moodTrend)}</span>
+                                            <span className="text-2xl font-bold text-white">{stats.wellness.moodTrend.toFixed(1)}/5</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="bg-gray-800 rounded-lg p-4">
+                                        <p className="text-sm text-gray-400 mb-1">Avg Sleep</p>
+                                        <p className="text-2xl font-bold text-white">
+                                            {Math.floor(stats.wearables.sleep / 60)}h {stats.wearables.sleep % 60}m
                                         </p>
                                     </div>
-                                )}
+                                    
+                                    <div className="bg-gray-800 rounded-lg p-4">
+                                        <p className="text-sm text-gray-400 mb-1">Resting HR</p>
+                                        <p className="text-2xl font-bold text-white">
+                                            {stats.wearables.heartRate || '--'} <span className="text-sm text-gray-400">bpm</span>
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                             
                             {/* Progress Chart */}
                             <div className="dark-card p-6">
-                                <h3 className="text-xl font-bold mb-4">Progress Tracking</h3>
+                                <h3 className="text-xl font-bold mb-4 text-white">Progress Tracking</h3>
                                 <div style={{height: '300px'}}>
                                     <canvas ref={chartRef}></canvas>
                                 </div>
@@ -5316,12 +5349,18 @@ await API_CONFIG.request(endpoint, {
                 </div>
             );
         };
-        const Wearables = ({ user, showError, showSuccess }) => {
+       const Wearables = ({ user, showError, showSuccess }) => {
     const [connections, setConnections] = useState([]);
     const [wearableData, setWearableData] = useState([]);
     const [insights, setInsights] = useState(null);
     const [showManualEntry, setShowManualEntry] = useState(false);
     const [selectedMetric, setSelectedMetric] = useState('steps');
+    const [healthMetrics, setHealthMetrics] = useState({
+        heartRate: { current: 0, zones: [], trend: 'stable' },
+        sleep: { score: 0, duration: 0, deep: 0, rem: 0, light: 0, awake: 0 },
+        recovery: { score: 0, hrv: 0, restingHR: 0 },
+        activity: { steps: 0, activeMinutes: 0, calories: 0, distance: 0 }
+    });
     const [manualData, setManualData] = useState({
         date: new Date().toISOString().split('T')[0],
         steps: '',
@@ -5355,105 +5394,120 @@ await API_CONFIG.request(endpoint, {
         fetchConnections();
         fetchWearableData();
         fetchInsights();
+        fetchHealthMetrics();
     }, []);
     
-    // REPLACE the Wearables fetchConnections function (around line 4415) with this:
-
-const fetchConnections = async () => {
-    try {
-        const response = await API_CONFIG.request('/wearables/connections');
-        console.log('Wearables connections response:', response);
-        
-        // Handle multiple possible response formats
-        let connectionsData = [];
-        if (Array.isArray(response)) {
-            connectionsData = response;
-        } else if (response.connections && Array.isArray(response.connections)) {
-            connectionsData = response.connections;
-        } else if (response.data && Array.isArray(response.data)) {
-            connectionsData = response.data;
-        }
-        
-        setConnections(connectionsData);
-    } catch (error) {
-        console.error('Error fetching connections:', error);
-        // Don't show error - just set empty array
-        setConnections([]);
-    }
-};
-
-// REPLACE the fetchWearableData function with this:
-
-const fetchWearableData = async () => {
-    try {
-        const response = await API_CONFIG.request(`/wearables/user/${user._id}?days=30`);
-        console.log('Wearable data response:', response);
-        
-        // Handle multiple possible response formats
-        let wearableDataArray = [];
-        if (Array.isArray(response)) {
-            wearableDataArray = response;
-        } else if (response.data && Array.isArray(response.data)) {
-            wearableDataArray = response.data;
-        } else if (response.wearableData && Array.isArray(response.wearableData)) {
-            wearableDataArray = response.wearableData;
-        }
-        
-        setWearableData(wearableDataArray);
-    } catch (error) {
-        console.error('Error fetching wearable data:', error);
-        // Don't show error - just set empty array
-        setWearableData([]);
-    }
-};
-
-// REPLACE the fetchInsights function with this:
-
-const fetchInsights = async () => {
-    try {
-        const response = await API_CONFIG.request(`/wearables/insights/${user._id}?days=7`);
-        console.log('Insights response:', response);
-        
-        // Handle multiple possible response formats
-        let insightsData = null;
-        if (response.insights) {
-            insightsData = response.insights;
-        } else if (response.data) {
-            insightsData = response.data;
-        } else {
-            insightsData = response;
-        }
-        
-        setInsights(insightsData);
-    } catch (error) {
-        console.error('Error fetching insights:', error);
-        // Don't show error - just set null
-        setInsights(null);
-    }
-};
-    
-   const handleConnect = async (provider) => {
-    try {
-        const response = await fetch(`${API_CONFIG.baseURL}/wearables/connect/${provider}`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                'Content-Type': 'application/json'
+    const fetchConnections = async () => {
+        try {
+            const response = await API_CONFIG.request('/wearables/connections');
+            let connectionsData = [];
+            if (Array.isArray(response)) {
+                connectionsData = response;
+            } else if (response.connections && Array.isArray(response.connections)) {
+                connectionsData = response.connections;
+            } else if (response.data && Array.isArray(response.data)) {
+                connectionsData = response.data;
             }
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok && data.authUrl) {
-            // Redirect to the OAuth provider's authorization page
-            window.location.href = data.authUrl;
-        } else {
-            showError(data.error || 'Failed to initiate connection');
+            setConnections(connectionsData);
+        } catch (error) {
+            console.error('Error fetching connections:', error);
+            setConnections([]);
         }
-    } catch (error) {
-        showError('Failed to connect: ' + error.message);
-    }
-};
+    };
+    
+    const fetchWearableData = async () => {
+        try {
+            const response = await API_CONFIG.request(`/wearables/user/${user._id}?days=30`);
+            let wearableDataArray = [];
+            if (Array.isArray(response)) {
+                wearableDataArray = response;
+            } else if (response.data && Array.isArray(response.data)) {
+                wearableDataArray = response.data;
+            } else if (response.wearableData && Array.isArray(response.wearableData)) {
+                wearableDataArray = response.wearableData;
+            }
+            setWearableData(wearableDataArray);
+        } catch (error) {
+            console.error('Error fetching wearable data:', error);
+            setWearableData([]);
+        }
+    };
+    
+    const fetchInsights = async () => {
+        try {
+            const response = await API_CONFIG.request(`/wearables/insights/${user._id}?days=7`);
+            let insightsData = null;
+            if (response.insights) {
+                insightsData = response.insights;
+            } else if (response.data) {
+                insightsData = response.data;
+            } else {
+                insightsData = response;
+            }
+            setInsights(insightsData);
+        } catch (error) {
+            console.error('Error fetching insights:', error);
+            setInsights(null);
+        }
+    };
+    
+    const fetchHealthMetrics = async () => {
+        try {
+            const recent = await API_CONFIG.request(`/wearables/user/${user._id}?days=1`);
+            const recentData = Array.isArray(recent) ? recent[0] : (recent.data?.[0] || {});
+            
+            setHealthMetrics({
+                heartRate: {
+                    current: recentData.restingHeartRate || 0,
+                    zones: recentData.heartRateZones || [],
+                    trend: 'stable'
+                },
+                sleep: {
+                    score: recentData.sleepScore || 0,
+                    duration: recentData.sleepDuration || 0,
+                    deep: recentData.deepSleep || 0,
+                    rem: recentData.remSleep || 0,
+                    light: recentData.lightSleep || 0,
+                    awake: recentData.awakeTime || 0
+                },
+                recovery: {
+                    score: recentData.recoveryScore || 0,
+                    hrv: recentData.hrv || 0,
+                    restingHR: recentData.restingHeartRate || 0
+                },
+                activity: {
+                    steps: recentData.steps || 0,
+                    activeMinutes: recentData.activeMinutes || 0,
+                    calories: recentData.caloriesBurned || 0,
+                    distance: recentData.distance || 0
+                }
+            });
+        } catch (error) {
+            console.error('Error fetching health metrics:', error);
+        }
+    };
+    
+    const handleConnect = async (provider) => {
+        try {
+            const response = await fetch(`${API_CONFIG.baseURL}/wearables/connect/${provider}`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok && data.authUrl) {
+                window.location.href = data.authUrl;
+            } else {
+                showError(data.error || 'Failed to initiate connection');
+            }
+        } catch (error) {
+            showError('Failed to connect: ' + error.message);
+        }
+    };
     
     const handleDisconnect = async (provider) => {
         if (confirm(`Disconnect ${provider}?`)) {
@@ -5480,6 +5534,7 @@ const fetchInsights = async () => {
             setShowManualEntry(false);
             fetchWearableData();
             fetchInsights();
+            fetchHealthMetrics();
         } catch (error) {
             showError(error.message);
         }
@@ -5489,7 +5544,6 @@ const fetchInsights = async () => {
         return connections.some(c => c.provider === providerId && c.connected);
     };
     
-    // SAFE GETTER FUNCTIONS WITH NULL CHECKS
     const safeGet = (obj, path, defaultValue = 0) => {
         try {
             const value = path.split('.').reduce((acc, part) => acc && acc[part], obj);
@@ -5499,8 +5553,159 @@ const fetchInsights = async () => {
         }
     };
     
+    const RecoveryRing = ({ score, label }) => {
+        const percentage = Math.min(score, 100);
+        const strokeDasharray = 2 * Math.PI * 45;
+        const strokeDashoffset = strokeDasharray - (strokeDasharray * percentage) / 100;
+        
+        return (
+            <div className="relative w-32 h-32">
+                <svg className="transform -rotate-90 w-32 h-32">
+                    <circle cx="64" cy="64" r="45" stroke="#374151" strokeWidth="8" fill="none" />
+                    <circle 
+                        cx="64" cy="64" r="45" 
+                        stroke={percentage >= 70 ? '#10b981' : percentage >= 40 ? '#f59e0b' : '#ef4444'}
+                        strokeWidth="8" 
+                        fill="none"
+                        strokeDasharray={strokeDasharray}
+                        strokeDashoffset={strokeDashoffset}
+                        className="transition-all duration-1000"
+                    />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-2xl font-bold text-white">{Math.round(score)}</span>
+                    <span className="text-xs text-gray-400">{label}</span>
+                </div>
+            </div>
+        );
+    };
+    
     return (
         <div className="space-y-6">
+            {/* ULTIMATE HEALTH METRICS DASHBOARD */}
+            <div className="dark-card p-6">
+                <h2 className="text-2xl font-bold mb-6 text-white">Health Metrics Dashboard</h2>
+                
+                {/* Recovery & Sleep Rings */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <div className="bg-gray-800 rounded-lg p-6 flex flex-col items-center">
+                        <RecoveryRing score={healthMetrics.recovery.score} label="Recovery" />
+                        <div className="mt-4 text-center">
+                            <p className="text-sm text-gray-400">HRV: {healthMetrics.recovery.hrv} ms</p>
+                            <p className="text-sm text-gray-400">Resting HR: {healthMetrics.recovery.restingHR} bpm</p>
+                        </div>
+                    </div>
+                    
+                    <div className="bg-gray-800 rounded-lg p-6 flex flex-col items-center">
+                        <RecoveryRing score={healthMetrics.sleep.score} label="Sleep Score" />
+                        <div className="mt-4 text-center">
+                            <p className="text-sm text-gray-400">
+                                Duration: {Math.floor(healthMetrics.sleep.duration / 60)}h {healthMetrics.sleep.duration % 60}m
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div className="bg-gray-800 rounded-lg p-6">
+                        <h4 className="text-sm font-semibold text-gray-300 mb-3">Sleep Architecture</h4>
+                        <div className="space-y-2">
+                            <div>
+                                <div className="flex justify-between text-xs mb-1">
+                                    <span className="text-gray-400">Deep</span>
+                                    <span className="text-purple-400">{healthMetrics.sleep.deep} min</span>
+                                </div>
+                                <div className="h-2 bg-gray-700 rounded">
+                                    <div 
+                                        className="h-full bg-purple-500 rounded"
+                                        style={{width: `${(healthMetrics.sleep.deep / healthMetrics.sleep.duration * 100) || 0}%`}}
+                                    ></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div className="flex justify-between text-xs mb-1">
+                                    <span className="text-gray-400">REM</span>
+                                    <span className="text-blue-400">{healthMetrics.sleep.rem} min</span>
+                                </div>
+                                <div className="h-2 bg-gray-700 rounded">
+                                    <div 
+                                        className="h-full bg-blue-500 rounded"
+                                        style={{width: `${(healthMetrics.sleep.rem / healthMetrics.sleep.duration * 100) || 0}%`}}
+                                    ></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div className="flex justify-between text-xs mb-1">
+                                    <span className="text-gray-400">Light</span>
+                                    <span className="text-green-400">{healthMetrics.sleep.light} min</span>
+                                </div>
+                                <div className="h-2 bg-gray-700 rounded">
+                                    <div 
+                                        className="h-full bg-green-500 rounded"
+                                        style={{width: `${(healthMetrics.sleep.light / healthMetrics.sleep.duration * 100) || 0}%`}}
+                                    ></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                {/* Activity Metrics */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div className="bg-gradient-to-br from-blue-900 to-blue-800 rounded-lg p-4">
+                        <div className="text-3xl mb-2">👣</div>
+                        <div className="text-2xl font-bold text-white">{healthMetrics.activity.steps.toLocaleString()}</div>
+                        <div className="text-xs text-gray-300">Steps Today</div>
+                    </div>
+                    
+                    <div className="bg-gradient-to-br from-orange-900 to-orange-800 rounded-lg p-4">
+                        <div className="text-3xl mb-2">🔥</div>
+                        <div className="text-2xl font-bold text-white">{healthMetrics.activity.calories}</div>
+                        <div className="text-xs text-gray-300">Calories Burned</div>
+                    </div>
+                    
+                    <div className="bg-gradient-to-br from-green-900 to-green-800 rounded-lg p-4">
+                        <div className="text-3xl mb-2">⏱️</div>
+                        <div className="text-2xl font-bold text-white">{healthMetrics.activity.activeMinutes}</div>
+                        <div className="text-xs text-gray-300">Active Minutes</div>
+                    </div>
+                    
+                    <div className="bg-gradient-to-br from-purple-900 to-purple-800 rounded-lg p-4">
+                        <div className="text-3xl mb-2">📏</div>
+                        <div className="text-2xl font-bold text-white">{healthMetrics.activity.distance.toFixed(1)}</div>
+                        <div className="text-xs text-gray-300">Miles</div>
+                    </div>
+                </div>
+                
+                {/* Heart Rate Zones */}
+                {healthMetrics.heartRate.zones.length > 0 && (
+                    <div className="bg-gray-800 rounded-lg p-4 mb-6">
+                        <h4 className="text-sm font-semibold text-gray-300 mb-3">Heart Rate Zones Today</h4>
+                        <div className="space-y-2">
+                            {healthMetrics.heartRate.zones.map((zone, i) => (
+                                <div key={i}>
+                                    <div className="flex justify-between text-xs mb-1">
+                                        <span className="text-gray-400">{zone.name}</span>
+                                        <span className="text-gray-300">{zone.minutes} min</span>
+                                    </div>
+                                    <div className="h-2 bg-gray-700 rounded overflow-hidden">
+                                        <div 
+                                            className={`h-full ${
+                                                i === 0 ? 'bg-gray-500' :
+                                                i === 1 ? 'bg-blue-500' :
+                                                i === 2 ? 'bg-green-500' :
+                                                i === 3 ? 'bg-yellow-500' :
+                                                'bg-red-500'
+                                            }`}
+                                            style={{width: `${zone.percentage}%`}}
+                                        ></div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+            
+            {/* Device Connections */}
             <div className="dark-card p-6">
                 <h2 className="text-2xl font-bold mb-4 text-white">Wearable Devices</h2>
                 
@@ -5508,8 +5713,8 @@ const fetchInsights = async () => {
                     {providers.map(provider => {
                         const connected = isConnected(provider.id);
                         return (
-                            <div key={provider.id} className={`p-4 rounded-lg border-2 ${
-                                connected ? 'border-green-500 bg-green-900 bg-opacity-20' : 'border-gray-600 bg-gray-800'
+                            <div key={provider.id} className={`p-4 rounded-lg border-2 transition ${
+                                connected ? 'border-green-500 bg-green-900 bg-opacity-20' : 'border-gray-600 hover:border-gray-500 bg-gray-800'
                             }`}>
                                 <div className="text-center">
                                     <div className="text-4xl mb-2">{provider.icon}</div>
@@ -5544,7 +5749,7 @@ const fetchInsights = async () => {
                 </button>
             </div>
             
-            {/* FIXED INSIGHTS SECTION WITH PROPER NULL CHECKS */}
+            {/* Insights */}
             {insights && insights.averages && (
                 <div className="dark-card p-6">
                     <h3 className="text-xl font-bold mb-4 text-white">7-Day Insights</h3>
@@ -5569,15 +5774,6 @@ const fetchInsights = async () => {
                             <div className="text-sm text-gray-400">Avg Sleep</div>
                             <div className="text-2xl font-bold text-white">
                                 {Math.floor(safeGet(insights, 'averages.sleep', 0) / 60)}h {safeGet(insights, 'averages.sleep', 0) % 60}m
-                            </div>
-                            <div className={`text-sm ${
-                                safeGet(insights, 'trends.sleep') === 'improving' ? 'text-green-400' :
-                                safeGet(insights, 'trends.sleep') === 'declining' ? 'text-red-400' : 'text-gray-400'
-                            }`}>
-                                {safeGet(insights, 'trends.sleep') === 'improving' && '↗️ Improving'}
-                                {safeGet(insights, 'trends.sleep') === 'declining' && '↘️ Declining'}
-                                {safeGet(insights, 'trends.sleep') === 'stable' && '→ Stable'}
-                                {!insights.trends?.sleep && '—'}
                             </div>
                         </div>
                         
@@ -5622,7 +5818,6 @@ const fetchInsights = async () => {
                 </div>
             )}
             
-            {/* Show message when no insights available */}
             {!insights && (
                 <div className="dark-card p-6 text-center">
                     <p className="text-gray-400">
@@ -5631,6 +5826,7 @@ const fetchInsights = async () => {
                 </div>
             )}
             
+            {/* Manual Entry Modal */}
             {showManualEntry && (
                 <div className="modal-overlay" onClick={() => setShowManualEntry(false)}>
                     <div className="modal-content max-w-2xl" onClick={(e) => e.stopPropagation()}>
