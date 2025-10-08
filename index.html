@@ -8002,6 +8002,7 @@ const Tests = ({ user, showError, showSuccess }) => {
     );
 };
      
+        
         // Users Component (unchanged)
         const Users = ({ user, showError, showSuccess }) => {
              console.log('Users component rendered!', user);  // ADD THIS LINE
@@ -8018,69 +8019,65 @@ const Tests = ({ user, showError, showSuccess }) => {
             useEffect(() => {
                 fetchUsers();
             }, []);
-   const fetchUsers = async () => {
+            
+            // ADD THIS:
+const fetchUsers = async () => {
     try {
-        const response = await API_CONFIG.request('/users');
-        console.log('Users response:', response);
+        const data = await API_CONFIG.request('/users');
+        setUsers(data);  // data is already the users array
         
-        // Handle multiple possible response formats
-        let usersData = [];
-        if (Array.isArray(response)) {
-            usersData = response;
-        } else if (response.users && Array.isArray(response.users)) {
-            usersData = response.users;
-        } else if (response.data && Array.isArray(response.data)) {
-            usersData = response.data;
-        }
+        // Update ClientManager with client users
+        const clientUsers = data.filter(u => u.roles && u.roles.includes('client'));
+        ClientManager.clients = clientUsers;
+        ClientManager.loaded = true;
+        console.log(`Updated ClientManager with ${clientUsers.length} clients from ${data.length} users`);
         
-        setUsers(usersData);
+        // Force update all client dropdowns by resetting the cache
+        window.ClientManager = ClientManager;
+        
     } catch (error) {
         console.error('Error fetching users:', error);
-        showError('Failed to load users');
         setUsers([]);
     }
 };
             
-           const handleSubmit = async (e) => {
+            const handleSubmit = async (e) => {
     e.preventDefault();
-    try {
-        let newUser;
-        if (editingUser) {
-            const response = await API_CONFIG.request(`/users/${editingUser._id}`, {
-                method: 'PUT',
-                body: JSON.stringify(formData)
-            });
-            showSuccess('User updated successfully');
-            newUser = response.user || response.data || response;
-        } else {
-            const response = await API_CONFIG.request('/auth/register', {
-                method: 'POST',
-                body: JSON.stringify(formData)
-            });
-            showSuccess('User created successfully');
-            newUser = response.user || response.data || response;
-            
-            // Immediately add the new user to the list
-            if (newUser && newUser._id) {
-                setUsers(prevUsers => [...prevUsers, newUser]);
-            }
-        }
-        
-        // Still fetch to ensure sync with backend
-        await fetchUsers();
-        
-        setShowForm(false);
-        setEditingUser(null);
-        setFormData({
-            name: '',
-            email: '',
-            password: '',
-            roles: []
-        });
-    } catch (error) {
-        showError(error.message);
+    
+    // Validate password match for new users
+    if (!editingUser && formData.password !== formData.confirmPassword) {
+        showError('Passwords do not match');
+        return;
     }
-};
+    
+    try {
+        if (editingUser) {
+            await API_CONFIG.request(`/users/${editingUser._id}`, {
+                            method: 'PUT',
+                            body: JSON.stringify(formData)
+                        });
+                        showSuccess('User updated successfully');
+                    } else {
+                        await API_CONFIG.request('/auth/register', {
+                            method: 'POST',
+                            body: JSON.stringify(formData)
+                        });
+                        showSuccess('User created successfully');
+                    }
+                    setShowForm(false);
+                    setEditingUser(null);
+                    fetchUsers();
+                    setFormData({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    roles: []
+});
+                } catch (error) {
+                    showError(error.message);
+                }
+            };
             
             const handleEdit = (user) => {
                 setEditingUser(user);
@@ -8109,18 +8106,31 @@ const Tests = ({ user, showError, showSuccess }) => {
             
             return (
                 <div className="space-y-6">
-                    <div className="dark-card p-6">
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-2xl font-bold text-white">User Management</h2>
-                            <button onClick={() => setShowForm(true)} className="coastal-button">
-                                <i className="fas fa-plus mr-2"></i>
-                                Add User
-                            </button>
-                        </div>
-                    </div>
+                    <div className="coastal-card p-6">
+    <div className="flex justify-between items-center mb-4">
+        <h2 className="text-2xl font-bold">User Management</h2>
+        <div className="flex gap-2">
+            <button 
+    onClick={async () => {
+        await fetchUsers();
+        const clientCount = ClientManager.clients.length;
+        showSuccess(`Refreshed: ${users.length} users loaded, ${clientCount} are clients`);
+    }} 
+    className="coastal-button bg-gray-500"
+>
+                <i className="fas fa-sync-alt mr-2"></i>
+                Refresh
+            </button>
+            <button onClick={() => setShowForm(true)} className="coastal-button">
+                <i className="fas fa-plus mr-2"></i>
+                Add User
+            </button>
+        </div>
+    </div>
+</div>
                     
                     {showForm && (
-                        <div className="dark-card p-6">
+                        <div className="coastal-card p-6">
                             <h3 className="text-xl font-semibold mb-4">
                                 {editingUser ? 'Edit User' : 'Create User'}
                             </h3>
@@ -8149,29 +8159,28 @@ const Tests = ({ user, showError, showSuccess }) => {
                                 </div>
                                 
                                 {!editingUser && (
-    <div className="mb-4">
-        <label className="block text-sm font-medium mb-2">Password</label>
-        <input
-            type="password"
-            className="coastal-input"
-            value={formData.password}
-            onChange={(e) => setFormData({...formData, password: e.target.value})}
-            required
-        />
-    </div>
-)}
-
-{editingUser && (
-    <div className="mb-4">
-        <label className="block text-sm font-medium mb-2">New Password (optional - leave blank to keep current)</label>
-        <input
-            type="password"
-            className="coastal-input"
-            value={formData.password}
-            onChange={(e) => setFormData({...formData, password: e.target.value})}
-            placeholder="Leave blank to keep current password"
-        />
-    </div>
+    <>
+        <div className="mb-4">
+            <label className="block text-sm font-medium mb-2">Password</label>
+            <input
+                type="password"
+                className="coastal-input"
+                value={formData.password}
+                onChange={(e) => setFormData({...formData, password: e.target.value})}
+                required
+            />
+        </div>
+        <div className="mb-4">
+            <label className="block text-sm font-medium mb-2">Confirm Password</label>
+            <input
+                type="password"
+                className="coastal-input"
+                value={formData.confirmPassword || ''}
+                onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
+                required
+            />
+        </div>
+    </>
 )}
                                 
                                 <div className="mb-4">
@@ -8219,7 +8228,7 @@ const Tests = ({ user, showError, showSuccess }) => {
                                                 roles: []
                                             });
                                         }} 
-                                        className="coastal-button bg-gray-600 hover:bg-gray-700"
+                                        className="coastal-button bg-gray-500"
                                     >
                                         Cancel
                                     </button>
@@ -8230,11 +8239,11 @@ const Tests = ({ user, showError, showSuccess }) => {
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {users.map(u => (
-                            <div key={u._id} className="dark-card p-4">
+                            <div key={u._id} className="coastal-card p-4">
                                 <div className="flex justify-between items-start mb-2">
                                     <div>
                                         <h3 className="font-semibold">{u.name}</h3>
-                                        <p className="text-sm text-gray-400">{u.email}</p>
+                                        <p className="text-sm text-gray-600">{u.email}</p>
                                     </div>
                                     <div className="flex gap-1">
                                         <button
