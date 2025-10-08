@@ -684,15 +684,47 @@ const [success, setSuccess] = useState(null);
             }, []);
             
             const fetchProfile = async () => {
-                try {
-                    const data = await API_CONFIG.request('/users/profile');
-                    setUser(data.data);
-                } catch (error) {
-                    localStorage.removeItem('token');
-                } finally {
-                    setLoading(false);
-                }
-            };
+    try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            setLoading(false);
+            return;
+        }
+        
+        // Direct fetch with explicit headers
+        const response = await fetch(`${API_CONFIG.baseURL}/users/profile`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch profile');
+        }
+        
+        const data = await response.json();
+        
+        // Handle multiple response formats
+        let userData = null;
+        if (data.user) userData = data.user;
+        else if (data.data) userData = data.data;
+        else userData = data;
+        
+        if (userData && userData._id) {
+            setUser(userData);
+        } else {
+            throw new Error('Invalid user data');
+        }
+    } catch (error) {
+        console.error('Profile fetch error:', error);
+        localStorage.removeItem('token');
+        setUser(null);
+    } finally {
+        setLoading(false);
+    }
+};
             
             const handleLogout = () => {
                 localStorage.removeItem('token');
@@ -985,13 +1017,31 @@ const [resetEmail, setResetEmail] = useState('');
         if (response.ok) {
             // Success (200-299)
             if (data.token && data.user) {
-                localStorage.setItem('token', data.token);
-                localStorage.setItem('user', JSON.stringify(data.user));
-                onLogin(data.user);
+                console.log('Login successful, data:', data);
+                
+                // Extract token and user from various response formats
+                const token = data.token || data.access_token;
+                let user = data.user || data.data;
+                
+                // If user is still nested, try to extract it
+                if (user && user.user) {
+                    user = user.user;
+                }
+                
+                if (token && user && user._id) {
+                    localStorage.setItem('token', token);
+                    localStorage.setItem('user', JSON.stringify(user));
+                    
+                    // Force immediate login
+                    onLogin(user);
+                    
+                    console.log('✅ Login complete - Token saved:', token.substring(0, 20) + '...');
+                    console.log('✅ User saved:', user.name, user._id);
+                } else {
+                    console.error('Missing data:', { hasToken: !!token, hasUser: !!user });
+                    throw new Error('Invalid server response - missing token or user data');
+                }
             } else {
-                // Success but missing expected data
-                throw new Error('Invalid server response format');
-            }
         } else {
             // Error responses (400+)
             const errorMessage = data.message || data.error || `Server error (${response.status})`;
@@ -1260,7 +1310,7 @@ const [resetEmail, setResetEmail] = useState('');
                                 name="resetCode"
                                 className="coastal-input text-center text-2xl tracking-wider"
                                 placeholder="000000"
-                                maxLength="6"
+                                maxLength="3"
                                 pattern="[0-9]{6}"
                                 required
                             />
