@@ -982,7 +982,7 @@ const [success, setSuccess] = useState(null);
             const [isResetting, setIsResetting] = useState(false);
 const [resetEmail, setResetEmail] = useState('');
             
-            const handleSubmit = async (e) => {
+              const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     
@@ -1017,30 +1017,13 @@ const [resetEmail, setResetEmail] = useState('');
         if (response.ok) {
             // Success (200-299)
             if (data.token && data.user) {
-                console.log('Login successful, data:', data);
-                
-                // Extract token and user from various response formats
-                const token = data.token || data.access_token;
-                let user = data.user || data.data;
-                
-                // If user is still nested, try to extract it
-                if (user && user.user) {
-                    user = user.user;
-                }
-                
-                if (token && user && user._id) {
-                    localStorage.setItem('token', token);
-                    localStorage.setItem('user', JSON.stringify(user));
-                    
-                    // Force immediate login
-                    onLogin(user);
-                    
-                    console.log('✅ Login complete - Token saved:', token.substring(0, 20) + '...');
-                    console.log('✅ User saved:', user.name, user._id);
-                } else {
-                    console.error('Missing data:', { hasToken: !!token, hasUser: !!user });
-                    throw new Error('Invalid server response - missing token or user data');
-                }
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('user', JSON.stringify(data.user));
+                onLogin(data.user);
+            } else {
+                // Success but missing expected data
+                throw new Error('Invalid server response format');
+            }
         } else {
             // Error responses (400+)
             const errorMessage = data.message || data.error || `Server error (${response.status})`;
@@ -1067,6 +1050,44 @@ const [resetEmail, setResetEmail] = useState('');
         setLoading(false);
     }
 };
+      const handlePasswordReset = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    const resetCode = e.target.resetCode.value;
+    const newPassword = e.target.newPassword.value;
+    const confirmPassword = e.target.confirmPassword.value;
+    
+    if (newPassword !== confirmPassword) {
+        showError('Passwords do not match');
+        setLoading(false);
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_CONFIG.baseURL}/auth/reset-password/${resetCode}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ password: newPassword })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showError('Password reset successful! Please login with your new password.');
+            setIsResetting(false);
+            setIsSignup(false);
+        } else {
+            showError(data.message || 'Invalid or expired reset code');
+        }
+    } catch (error) {
+        showError('Failed to reset password. Please try again.');
+    } finally {
+        setLoading(false);
+    }
+};      
       const handlePasswordReset = async (e) => {
     e.preventDefault();
     setLoading(true);
