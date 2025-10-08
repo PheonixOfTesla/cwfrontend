@@ -5435,7 +5435,7 @@ const fetchInsights = async () => {
    const handleConnect = async (provider) => {
     try {
         const response = await fetch(`${API_CONFIG.baseURL}/wearables/connect/${provider}`, {
-            method: 'GET',
+            method: 'POST',
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('token')}`,
                 'Content-Type': 'application/json'
