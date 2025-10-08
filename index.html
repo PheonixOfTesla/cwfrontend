@@ -1866,500 +1866,339 @@ submitData = {
         </div>
     );
 };
-       
-import { Activity, Target, Calendar, TrendingUp, AlertCircle, Users, Award, Clock } from 'lucide-react';
-
-const UltimateDashboard = ({ user, API_CONFIG }) => {
-  const [loading, setLoading] = useState(true);
-  const [dashboardData, setDashboardData] = useState({
-    quickStats: {
-      activeClients: 0,
-      goalsCompletedThisWeek: 0,
-      workoutsLoggedToday: 0,
-      avgClientSuccessScore: 0
-    },
-    actionItems: [],
-    clientHealthZones: { green: 0, yellow: 0, red: 0 },
-    recentActivity: [],
-    atRiskClients: []
-  });
-
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true);
-
-      // Fetch based on user role
-      if (user.roles.includes('client')) {
-        await fetchClientDashboard();
-      } else {
-        await fetchSpecialistDashboard();
-      }
-
-      setLoading(false);
-    } catch (error) {
-      console.error('Dashboard fetch error:', error);
-      setLoading(false);
-    }
-  };
-
-  const fetchClientDashboard = async () => {
-    try {
-      // Fetch client's personal data
-      const [goals, workouts, wearables] = await Promise.all([
-        API_CONFIG.request(`/goals/client/${user._id}`),
-        API_CONFIG.request(`/workouts/client/${user._id}`),
-        API_CONFIG.request(`/wearables/user/${user._id}`).catch(() => ({ data: [] }))
-      ]);
-
-      const goalsData = Array.isArray(goals) ? goals : goals.data || [];
-      const workoutsData = Array.isArray(workouts) ? workouts : workouts.data || [];
-      const wearableData = Array.isArray(wearables) ? wearables : wearables.data || [];
-
-      // Calculate client stats
-      const completedGoals = goalsData.filter(g => g.completed).length;
-      const todayWorkouts = workoutsData.filter(w => {
-        const workoutDate = new Date(w.scheduledDate || w.createdAt);
-        const today = new Date();
-        return workoutDate.toDateString() === today.toDateString();
-      }).length;
-
-      // Recent activity
-      const recentActivity = [
-        ...goalsData.slice(0, 3).map(g => ({
-          type: 'goal',
-          icon: '🎯',
-          text: `${g.completed ? 'Completed' : 'Working on'} "${g.name}"`,
-          time: new Date(g.updatedAt || g.createdAt)
-        })),
-        ...workoutsData.slice(0, 3).map(w => ({
-          type: 'workout',
-          icon: '💪',
-          text: `${w.completed ? 'Completed' : 'Scheduled'} "${w.name}"`,
-          time: new Date(w.completedAt || w.scheduledDate || w.createdAt)
-        }))
-      ].sort((a, b) => b.time - a.time).slice(0, 5);
-
-      setDashboardData({
-        quickStats: {
-          activeGoals: goalsData.filter(g => !g.completed).length,
-          completedGoals,
-          workoutsThisWeek: workoutsData.filter(w => {
-            const date = new Date(w.scheduledDate || w.createdAt);
-            const weekAgo = new Date();
-            weekAgo.setDate(weekAgo.getDate() - 7);
-            return date >= weekAgo;
-          }).length,
-          wearablesSynced: wearableData.length > 0
-        },
-        recentActivity,
-        wearableData: wearableData.slice(0, 7),
-        goals: goalsData.slice(0, 5)
-      });
-    } catch (error) {
-      console.error('Client dashboard error:', error);
-    }
-  };
-
-  const fetchSpecialistDashboard = async () => {
-    try {
-      // Fetch all users to get clients
-      const usersResponse = await API_CONFIG.request('/users');
-      const allUsers = Array.isArray(usersResponse) ? usersResponse : usersResponse.data || [];
-      
-      // Get clients only
-      const clients = allUsers.filter(u => u.roles && u.roles.includes('client'));
-
-      // Fetch goals for all clients
-      const goalsPromises = clients.map(client =>
-        API_CONFIG.request(`/goals/client/${client._id}`)
-          .then(data => ({ clientId: client._id, goals: Array.isArray(data) ? data : data.data || [] }))
-          .catch(() => ({ clientId: client._id, goals: [] }))
-      );
-
-      const clientGoals = await Promise.all(goalsPromises);
-
-      // Calculate stats
-      const allGoals = clientGoals.flatMap(cg => cg.goals);
-      const completedThisWeek = allGoals.filter(g => {
-        if (!g.completedDate) return false;
-        const weekAgo = new Date();
-        weekAgo.setDate(weekAgo.getDate() - 7);
-        return new Date(g.completedDate) >= weekAgo;
-      }).length;
-
-      // Client health zones (based on goal completion rate)
-      let green = 0, yellow = 0, red = 0;
-      
-      clientGoals.forEach(({ goals }) => {
-        if (goals.length === 0) {
-          yellow++;
-          return;
-        }
-        const completionRate = (goals.filter(g => g.completed).length / goals.length) * 100;
-        if (completionRate >= 80) green++;
-        else if (completionRate >= 60) yellow++;
-        else red++;
-      });
-
-      // At-risk clients (low completion rate)
-      const atRiskClients = clientGoals
-        .filter(({ goals }) => {
-          if (goals.length === 0) return false;
-          const completionRate = (goals.filter(g => g.completed).length / goals.length) * 100;
-          return completionRate < 60;
-        })
-        .map(({ clientId }) => {
-          const client = clients.find(c => c._id === clientId);
-          return {
-            name: client?.name || 'Unknown',
-            id: clientId,
-            reason: 'Low goal completion rate'
-          };
-        })
-        .slice(0, 3);
-
-      // Action items
-      const actionItems = [
-        { text: `${atRiskClients.length} clients need check-ins`, priority: 'high', icon: '⚠️' },
-        { text: `${clients.length} total active clients`, priority: 'normal', icon: '👥' },
-        { text: `${completedThisWeek} goals completed this week`, priority: 'low', icon: '🎉' }
-      ];
-
-      // Recent activity
-      const recentActivity = allGoals
-        .filter(g => g.completedDate || g.updatedAt)
-        .sort((a, b) => new Date(b.completedDate || b.updatedAt) - new Date(a.completedDate || a.updatedAt))
-        .slice(0, 10)
-        .map(g => {
-          const client = clients.find(c => c._id === g.clientId);
-          return {
-            type: g.completed ? 'goal_completed' : 'goal_updated',
-            icon: g.completed ? '🎉' : '📊',
-            text: `${client?.name || 'Client'} ${g.completed ? 'completed' : 'updated'} "${g.name}"`,
-            time: new Date(g.completedDate || g.updatedAt)
-          };
-        });
-
-      setDashboardData({
-        quickStats: {
-          activeClients: clients.length,
-          goalsCompletedThisWeek: completedThisWeek,
-          workoutsLoggedToday: 0,
-          avgClientSuccessScore: green > 0 ? Math.round((green / clients.length) * 100) : 0
-        },
-        actionItems,
-        clientHealthZones: { green, yellow, red },
-        recentActivity,
-        atRiskClients
-      });
-    } catch (error) {
-      console.error('Specialist dashboard error:', error);
-    }
-  };
-
-  const getTimeAgo = (date) => {
-    const seconds = Math.floor((new Date() - new Date(date)) / 1000);
-    if (seconds < 60) return 'Just now';
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-    return `${Math.floor(seconds / 86400)}d ago`;
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-      </div>
+        // Enhanced Dashboard Component
+        const Dashboard = ({ user, isClient, selectedClientId, onClientChange }) => {
+    const [selectedClient, setSelectedClient] = useState(
+        selectedClientId || (isClient ? user._id : null)
     );
-  }
-
-  // CLIENT DASHBOARD VIEW
-  if (user.roles.includes('client')) {
-    return (
-      <div className="space-y-6">
-        {/* Header */}
-        <div>
-          <h2 className="text-2xl font-bold text-white mb-2">Your Dashboard</h2>
-          <p className="text-gray-400">Track your fitness journey</p>
-        </div>
-
-        {/* Quick Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <StatCard
-            icon={<Target className="w-6 h-6" />}
-            label="Active Goals"
-            value={dashboardData.quickStats?.activeGoals || 0}
-            color="blue"
-          />
-          <StatCard
-            icon={<Award className="w-6 h-6" />}
-            label="Completed"
-            value={dashboardData.quickStats?.completedGoals || 0}
-            color="green"
-          />
-          <StatCard
-            icon={<Activity className="w-6 h-6" />}
-            label="Workouts This Week"
-            value={dashboardData.quickStats?.workoutsThisWeek || 0}
-            color="purple"
-          />
-          <StatCard
-            icon={<TrendingUp className="w-6 h-6" />}
-            label="Wearables"
-            value={dashboardData.quickStats?.wearablesSynced ? 'Synced' : 'Not Connected'}
-            color="orange"
-            isText
-          />
-        </div>
-
-        {/* Two Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Active Goals */}
-          <div className="bg-gray-800 rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-              <Target className="w-5 h-5 text-blue-400" />
-              Active Goals
-            </h3>
-            <div className="space-y-3">
-              {dashboardData.goals && dashboardData.goals.length > 0 ? (
-                dashboardData.goals.map((goal, idx) => (
-                  <div key={idx} className="bg-gray-700 rounded p-3">
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="text-white font-medium">{goal.name}</span>
-                      <span className="text-sm text-gray-400">
-                        {goal.current}/{goal.target}
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-600 rounded-full h-2">
-                      <div
-                        className="bg-blue-500 h-2 rounded-full transition-all"
-                        style={{ width: `${Math.min((goal.current / goal.target) * 100, 100)}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-gray-400 text-center py-4">No active goals yet</p>
-              )}
-            </div>
-          </div>
-
-          {/* Recent Activity */}
-          <div className="bg-gray-800 rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-              <Clock className="w-5 h-5 text-green-400" />
-              Recent Activity
-            </h3>
-            <div className="space-y-3">
-              {dashboardData.recentActivity && dashboardData.recentActivity.length > 0 ? (
-                dashboardData.recentActivity.map((activity, idx) => (
-                  <div key={idx} className="flex items-start gap-3 p-2 hover:bg-gray-700 rounded">
-                    <span className="text-2xl">{activity.icon}</span>
-                    <div className="flex-1">
-                      <p className="text-white text-sm">{activity.text}</p>
-                      <p className="text-gray-400 text-xs">{getTimeAgo(activity.time)}</p>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-gray-400 text-center py-4">No recent activity</p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Wearable Data Preview */}
-        {dashboardData.wearableData && dashboardData.wearableData.length > 0 && (
-          <div className="bg-gray-800 rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Last 7 Days Activity</h3>
-            <div className="grid grid-cols-7 gap-2">
-              {dashboardData.wearableData.map((day, idx) => (
-                <div key={idx} className="text-center">
-                  <div className="bg-gray-700 rounded p-2">
-                    <p className="text-xs text-gray-400 mb-1">
-                      {new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' })}
-                    </p>
-                    <p className="text-white font-bold">{(day.steps || 0).toLocaleString()}</p>
-                    <p className="text-xs text-gray-400">steps</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // SPECIALIST/ADMIN DASHBOARD VIEW
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold text-white mb-2">Command Center</h2>
-        <p className="text-gray-400">Overview of all clients and activities</p>
-      </div>
-
-      {/* 4-Quadrant Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* TOP LEFT - Quick Stats */}
-        <div className="bg-gray-800 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-blue-400" />
-            Quick Stats
-          </h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-gray-700 rounded p-4">
-              <Users className="w-8 h-8 text-blue-400 mb-2" />
-              <p className="text-3xl font-bold text-white">{dashboardData.quickStats.activeClients}</p>
-              <p className="text-sm text-gray-400">Active Clients</p>
-            </div>
-            <div className="bg-gray-700 rounded p-4">
-              <Award className="w-8 h-8 text-green-400 mb-2" />
-              <p className="text-3xl font-bold text-white">{dashboardData.quickStats.goalsCompletedThisWeek}</p>
-              <p className="text-sm text-gray-400">Goals This Week</p>
-            </div>
-            <div className="bg-gray-700 rounded p-4">
-              <Activity className="w-8 h-8 text-purple-400 mb-2" />
-              <p className="text-3xl font-bold text-white">{dashboardData.quickStats.workoutsLoggedToday}</p>
-              <p className="text-sm text-gray-400">Workouts Today</p>
-            </div>
-            <div className="bg-gray-700 rounded p-4">
-              <Target className="w-8 h-8 text-orange-400 mb-2" />
-              <p className="text-3xl font-bold text-white">{dashboardData.quickStats.avgClientSuccessScore}</p>
-              <p className="text-sm text-gray-400">Avg Success %</p>
-            </div>
-          </div>
-        </div>
-
-        {/* TOP RIGHT - Action Items */}
-        <div className="bg-gray-800 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <AlertCircle className="w-5 h-5 text-yellow-400" />
-            Today's Actions
-          </h3>
-          <div className="space-y-3">
-            {dashboardData.actionItems.length > 0 ? (
-              dashboardData.actionItems.map((item, idx) => (
-                <div
-                  key={idx}
-                  className={`flex items-center gap-3 p-3 rounded ${
-                    item.priority === 'high'
-                      ? 'bg-red-900/20 border border-red-800'
-                      : item.priority === 'normal'
-                      ? 'bg-blue-900/20 border border-blue-800'
-                      : 'bg-gray-700'
-                  }`}
-                >
-                  <span className="text-2xl">{item.icon}</span>
-                  <span className="text-white flex-1">{item.text}</span>
-                </div>
-              ))
-            ) : (
-              <p className="text-gray-400 text-center py-8">All caught up! 🎉</p>
-            )}
-          </div>
-        </div>
-
-        {/* BOTTOM LEFT - Client Health Zones */}
-        <div className="bg-gray-800 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-white mb-4">Client Health Zones</h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-4 h-4 rounded-full bg-green-500"></div>
-                <span className="text-white">Excellent (80-100%)</span>
-              </div>
-              <span className="text-2xl font-bold text-green-400">
-                {dashboardData.clientHealthZones.green}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-4 h-4 rounded-full bg-yellow-500"></div>
-                <span className="text-white">Good (60-79%)</span>
-              </div>
-              <span className="text-2xl font-bold text-yellow-400">
-                {dashboardData.clientHealthZones.yellow}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-4 h-4 rounded-full bg-red-500"></div>
-                <span className="text-white">Needs Attention (&lt;60%)</span>
-              </div>
-              <span className="text-2xl font-bold text-red-400">
-                {dashboardData.clientHealthZones.red}
-              </span>
-            </div>
-
-            {dashboardData.atRiskClients.length > 0 && (
-              <div className="mt-6 pt-6 border-t border-gray-700">
-                <p className="text-sm text-gray-400 mb-3">At-Risk Clients:</p>
-                {dashboardData.atRiskClients.map((client, idx) => (
-                  <div key={idx} className="flex items-center gap-2 mb-2">
-                    <AlertCircle className="w-4 h-4 text-red-400" />
-                    <span className="text-white text-sm">{client.name}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* BOTTOM RIGHT - Recent Activity */}
-        <div className="bg-gray-800 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <Clock className="w-5 h-5 text-purple-400" />
-            Recent Activity
-          </h3>
-          <div className="space-y-2 max-h-80 overflow-y-auto">
-            {dashboardData.recentActivity.length > 0 ? (
-              dashboardData.recentActivity.map((activity, idx) => (
-                <div key={idx} className="flex items-start gap-3 p-2 hover:bg-gray-700 rounded transition">
-                  <span className="text-xl">{activity.icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm truncate">{activity.text}</p>
-                    <p className="text-gray-400 text-xs">{getTimeAgo(activity.time)}</p>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-gray-400 text-center py-8">No recent activity</p>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+    const [clients, setClients] = useState([]);
+            const [stats, setStats] = useState({
+                workouts: { total: 0, completed: 0, completionRate: 0, lastWorkout: null },
+                measurements: { latest: null, change: { weight: 0, bodyFat: 0 }, history: [] },
+                wellness: { moodTrend: 0, painLevel: 0, lastMood: null },
+                nutrition: { adherence: 0, currentMacros: {} }
+            });
+            const chartRef = useRef(null);
+            const chartInstance = useRef(null);
+            
+            useEffect(() => {
+                if (!isClient && (user.roles?.includes('specialist') || user.roles?.includes('admin') || user.roles?.includes('owner'))) {
+                    fetchClients();
+                }
+                if (selectedClient) {
+                    fetchStats();
+                }
+                return () => {
+                    if (chartInstance.current) {
+                        chartInstance.current.destroy();
+                        chartInstance.current = null;
+                    }
+                };
+            }, [selectedClient, isClient]);
+            
+            const fetchClients = async () => {
+    const clients = await ClientManager.loadClients();
+    setClients(clients);
 };
-
-// Reusable Stat Card Component
-const StatCard = ({ icon, label, value, color, isText = false }) => {
-  const colorClasses = {
-    blue: 'text-blue-400 bg-blue-900/20',
-    green: 'text-green-400 bg-green-900/20',
-    purple: 'text-purple-400 bg-purple-900/20',
-    orange: 'text-orange-400 bg-orange-900/20'
-  };
-
-  return (
-    <div className="bg-gray-800 rounded-lg p-6">
-      <div className={`inline-flex p-3 rounded-lg ${colorClasses[color]} mb-3`}>
-        {icon}
-      </div>
-      <p className={`${isText ? 'text-2xl' : 'text-3xl'} font-bold text-white mb-1`}>
-        {value}
-      </p>
-      <p className="text-sm text-gray-400">{label}</p>
-    </div>
-  );
-};
-
+            
+            const fetchStats = async () => {
+                try {
+                    const [workouts, measurements, nutrition] = await Promise.all([
+                        API_CONFIG.request(`/workouts/client/${selectedClient}`),
+                        API_CONFIG.request(`/measurements/client/${selectedClient}`),
+                        API_CONFIG.request(`/nutrition/client/${selectedClient}`)
+                    ]);
+                    
+                    const workoutsData = Array.isArray(workouts) ? workouts : (workouts.data || []);
+                    const measurementsData = Array.isArray(measurements) ? measurements : (measurements.data || []);
+                    const nutritionData = nutrition;
+                    
+                    const latestMeasurement = measurementsData[measurementsData.length - 1];
+                    const previousMeasurement = measurementsData[measurementsData.length - 2];
+                    const completedWorkouts = workoutsData.filter(w => w.completed);
+                    const lastWorkout = completedWorkouts[completedWorkouts.length - 1];
+                    
+                    // Calculate wellness metrics
+                    const moodSum = completedWorkouts.reduce((sum, w) => sum + (w.moodFeedback || 3), 0);
+                    const avgMood = completedWorkouts.length ? moodSum / completedWorkouts.length : 3;
+                    
+                    setStats({
+                        workouts: {
+                            total: workoutsData.length,
+                            completed: completedWorkouts.length,
+                            completionRate: workoutsData.length ? Math.round((completedWorkouts.length / workoutsData.length) * 100) : 0,
+                            lastWorkout
+                        },
+                        measurements: {
+                            latest: latestMeasurement,
+                            change: {
+                                weight: latestMeasurement && previousMeasurement 
+                                    ? (latestMeasurement.weight - previousMeasurement.weight) 
+                                    : 0,
+                                bodyFat: latestMeasurement && previousMeasurement && latestMeasurement.bodyFat && previousMeasurement.bodyFat
+                                    ? (latestMeasurement.bodyFat - previousMeasurement.bodyFat)
+                                    : 0
+                            },
+                            history: measurementsData
+                        },
+                        wellness: {
+                            moodTrend: avgMood,
+                            painLevel: 1.5, // This would come from actual data
+                            lastMood: lastWorkout?.moodFeedback
+                        },
+                        nutrition: {
+                            adherence: nutritionData ? calculateNutritionAdherence(nutritionData) : 0,
+                            currentMacros: nutritionData || {}
+                        }
+                    });
+                    
+                    updateChart(measurementsData);
+                } catch (error) {
+                    console.error('Error fetching stats:', error);
+                }
+            };
+            
+            const calculateNutritionAdherence = (nutrition) => {
+                const macros = ['protein', 'carbs', 'fat'];
+                let totalAdherence = 0;
+                let count = 0;
+                
+                macros.forEach(macro => {
+                    if (nutrition[macro] && nutrition[macro].target > 0) {
+                        const adherence = Math.min((nutrition[macro].current / nutrition[macro].target) * 100, 100);
+                        totalAdherence += adherence;
+                        count++;
+                    }
+                });
+                
+                return count > 0 ? Math.round(totalAdherence / count) : 0;
+            };
+            
+            const updateChart = (measurements) => {
+                if (!chartRef.current || !measurements || measurements.length === 0) return;
+                
+                if (chartInstance.current) {
+                    chartInstance.current.destroy();
+                    chartInstance.current = null;
+                }
+                
+                const ctx = chartRef.current.getContext('2d');
+                
+                // Prepare data for multiple metrics
+                const datasets = [{
+                    label: 'Weight (lbs)',
+                    data: measurements.map(m => m.weight),
+                    borderColor: '#244398',
+                    yAxisID: 'y',
+                    tension: 0.4
+                }];
+                
+                // Add body fat if available
+                if (measurements.some(m => m.bodyFat)) {
+                    datasets.push({
+                        label: 'Body Fat (%)',
+                        data: measurements.map(m => m.bodyFat || null),
+                        borderColor: '#60E0E0',
+                        yAxisID: 'y1',
+                        tension: 0.4
+                    });
+                }
+                
+                chartInstance.current = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: measurements.map(m => new Date(m.date).toLocaleDateString()),
+                        datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false
+                        },
+                        scales: {
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: {
+                                    display: true,
+                                    text: 'Weight (lbs)'
+                                }
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: measurements.some(m => m.bodyFat),
+                                position: 'right',
+                                title: {
+                                    display: true,
+                                    text: 'Body Fat (%)'
+                                },
+                                grid: {
+                                    drawOnChartArea: false
+                                }
+                            }
+                        }
+                    }
+                });
+            };
+            
+            const getMoodEmoji = (mood) => {
+                const emojis = ['😔', '😕', '😐', '🙂', '😄'];
+                return emojis[Math.floor(mood - 1)] || '😐';
+            };
+            
+            const getPainLevelText = (level) => {
+                if (level <= 2) return 'Excellent';
+                if (level <= 4) return 'Good';
+                if (level <= 6) return 'Moderate';
+                if (level <= 8) return 'Poor';
+                return 'Severe';
+            };
+            
+            return (
+                <div className="space-y-6">
+                    <div className="dark-card p-6">
+                        <h2 className="text-2xl font-bold mb-4">
+                            {isClient ? 'My Dashboard' : 'Client Dashboard'}
+                        </h2>
+                        
+                        {!isClient && (
+                            <select
+                                className="coastal-input"
+                                value={selectedClient || ''}
+                                onChange={(e) => setSelectedClient(e.target.value)}
+                            >
+                                <option value="">Select a client...</option>
+                                {clients.map(client => (
+                                    <option key={client._id} value={client._id}>
+                                        {client.name}
+                                    </option>
+                                ))}
+                            </select>
+                        )}
+                    </div>
+                    
+                    {selectedClient && (
+                        <>
+                            {/* Primary Stats */}
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div className="metric-card">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <h3 className="text-sm font-medium text-gray-400">Workouts</h3>
+                                        <span className="text-2xl">💪</span>
+                                    </div>
+                                    <p className="text-3xl font-bold">{stats.workouts.completed}/{stats.workouts.total}</p>
+                                    <div className="mt-2">
+                                        <div className="progress-bar">
+                                            <div 
+                                                className="progress-bar-fill bg-blue-500"
+                                                style={{width: `${stats.workouts.completionRate}%`}}
+                                            ></div>
+                                        </div>
+                                        <p className="text-sm text-gray-400 mt-1">{stats.workouts.completionRate}% Complete</p>
+                                    </div>
+                                </div>
+                                
+                                <div className="metric-card">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <h3 className="text-sm font-medium text-gray-400">Current Weight</h3>
+                                        <span className="text-2xl">⚖️</span>
+                                    </div>
+                                    <p className="text-3xl font-bold">
+                                        {stats.measurements.latest?.weight || '--'} lbs
+                                    </p>
+                                    <p className="text-sm mt-2">
+                                        <span className={stats.measurements.change.weight > 0 ? 'text-red-500' : 'text-green-500'}>
+                                            {stats.measurements.change.weight > 0 ? '↑' : '↓'} {Math.abs(stats.measurements.change.weight)} lbs
+                                        </span>
+                                    </p>
+                                </div>
+                                
+                                <div className="metric-card">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <h3 className="text-sm font-medium text-gray-400">Body Fat</h3>
+                                        <span className="text-2xl">📊</span>
+                                    </div>
+                                    <p className="text-3xl font-bold">
+                                        {stats.measurements.latest?.bodyFat || '--'}%
+                                    </p>
+                                    {stats.measurements.change.bodyFat !== 0 && (
+                                        <p className="text-sm mt-2">
+                                            <span className={stats.measurements.change.bodyFat > 0 ? 'text-red-500' : 'text-green-500'}>
+                                                {stats.measurements.change.bodyFat > 0 ? '↑' : '↓'} {Math.abs(stats.measurements.change.bodyFat)}%
+                                            </span>
+                                        </p>
+                                    )}
+                                </div>
+                                
+                                <div className="metric-card">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <h3 className="text-sm font-medium text-gray-400">Nutrition</h3>
+                                        <span className="text-2xl">🥗</span>
+                                    </div>
+                                    <p className="text-3xl font-bold">{stats.nutrition.adherence}%</p>
+                                    <p className="text-sm text-gray-400 mt-2">Daily Adherence</p>
+                                </div>
+                            </div>
+                            
+                            {/* Wellness Summary */}
+                            <div className="dark-card p-6">
+                                <h3 className="text-xl font-bold mb-4">Wellness Summary</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="wellness-indicator">
+                                        <div>
+                                            <p className="text-sm text-gray-400">Mood Trend</p>
+                                            <p className="text-lg font-semibold">
+                                                {stats.wellness.lastMood ? `Last: ${stats.wellness.lastMood}/5` : 'No data'}
+                                            </p>
+                                        </div>
+                                        <span className="mood-emoji">
+                                            {getMoodEmoji(stats.wellness.moodTrend)}
+                                        </span>
+                                    </div>
+                                    
+                                    <div className="wellness-indicator">
+                                        <div>
+                                            <p className="text-sm text-gray-400">Average Pain Level</p>
+                                            <p className="text-2xl font-bold text-white">{stats.wellness.painLevel}</p>
+                                            <p className="text-sm text-green-600">{getPainLevelText(stats.wellness.painLevel)}</p>
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="progress-bar">
+                                                <div 
+                                                    className="progress-bar-fill bg-gradient-to-r from-green-500 to-yellow-500"
+                                                    style={{width: `${(stats.wellness.painLevel / 10) * 100}%`}}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {stats.workouts.lastWorkout && (
+                                    <div className="mt-4 p-4 bg-gray-800 rounded-lg">
+                                        <p className="text-sm text-gray-400">Last Workout</p>
+                                        <p className="font-semibold">{stats.workouts.lastWorkout.name}</p>
+                                        <p className="text-sm text-gray-500">
+                                            {new Date(stats.workouts.lastWorkout.completedAt).toLocaleDateString()}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                            
+                            {/* Progress Chart */}
+                            <div className="dark-card p-6">
+                                <h3 className="text-xl font-bold mb-4">Progress Tracking</h3>
+                                <div style={{height: '300px'}}>
+                                    <canvas ref={chartRef}></canvas>
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </div>
+            );
+        };
         // Add this at line 1435
         // Workout Session Component - Interactive workout guide
           // Workout Session Component - Interactive workout guide
@@ -5477,524 +5316,409 @@ await API_CONFIG.request(endpoint, {
                 </div>
             );
         };
-        
-
-const UltimateWearables = ({ user, API_CONFIG, showError, showSuccess }) => {
-  const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
-  const [connections, setConnections] = useState([]);
-  const [wearableData, setWearableData] = useState([]);
-  const [insights, setInsights] = useState(null);
-  const [activeTab, setActiveTab] = useState('overview');
-
-  const PROVIDERS = [
-    {
-      id: 'fitbit',
-      name: 'Fitbit',
-      icon: '⌚',
-      color: 'cyan',
-      configured: true,
-      description: 'Track steps, heart rate, sleep, and calories'
-    },
-    {
-      id: 'polar',
-      name: 'Polar',
-      icon: '🏃',
-      color: 'red',
-      configured: true,
-      description: 'Professional training metrics and recovery'
-    },
-    {
-      id: 'garmin',
-      name: 'Garmin',
-      icon: '🎯',
-      color: 'blue',
-      configured: false,
-      description: 'Advanced sports and fitness tracking'
-    },
-    {
-      id: 'oura',
-      name: 'Oura Ring',
-      icon: '💍',
-      color: 'purple',
-      configured: false,
-      description: 'Sleep quality and readiness scores'
-    },
-    {
-      id: 'whoop',
-      name: 'WHOOP',
-      icon: '💪',
-      color: 'orange',
-      configured: false,
-      description: 'Strain, recovery, and sleep tracking'
-    },
-    {
-      id: 'apple',
-      name: 'Apple Watch',
-      icon: '🍎',
-      color: 'gray',
-      configured: false,
-      description: 'Comprehensive health and fitness data'
-    }
-  ];
-
-  useEffect(() => {
-    fetchWearableData();
-  }, []);
-
-  const fetchWearableData = async () => {
-    try {
-      setLoading(true);
-
-      // Fetch connections
-      const connectionsRes = await API_CONFIG.request('/wearables/connections');
-      setConnections(connectionsRes.connections || []);
-
-      // Fetch recent wearable data
-      const dataRes = await API_CONFIG.request(`/wearables/user/${user._id}?limit=30`);
-      const data = dataRes.data || [];
-      setWearableData(data);
-
-      // Fetch insights
-      const insightsRes = await API_CONFIG.request(`/wearables/insights/${user._id}?days=7`);
-      setInsights(insightsRes.insights);
-
-      setLoading(false);
-    } catch (error) {
-      console.error('Wearables fetch error:', error);
-      setLoading(false);
-    }
-  };
-
-  const handleConnect = async (providerId) => {
-    try {
-      const provider = PROVIDERS.find(p => p.id === providerId);
-      
-      if (!provider.configured) {
-        showError(`${provider.name} integration coming soon! Stay tuned.`);
-        return;
-      }
-
-      // Call OAuth initiation
-      const response = await API_CONFIG.request(`/wearables/connect/${providerId}`, {
-        method: 'POST'
-      });
-
-      if (response.authUrl) {
-        // Redirect to provider's OAuth page
-        window.location.href = response.authUrl;
-      }
-    } catch (error) {
-      console.error('Connect error:', error);
-      showError(`Failed to connect to ${providerId}. Please try again.`);
-    }
-  };
-
-  const handleDisconnect = async (providerId) => {
-    try {
-      await API_CONFIG.request(`/wearables/disconnect/${providerId}`, {
-        method: 'DELETE'
-      });
-      
-      showSuccess(`${providerId} disconnected successfully`);
-      fetchWearableData();
-    } catch (error) {
-      console.error('Disconnect error:', error);
-      showError('Failed to disconnect. Please try again.');
-    }
-  };
-
-  const handleSync = async (providerId) => {
-    try {
-      setSyncing(true);
-      
-      const response = await API_CONFIG.request(`/wearables/sync/${providerId}`, {
-        method: 'POST'
-      });
-
-      showSuccess(`${providerId} data synced successfully!`);
-      fetchWearableData();
-      setSyncing(false);
-    } catch (error) {
-      console.error('Sync error:', error);
-      showError(error.response?.data?.error || 'Sync failed. Please try again.');
-      setSyncing(false);
-    }
-  };
-
-  const getConnectionStatus = (providerId) => {
-    return connections.find(c => c.provider === providerId);
-  };
-
-  const getTodayData = () => {
-    if (!wearableData.length) return null;
+        const Wearables = ({ user, showError, showSuccess }) => {
+    const [connections, setConnections] = useState([]);
+    const [wearableData, setWearableData] = useState([]);
+    const [insights, setInsights] = useState(null);
+    const [showManualEntry, setShowManualEntry] = useState(false);
+    const [selectedMetric, setSelectedMetric] = useState('steps');
+    const [manualData, setManualData] = useState({
+        date: new Date().toISOString().split('T')[0],
+        steps: '',
+        distance: '',
+        activeMinutes: '',
+        sleepDuration: '',
+        caloriesBurned: '',
+        restingHeartRate: ''
+    });
     
-    // Get most recent data
-    return wearableData[0];
-  };
+    const providers = [
+        { id: 'fitbit', name: 'Fitbit', icon: '🏃', color: 'bg-teal-500' },
+        { id: 'apple', name: 'Apple Watch', icon: '⌚', color: 'bg-gray-800' },
+        { id: 'garmin', name: 'Garmin', icon: '🏔️', color: 'bg-blue-600' },
+        { id: 'whoop', name: 'WHOOP', icon: '💪', color: 'bg-black' },
+        { id: 'oura', name: 'Oura Ring', icon: '💍', color: 'bg-purple-600' },
+        { id: 'polar', name: 'Polar', icon: '❄️', color: 'bg-red-500' }
+    ];
+    
+    const metrics = [
+        { id: 'steps', label: 'Steps', icon: '👣', unit: 'steps' },
+        { id: 'distance', label: 'Distance', icon: '📏', unit: 'miles' },
+        { id: 'activeMinutes', label: 'Active Minutes', icon: '⏱️', unit: 'min' },
+        { id: 'caloriesBurned', label: 'Calories', icon: '🔥', unit: 'cal' },
+        { id: 'sleepDuration', label: 'Sleep', icon: '😴', unit: 'hrs' },
+        { id: 'restingHeartRate', label: 'Resting HR', icon: '❤️', unit: 'bpm' },
+        { id: 'hrv', label: 'HRV', icon: '📊', unit: 'ms' }
+    ];
+    
+    useEffect(() => {
+        fetchConnections();
+        fetchWearableData();
+        fetchInsights();
+    }, []);
+    
+    // REPLACE the Wearables fetchConnections function (around line 4415) with this:
 
-  const getWeekAverage = (field) => {
-    if (!wearableData.length) return 0;
-    const values = wearableData.slice(0, 7).map(d => d[field] || 0);
-    return Math.round(values.reduce((a, b) => a + b, 0) / values.length);
-  };
+const fetchConnections = async () => {
+    try {
+        const response = await API_CONFIG.request('/wearables/connections');
+        console.log('Wearables connections response:', response);
+        
+        // Handle multiple possible response formats
+        let connectionsData = [];
+        if (Array.isArray(response)) {
+            connectionsData = response;
+        } else if (response.connections && Array.isArray(response.connections)) {
+            connectionsData = response.connections;
+        } else if (response.data && Array.isArray(response.data)) {
+            connectionsData = response.data;
+        }
+        
+        setConnections(connectionsData);
+    } catch (error) {
+        console.error('Error fetching connections:', error);
+        // Don't show error - just set empty array
+        setConnections([]);
+    }
+};
 
-  if (loading) {
+// REPLACE the fetchWearableData function with this:
+
+const fetchWearableData = async () => {
+    try {
+        const response = await API_CONFIG.request(`/wearables/user/${user._id}?days=30`);
+        console.log('Wearable data response:', response);
+        
+        // Handle multiple possible response formats
+        let wearableDataArray = [];
+        if (Array.isArray(response)) {
+            wearableDataArray = response;
+        } else if (response.data && Array.isArray(response.data)) {
+            wearableDataArray = response.data;
+        } else if (response.wearableData && Array.isArray(response.wearableData)) {
+            wearableDataArray = response.wearableData;
+        }
+        
+        setWearableData(wearableDataArray);
+    } catch (error) {
+        console.error('Error fetching wearable data:', error);
+        // Don't show error - just set empty array
+        setWearableData([]);
+    }
+};
+
+// REPLACE the fetchInsights function with this:
+
+const fetchInsights = async () => {
+    try {
+        const response = await API_CONFIG.request(`/wearables/insights/${user._id}?days=7`);
+        console.log('Insights response:', response);
+        
+        // Handle multiple possible response formats
+        let insightsData = null;
+        if (response.insights) {
+            insightsData = response.insights;
+        } else if (response.data) {
+            insightsData = response.data;
+        } else {
+            insightsData = response;
+        }
+        
+        setInsights(insightsData);
+    } catch (error) {
+        console.error('Error fetching insights:', error);
+        // Don't show error - just set null
+        setInsights(null);
+    }
+};
+    
+   const handleConnect = async (provider) => {
+    try {
+        const response = await fetch(`${API_CONFIG.baseURL}/wearables/connect/${provider}`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.authUrl) {
+            // Redirect to the OAuth provider's authorization page
+            window.location.href = data.authUrl;
+        } else {
+            showError(data.error || 'Failed to initiate connection');
+        }
+    } catch (error) {
+        showError('Failed to connect: ' + error.message);
+    }
+};
+    
+    const handleDisconnect = async (provider) => {
+        if (confirm(`Disconnect ${provider}?`)) {
+            try {
+                await API_CONFIG.request(`/wearables/disconnect/${provider}`, {
+                    method: 'DELETE'
+                });
+                showSuccess(`${provider} disconnected`);
+                fetchConnections();
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+    };
+    
+    const handleManualSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            await API_CONFIG.request(`/wearables/user/${user._id}/manual`, {
+                method: 'POST',
+                body: JSON.stringify(manualData)
+            });
+            showSuccess('Data logged successfully');
+            setShowManualEntry(false);
+            fetchWearableData();
+            fetchInsights();
+        } catch (error) {
+            showError(error.message);
+        }
+    };
+    
+    const isConnected = (providerId) => {
+        return connections.some(c => c.provider === providerId && c.connected);
+    };
+    
+    // SAFE GETTER FUNCTIONS WITH NULL CHECKS
+    const safeGet = (obj, path, defaultValue = 0) => {
+        try {
+            const value = path.split('.').reduce((acc, part) => acc && acc[part], obj);
+            return value !== undefined && value !== null ? value : defaultValue;
+        } catch {
+            return defaultValue;
+        }
+    };
+    
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
-
-  const todayData = getTodayData();
-
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-white mb-2">Wearables Dashboard</h2>
-          <p className="text-gray-400">Connect devices and track your health metrics</p>
-        </div>
-        <button
-          onClick={() => fetchWearableData()}
-          disabled={syncing}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 transition disabled:opacity-50"
-        >
-          <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
-          Refresh
-        </button>
-      </div>
-
-      {/* Tab Navigation */}
-      <div className="flex gap-2 border-b border-gray-700">
-        <button
-          onClick={() => setActiveTab('overview')}
-          className={`px-4 py-2 font-medium transition ${
-            activeTab === 'overview'
-              ? 'text-blue-400 border-b-2 border-blue-400'
-              : 'text-gray-400 hover:text-white'
-          }`}
-        >
-          Overview
-        </button>
-        <button
-          onClick={() => setActiveTab('devices')}
-          className={`px-4 py-2 font-medium transition ${
-            activeTab === 'devices'
-              ? 'text-blue-400 border-b-2 border-blue-400'
-              : 'text-gray-400 hover:text-white'
-          }`}
-        >
-          Connected Devices
-        </button>
-        <button
-          onClick={() => setActiveTab('history')}
-          className={`px-4 py-2 font-medium transition ${
-            activeTab === 'history'
-              ? 'text-blue-400 border-b-2 border-blue-400'
-              : 'text-gray-400 hover:text-white'
-          }`}
-        >
-          History
-        </button>
-      </div>
-
-      {/* OVERVIEW TAB */}
-      {activeTab === 'overview' && (
         <div className="space-y-6">
-          {/* Today's Metrics */}
-          {todayData ? (
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-4">Today's Activity</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <MetricCard
-                  icon={<Activity className="w-6 h-6" />}
-                  label="Steps"
-                  value={(todayData.steps || 0).toLocaleString()}
-                  subtitle={`Avg: ${getWeekAverage('steps').toLocaleString()}/day`}
-                  color="blue"
-                  progress={todayData.steps ? (todayData.steps / 10000) * 100 : 0}
-                />
-                <MetricCard
-                  icon={<Heart className="w-6 h-6" />}
-                  label="Heart Rate"
-                  value={todayData.restingHeartRate ? `${todayData.restingHeartRate} BPM` : 'N/A'}
-                  subtitle="Resting"
-                  color="red"
-                />
-                <MetricCard
-                  icon={<Zap className="w-6 h-6" />}
-                  label="Calories"
-                  value={(todayData.caloriesBurned || 0).toLocaleString()}
-                  subtitle={`Avg: ${getWeekAverage('caloriesBurned').toLocaleString()}/day`}
-                  color="orange"
-                />
-                <MetricCard
-                  icon={<Moon className="w-6 h-6" />}
-                  label="Sleep"
-                  value={todayData.sleepDuration ? `${Math.round(todayData.sleepDuration / 60)}h ${todayData.sleepDuration % 60}m` : 'N/A'}
-                  subtitle={todayData.sleepScore ? `Score: ${todayData.sleepScore}/100` : 'No data'}
-                  color="purple"
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="bg-gray-800 rounded-lg p-8 text-center">
-              <Activity className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-white mb-2">No Data Yet</h3>
-              <p className="text-gray-400 mb-4">
-                Connect a wearable device to start tracking your health metrics
-              </p>
-              <button
-                onClick={() => setActiveTab('devices')}
-                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
-              >
-                Connect Device
-              </button>
-            </div>
-          )}
-
-          {/* 7-Day Chart */}
-          {wearableData.length > 0 && (
-            <div className="bg-gray-800 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">Last 7 Days</h3>
-              <div className="grid grid-cols-7 gap-2">
-                {wearableData.slice(0, 7).reverse().map((day, idx) => (
-                  <div key={idx} className="text-center">
-                    <div className="bg-gray-700 rounded-lg p-3 hover:bg-gray-600 transition">
-                      <p className="text-xs text-gray-400 mb-2">
-                        {new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' })}
-                      </p>
-                      <div className="space-y-2">
-                        <div>
-                          <p className="text-lg font-bold text-blue-400">
-                            {((day.steps || 0) / 1000).toFixed(1)}k
-                          </p>
-                          <p className="text-xs text-gray-400">steps</p>
-                        </div>
-                        {day.sleepDuration && (
-                          <div className="pt-2 border-t border-gray-600">
-                            <p className="text-sm font-semibold text-purple-400">
-                              {Math.round(day.sleepDuration / 60)}h
-                            </p>
-                            <p className="text-xs text-gray-400">sleep</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Insights */}
-          {insights && (
-            <div className="bg-gradient-to-r from-blue-900/20 to-purple-900/20 border border-blue-800 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-blue-400" />
-                Weekly Insights
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="text-center">
-                  <p className="text-3xl font-bold text-white mb-1">
-                    {insights.averageSteps?.toLocaleString() || 0}
-                  </p>
-                  <p className="text-sm text-gray-400">Avg Daily Steps</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-3xl font-bold text-white mb-1">
-                    {Math.round((insights.averageSleep || 0) / 60)}h {(insights.averageSleep || 0) % 60}m
-                  </p>
-                  <p className="text-sm text-gray-400">Avg Sleep</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-3xl font-bold text-white mb-1">
-                    {insights.averageCalories?.toLocaleString() || 0}
-                  </p>
-                  <p className="text-sm text-gray-400">Avg Calories Burned</p>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* DEVICES TAB */}
-      {activeTab === 'devices' && (
-        <div className="space-y-4">
-          {PROVIDERS.map((provider) => {
-            const connection = getConnectionStatus(provider.id);
-            const isConnected = connection?.connected;
-
-            return (
-              <div
-                key={provider.id}
-                className="bg-gray-800 rounded-lg p-6 flex items-center justify-between hover:bg-gray-750 transition"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="text-5xl">{provider.icon}</div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h4 className="text-lg font-semibold text-white">{provider.name}</h4>
-                      {isConnected && (
-                        <span className="px-2 py-1 bg-green-900/30 text-green-400 text-xs rounded-full border border-green-800">
-                          Connected
-                        </span>
-                      )}
-                      {!provider.configured && (
-                        <span className="px-2 py-1 bg-yellow-900/30 text-yellow-400 text-xs rounded-full border border-yellow-800">
-                          Coming Soon
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm text-gray-400 mt-1">{provider.description}</p>
-                    {isConnected && connection.lastSync && (
-                      <p className="text-xs text-gray-500 mt-2">
-                        Last synced: {new Date(connection.lastSync).toLocaleString()}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  {isConnected ? (
-                    <>
-                      <button
-                        onClick={() => handleSync(provider.id)}
-                        disabled={syncing}
-                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 transition disabled:opacity-50"
-                      >
-                        <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
-                        Sync
-                      </button>
-                      <button
-                        onClick={() => handleDisconnect(provider.id)}
-                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition"
-                      >
-                        Disconnect
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      onClick={() => handleConnect(provider.id)}
-                      disabled={!provider.configured}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <LinkIcon className="w-4 h-4" />
-                      Connect
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* HISTORY TAB */}
-      {activeTab === 'history' && (
-        <div className="space-y-4">
-          {wearableData.length > 0 ? (
-            wearableData.map((day, idx) => (
-              <div key={idx} className="bg-gray-800 rounded-lg p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-lg font-semibold text-white">
-                    {new Date(day.date).toLocaleDateString('en-US', {
-                      weekday: 'long',
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
+            <div className="dark-card p-6">
+                <h2 className="text-2xl font-bold mb-4 text-white">Wearable Devices</h2>
+                
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+                    {providers.map(provider => {
+                        const connected = isConnected(provider.id);
+                        return (
+                            <div key={provider.id} className={`p-4 rounded-lg border-2 ${
+                                connected ? 'border-green-500 bg-green-900 bg-opacity-20' : 'border-gray-600 bg-gray-800'
+                            }`}>
+                                <div className="text-center">
+                                    <div className="text-4xl mb-2">{provider.icon}</div>
+                                    <h3 className="font-semibold text-white">{provider.name}</h3>
+                                    {connected ? (
+                                        <button
+                                            onClick={() => handleDisconnect(provider.id)}
+                                            className="mt-2 text-sm text-red-400 hover:text-red-300"
+                                        >
+                                            Disconnect
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={() => handleConnect(provider.id)}
+                                            className="mt-2 coastal-button text-sm py-1 px-3"
+                                        >
+                                            Connect
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        );
                     })}
-                  </h4>
-                  <span className="px-3 py-1 bg-gray-700 text-gray-300 text-sm rounded-full">
-                    {day.provider}
-                  </span>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-400">Steps</p>
-                    <p className="text-xl font-bold text-white">
-                      {(day.steps || 0).toLocaleString()}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-400">Calories</p>
-                    <p className="text-xl font-bold text-white">
-                      {(day.caloriesBurned || 0).toLocaleString()}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-400">Active Minutes</p>
-                    <p className="text-xl font-bold text-white">
-                      {day.activeMinutes || 0}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-400">Sleep</p>
-                    <p className="text-xl font-bold text-white">
-                      {day.sleepDuration
-                        ? `${Math.round(day.sleepDuration / 60)}h ${day.sleepDuration % 60}m`
-                        : 'N/A'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="bg-gray-800 rounded-lg p-8 text-center">
-              <Clock className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-white mb-2">No History Yet</h3>
-              <p className="text-gray-400">
-                Connect a device and sync to see your historical data
-              </p>
+                
+                <button
+                    onClick={() => setShowManualEntry(true)}
+                    className="coastal-button bg-purple-600 hover:bg-purple-700"
+                >
+                    <i className="fas fa-keyboard mr-2"></i>
+                    Manual Entry
+                </button>
             </div>
-          )}
+            
+            {/* FIXED INSIGHTS SECTION WITH PROPER NULL CHECKS */}
+            {insights && insights.averages && (
+                <div className="dark-card p-6">
+                    <h3 className="text-xl font-bold mb-4 text-white">7-Day Insights</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="metric-card">
+                            <div className="text-sm text-gray-400">Avg Steps</div>
+                            <div className="text-2xl font-bold text-white">
+                                {safeGet(insights, 'averages.steps', 0).toLocaleString()}
+                            </div>
+                            <div className={`text-sm ${
+                                safeGet(insights, 'trends.steps') === 'improving' ? 'text-green-400' :
+                                safeGet(insights, 'trends.steps') === 'declining' ? 'text-red-400' : 'text-gray-400'
+                            }`}>
+                                {safeGet(insights, 'trends.steps') === 'improving' && '↗️ Improving'}
+                                {safeGet(insights, 'trends.steps') === 'declining' && '↘️ Declining'}
+                                {safeGet(insights, 'trends.steps') === 'stable' && '→ Stable'}
+                                {!insights.trends?.steps && '—'}
+                            </div>
+                        </div>
+                        
+                        <div className="metric-card">
+                            <div className="text-sm text-gray-400">Avg Sleep</div>
+                            <div className="text-2xl font-bold text-white">
+                                {Math.floor(safeGet(insights, 'averages.sleep', 0) / 60)}h {safeGet(insights, 'averages.sleep', 0) % 60}m
+                            </div>
+                            <div className={`text-sm ${
+                                safeGet(insights, 'trends.sleep') === 'improving' ? 'text-green-400' :
+                                safeGet(insights, 'trends.sleep') === 'declining' ? 'text-red-400' : 'text-gray-400'
+                            }`}>
+                                {safeGet(insights, 'trends.sleep') === 'improving' && '↗️ Improving'}
+                                {safeGet(insights, 'trends.sleep') === 'declining' && '↘️ Declining'}
+                                {safeGet(insights, 'trends.sleep') === 'stable' && '→ Stable'}
+                                {!insights.trends?.sleep && '—'}
+                            </div>
+                        </div>
+                        
+                        <div className="metric-card">
+                            <div className="text-sm text-gray-400">Active Minutes</div>
+                            <div className="text-2xl font-bold text-white">
+                                {safeGet(insights, 'averages.activeMinutes', 0)}
+                            </div>
+                        </div>
+                        
+                        <div className="metric-card">
+                            <div className="text-sm text-gray-400">Resting HR</div>
+                            <div className="text-2xl font-bold text-white">
+                                {safeGet(insights, 'averages.restingHR', 0) || '--'}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {insights.streaks && (
+                        <div className="mt-4 grid grid-cols-2 gap-4">
+                            <div className="bg-blue-900 bg-opacity-30 rounded-lg p-3">
+                                <div className="text-sm text-gray-400">10K Steps Streak</div>
+                                <div className="text-xl font-bold text-white">
+                                    {safeGet(insights, 'streaks.steps.current', 0)} days
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                    Best: {safeGet(insights, 'streaks.steps.max', 0)} days
+                                </div>
+                            </div>
+                            
+                            <div className="bg-purple-900 bg-opacity-30 rounded-lg p-3">
+                                <div className="text-sm text-gray-400">7+ Hour Sleep Streak</div>
+                                <div className="text-xl font-bold text-white">
+                                    {safeGet(insights, 'streaks.sleep.current', 0)} days
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                    Best: {safeGet(insights, 'streaks.sleep.max', 0)} days
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+            
+            {/* Show message when no insights available */}
+            {!insights && (
+                <div className="dark-card p-6 text-center">
+                    <p className="text-gray-400">
+                        No insights available yet. Connect a wearable device or log manual data to see insights.
+                    </p>
+                </div>
+            )}
+            
+            {showManualEntry && (
+                <div className="modal-overlay" onClick={() => setShowManualEntry(false)}>
+                    <div className="modal-content max-w-2xl" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="text-xl font-bold mb-4 text-white">Manual Entry</h3>
+                        <form onSubmit={handleManualSubmit}>
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Date</label>
+                                    <input
+                                        type="date"
+                                        className="coastal-input"
+                                        value={manualData.date}
+                                        onChange={(e) => setManualData({...manualData, date: e.target.value})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Steps</label>
+                                    <input
+                                        type="number"
+                                        className="coastal-input"
+                                        value={manualData.steps}
+                                        onChange={(e) => setManualData({...manualData, steps: e.target.value})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Distance (miles)</label>
+                                    <input
+                                        type="number"
+                                        step="0.1"
+                                        className="coastal-input"
+                                        value={manualData.distance}
+                                        onChange={(e) => setManualData({...manualData, distance: e.target.value})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Active Minutes</label>
+                                    <input
+                                        type="number"
+                                        className="coastal-input"
+                                        value={manualData.activeMinutes}
+                                        onChange={(e) => setManualData({...manualData, activeMinutes: e.target.value})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Sleep (minutes)</label>
+                                    <input
+                                        type="number"
+                                        className="coastal-input"
+                                        value={manualData.sleepDuration}
+                                        onChange={(e) => setManualData({...manualData, sleepDuration: e.target.value})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Calories Burned</label>
+                                    <input
+                                        type="number"
+                                        className="coastal-input"
+                                        value={manualData.caloriesBurned}
+                                        onChange={(e) => setManualData({...manualData, caloriesBurned: e.target.value})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Resting HR</label>
+                                    <input
+                                        type="number"
+                                        className="coastal-input"
+                                        value={manualData.restingHeartRate}
+                                        onChange={(e) => setManualData({...manualData, restingHeartRate: e.target.value})}
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex gap-4">
+                                <button type="submit" className="coastal-button">Save Data</button>
+                                <button 
+                                    type="button" 
+                                    onClick={() => setShowManualEntry(false)}
+                                    className="coastal-button bg-gray-600 hover:bg-gray-700"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
-      )}
-    </div>
-  );
+    );
 };
-
-// Reusable Metric Card Component
-const MetricCard = ({ icon, label, value, subtitle, color, progress }) => {
-  const colorClasses = {
-    blue: 'text-blue-400 bg-blue-900/20 border-blue-800',
-    red: 'text-red-400 bg-red-900/20 border-red-800',
-    orange: 'text-orange-400 bg-orange-900/20 border-orange-800',
-    purple: 'text-purple-400 bg-purple-900/20 border-purple-800',
-    green: 'text-green-400 bg-green-900/20 border-green-800'
-  };
-
-  const progressColors = {
-    blue: 'bg-blue-500',
-    red: 'bg-red-500',
-    orange: 'bg-orange-500',
-    purple: 'bg-purple-500',
-    green: 'bg-green-500'
-  };
-
-  return (
-    <div className={`rounded-lg p-6 border ${colorClasses[color]}`}>
-      <div className={`inline-flex p-3 rounded-lg ${colorClasses[color]} mb-3`}>
-        {icon}
-      </div>
-      <p className="text-3xl font-bold text-white mb-1">{value}</p>
-      <p className="text-sm text-gray-400 mb-2">{label}</p>
-      {subtitle && <p className="text-xs text-gray-500">{subtitle}</p>}
-      {progress !== undefined && (
-        <div className="mt-3 w-full bg-gray-700 rounded-full h-2">
-          <div
-            className={`${progressColors[color]} h-2 rounded-full transition-all`}
-            style={{ width: `${Math.min(progress, 100)}%` }}
-          ></div>
-        </div>
-      )}
-    </div>
-  );
-};
-
         
 // Enhanced Reports Component - Replace entire Reports component with this
 const Reports = ({ user, isClient, showSuccess, showError }) => {
@@ -6767,7 +6491,7 @@ const Reports = ({ user, isClient, showSuccess, showError }) => {
         </div>
     );
 };
-    
+        // === CALENDAR & SCHEDULING SYSTEM ===
 // === CALENDAR & SCHEDULING SYSTEM WITH BACKEND + SMS ===
 const Calendar = ({ user, showError, showSuccess }) => {
     const [view, setView] = useState('week');
