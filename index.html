@@ -2149,11 +2149,12 @@ submitData = {
         };
         // Add this at line 1435
         // Workout Session Component - Interactive workout guide
+          // Workout Session Component - Interactive workout guide
         const WorkoutSession = ({ workoutId, onClose, showSuccess, showError }) => {
             const [workout, setWorkout] = useState(null);
-            const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
-            const [currentSet, setCurrentSet] = useState(1);
-            const [previousWorkoutData, setPreviousWorkoutData] = useState({});
+const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
+const [currentSet, setCurrentSet] = useState(1);
+const [previousWorkoutData, setPreviousWorkoutData] = useState({});
 const [currentSessionData, setCurrentSessionData] = useState({});
 const [sessionData, setSessionData] = useState({
     startTime: new Date(),
@@ -2177,6 +2178,13 @@ const [timerInterval, setTimerInterval] = useState(null);
         }
     };
 }, [workoutId]);
+
+// Add new useEffect for previous data
+useEffect(() => {
+    if (workout) {
+        fetchPreviousWorkoutData();
+    }
+}, [workout]);
             
           const fetchWorkoutDetails = async () => {
     try {
@@ -2229,8 +2237,83 @@ const [timerInterval, setTimerInterval] = useState(null);
         onClose();
     }
 };
+
+const fetchPreviousWorkoutData = async () => {
+    try {
+        // Get client ID more reliably
+        let clientId;
+        if (workout.clientId && typeof workout.clientId === 'object') {
+            clientId = workout.clientId._id;
+        } else if (workout.clientId) {
+            clientId = workout.clientId;
+        } else {
+            // Try to get from current user if client
+            const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+            if (currentUser.roles?.includes('client')) {
+                clientId = currentUser._id;
+            }
+        }
+        
+        if (!clientId) {
+            console.log('No clientId found, skipping previous data fetch');
+            return;
+        }
+        
+        // Get all workouts for this client
+        const response = await fetch(`${API_CONFIG.baseURL}/workouts/client/${clientId}`, {
+            headers: API_CONFIG.getHeaders()
+        });
+        
+        if (!response.ok) {
+            console.log('Failed to fetch previous workouts');
+            return;
+        }
+        
+        const data = await response.json();
+        const allWorkouts = Array.isArray(data) ? data : (data.data || data);
+        
+        // Build a map of ALL previous exercise data, not just from same workout name
+        const prevData = {};
+        
+        // Get all completed workouts, sorted by date (newest first)
+        const completedWorkouts = allWorkouts
+            .filter(w => w.completed && w._id !== workoutId)
+            .sort((a, b) => new Date(b.completedAt || b.createdAt) - new Date(a.completedAt || a.createdAt));
+        
+        // For each exercise in current workout, find its most recent data
+        workout.exercises?.forEach(currentExercise => {
+            // Normalize the exercise name for matching
+            const normalizedName = currentExercise.name.toLowerCase().trim();
             
-            const currentExercise = workout?.exercises[currentExerciseIndex];
+            // Search through all completed workouts for this exercise
+            for (const prevWorkout of completedWorkouts) {
+                const matchingExercise = prevWorkout.exercises?.find(e => 
+                    e.name.toLowerCase().trim() === normalizedName
+                );
+                
+                if (matchingExercise && !prevData[currentExercise.name]) {
+                    prevData[currentExercise.name] = {
+                        weight: matchingExercise.weight || 0,
+                        reps: matchingExercise.reps || 0,
+                        setDetails: matchingExercise.setDetails || [],
+                        lastPerformed: prevWorkout.completedAt || prevWorkout.createdAt,
+                        fromWorkout: prevWorkout.name
+                    };
+                    break; // Found the most recent, stop searching
+                }
+            }
+        });
+        
+        console.log(`Found previous data for ${Object.keys(prevData).length} exercises`);
+        setPreviousWorkoutData(prevData);
+        
+    } catch (error) {
+        console.log('Error fetching previous workout data:', error);
+        // Don't crash, just continue without previous data
+    }
+};
+
+const currentExercise = workout?.exercises[currentExerciseIndex];
             const startTimer = (seconds) => {
     setTimeRemaining(seconds);
     setIsTimerRunning(true);
@@ -2260,273 +2343,370 @@ const stopTimer = () => {
     setTimeRemaining(0);
 };
             
-            const completeSet = () => {
-                const reps = prompt(`How many reps did you complete? (Target: ${currentExercise.reps})`);
-                const weight = prompt(`What weight did you use? (Target: ${currentExercise.weight || 0} lbs)`);
-                const difficulty = prompt('How difficult was it? (1-5, where 5 is very hard)');
-                const painLevel = prompt('Pain level? (0-10, where 0 is no pain)');
-                const notes = prompt('Any notes for this set? (optional)');
-                
-                if (reps && weight) {
-                    const setData = {
-                        reps: parseInt(reps),
-                        weight: parseFloat(weight),
-                        difficulty: parseInt(difficulty) || 3,
-                        painLevel: parseInt(painLevel) || 0,
-                        notes: notes || '',
-                        timestamp: new Date()
-                    };
-                    
-                    // Track pain levels
-                    setSessionData(prev => ({
-                        ...prev,
-                        totalPainLevel: prev.totalPainLevel + (parseInt(painLevel) || 0),
-                        painCount: prev.painCount + 1,
-                        exerciseData: [...prev.exerciseData, {
-                            exercise: currentExercise.name,
-                            set: currentSet,
-                            ...setData
-                        }]
-                    }));
-                    
-                    // Handle supersets and tri-sets
-if (currentExercise.grouping === 'superset' && currentExerciseIndex < workout.exercises.length - 1) {
-    // In a superset - alternate between two exercises
-    const nextExercise = workout.exercises[currentExerciseIndex + 1];
-    if (nextExercise) {
-        // Move to paired exercise, keep same set number
-        setCurrentExerciseIndex(currentExerciseIndex + 1);
-    }
-} else if (currentExercise.grouping === 'triset' && currentExerciseIndex < workout.exercises.length - 2) {
-    // First exercise of tri-set - move to second
-    setCurrentExerciseIndex(currentExerciseIndex + 1);
-} else if (currentExerciseIndex > 0) {
-    // Check if we're in middle/end of a superset or tri-set
-    const prevExercise = workout.exercises[currentExerciseIndex - 1];
+    // REPLACE the completeSet function (around line 1500) with this:
+
+const completeSet = () => {
+    // Check if this exercise has individual set details
+    const targetReps = currentExercise.setDetails?.[currentSet - 1]?.reps || currentExercise.reps;
+    const targetWeight = currentExercise.setDetails?.[currentSet - 1]?.weight || currentExercise.weight || 0;
     
-    if (prevExercise?.grouping === 'superset') {
-        // We're the second exercise in a superset
-        if (currentSet < currentExercise.sets) {
-            // Go back to first exercise for next set
-            setCurrentSet(currentSet + 1);
-            setCurrentExerciseIndex(currentExerciseIndex - 1);
-        } else {
-            // Superset complete, move to next exercise group
-            nextExercise();
-        }
-    } else if (prevExercise?.grouping === 'triset' && currentExerciseIndex > 1) {
-        const prevPrevExercise = workout.exercises[currentExerciseIndex - 2];
-        if (prevPrevExercise?.grouping === 'triset') {
-            // We're the third exercise in a tri-set
-            if (currentSet < currentExercise.sets) {
-                // Go back to first exercise for next set
-                setCurrentSet(currentSet + 1);
-                setCurrentExerciseIndex(currentExerciseIndex - 2);
+    const reps = prompt(`How many reps did you complete? (Target: ${targetReps})`);
+    const weight = prompt(`What weight did you use? (Target: ${targetWeight} lbs)`);
+    const difficulty = prompt('How difficult was it? (1-5, where 5 is very hard)');
+    const painLevel = prompt('Pain level? (0-10, where 0 is no pain)');
+    const notes = prompt('Any notes for this set? (optional)');
+    
+    if (reps && weight) {
+        const actualReps = parseInt(reps);
+        const actualWeight = parseFloat(weight);
+        
+        const setData = {
+            reps: actualReps,
+            weight: actualWeight,
+            difficulty: parseInt(difficulty) || 3,
+            painLevel: parseInt(painLevel) || 0,
+            notes: notes || '',
+            timestamp: new Date()
+        };
+        
+        // UPDATE CURRENT SESSION DATA
+        setCurrentSessionData(prev => ({
+            ...prev,
+            [currentExercise.name]: {
+                ...prev[currentExercise.name],
+                [`set${currentSet}`]: {
+                    reps: actualReps,
+                    weight: actualWeight
+                },
+                lastSet: currentSet,
+                lastReps: actualReps,
+                lastWeight: actualWeight
+            }
+        }));
+        
+        // Track in session data WITH EXERCISE NAME
+        setSessionData(prev => ({
+            ...prev,
+            totalPainLevel: prev.totalPainLevel + (parseInt(painLevel) || 0),
+            painCount: prev.painCount + 1,
+            exerciseData: [...prev.exerciseData, {
+                exercise: currentExercise.name,  // CRITICAL: Include exercise name
+                set: currentSet,
+                ...setData
+            }],
+            lastCompletedSet: {
+                exercise: currentExercise.name,
+                set: currentSet,
+                reps: actualReps,
+                weight: actualWeight
+            }
+        }));
+        
+        // Determine next move based on grouping
+        const nextExercise = workout.exercises[currentExerciseIndex + 1];
+        
+        // GROUP-BASED LOGIC
+        if (currentExercise.grouping && currentExercise.grouping !== 'none') {
+            const currentGroup = currentExercise.grouping;
+            
+            if (nextExercise && nextExercise.grouping === currentGroup) {
+                setCurrentExerciseIndex(currentExerciseIndex + 1);
             } else {
-                // Tri-set complete
-                nextExercise();
+                if (currentSet < currentExercise.sets) {
+                    setCurrentSet(currentSet + 1);
+                    let firstGroupIndex = currentExerciseIndex;
+                    while (firstGroupIndex > 0 && 
+                           workout.exercises[firstGroupIndex - 1]?.grouping === currentGroup) {
+                        firstGroupIndex--;
+                    }
+                    setCurrentExerciseIndex(firstGroupIndex);
+                } else {
+                    moveToNextExercise();
+                }
             }
         } else {
-            // We're the second exercise in a tri-set - move to third
-            setCurrentExerciseIndex(currentExerciseIndex + 1);
+            if (currentSet < currentExercise.sets) {
+                setCurrentSet(currentSet + 1);
+            } else {
+                moveToNextExercise();
+            }
         }
-    } else {
-        // Normal single exercise - standard progression
-        if (currentSet < currentExercise.sets) {
-            setCurrentSet(currentSet + 1);
-        } else {
-            nextExercise();
-        }
-    }
-} else {
-    // Normal exercise (not in a group)
-    if (currentSet < currentExercise.sets) {
-        setCurrentSet(currentSet + 1);
-    } else {
-        nextExercise();
-    }
-}
-                }
-            };
-            
-            const nextExercise = () => {
-    if (currentExerciseIndex < workout.exercises.length - 1) {
-        setCurrentExerciseIndex(currentExerciseIndex + 1);
-        setCurrentSet(1);
-        setShowInstructions(true);
-    } else {
-        completeWorkout();
     }
 };
+
+// REPLACE the completeWorkout function (around line 1435) with this ENHANCED version:
+
+const completeWorkout = async () => {
+    const duration = Math.round((new Date() - sessionData.startTime) / 60000);
+    const avgPainLevel = sessionData.painCount > 0 
+        ? (sessionData.totalPainLevel / sessionData.painCount).toFixed(1)
+        : 0;
+    
+    const mood = prompt('Rate your overall workout (1-5):\n1=😔 2=😕 3=😐 4=🙂 5=😄');
+    const finalNotes = prompt('Any final notes about the workout?');
+    
+    try {
+        // GENIUS FIX: Update the workout WITH the actual performed data
+        const updatedExercises = workout.exercises.map((exercise, index) => {
+            const exerciseSessionData = sessionData.exerciseData.filter(
+                data => data.exercise === exercise.name
+            );
             
-            const completeWorkout = async () => {
-                const duration = Math.round((new Date() - sessionData.startTime) / 60000);
-                const avgPainLevel = sessionData.painCount > 0 
-                    ? (sessionData.totalPainLevel / sessionData.painCount).toFixed(1)
-                    : 0;
+            // If we have session data for this exercise, update its setDetails
+            if (exerciseSessionData.length > 0) {
+                const setDetails = exerciseSessionData.map(data => ({
+                    reps: data.reps,
+                    weight: data.weight
+                }));
                 
-                const mood = prompt('Rate your overall workout (1-5):\n1=😔 2=😕 3=😐 4=🙂 5=😄');
-                const finalNotes = prompt('Any final notes about the workout?');
-                
-                try {
-                    await API_CONFIG.request(`/workouts/${workoutId}/complete`, {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            duration,
-                            moodFeedback: parseInt(mood) || 3,
-                            notes: finalNotes || '',
-                            averagePainLevel: parseFloat(avgPainLevel),
-                            sessionData: sessionData.exerciseData
-                        })
-                    });
-                    showSuccess(`Workout completed! Great job! 💪 Duration: ${duration} min, Avg Pain Level: ${avgPainLevel}/10`);
-                    onClose();
-                } catch (error) {
-                    showError('Failed to complete workout');
-                }
-            };
-            
-            const formatTime = (seconds) => {
-                const mins = Math.floor(seconds / 60);
-                const secs = seconds % 60;
-                return `${mins}:${secs.toString().padStart(2, '0')}`;
-            };
-            
-            if (!workout || !currentExercise) {
-                return (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                        <div className="loading-spinner"></div>
-                    </div>
-                );
+                return {
+                    ...exercise,
+                    setDetails: setDetails,
+                    // Also update the main values with the average/last
+                    weight: setDetails[setDetails.length - 1]?.weight || exercise.weight,
+                    reps: setDetails[setDetails.length - 1]?.reps || exercise.reps
+                };
             }
             
-            return (
-                <div className="fixed inset-0 bg-gray-900 text-white z-50 overflow-auto">
-                    <div className="max-w-4xl mx-auto p-4">
-                        <div className="flex justify-between items-center mb-6">
-                            <h1 className="text-3xl font-bold">{workout.name}</h1>
-                            <button onClick={() => {
-                                if (confirm('Are you sure you want to exit the workout?')) {
-                                    onClose();
-                                }
-                            }} className="text-gray-400 hover:text-white">
-                                <i className="fas fa-times text-2xl"></i>
-                            </button>
-                        </div>
-                        
-                        <div className="mb-8">
-                            <div className="bg-gray-700 rounded-full h-3">
-                                <div 
-                                    className="bg-gradient-to-r from-blue-500 to-green-500 h-3 rounded-full transition-all"
-                                    style={{width: `${((currentExerciseIndex) / workout.exercises.length) * 100}%`}}
-                                ></div>
-                            </div>
-                            <p className="text-sm mt-2 text-gray-400">
-                                Exercise {currentExerciseIndex + 1} of {workout.exercises.length}
-                            </p>
-                        </div>
-                        
-                        
-                        <div className="bg-gray-800 rounded-lg p-6 mb-6">
-                            <h2 className="text-3xl font-bold mb-2">{currentExercise.name}</h2>
-                            <div className="flex gap-4 text-gray-400 mb-4">
-                                <span className="bg-gray-700 px-3 py-1 rounded">
-                                    Set {currentSet} of {currentExercise.sets}
-                                </span>
-                                <span className="bg-gray-700 px-3 py-1 rounded">
-                                    {currentExercise.reps} reps
-                                </span>
-                                {currentExercise.weight > 0 && (
-                                    <span className="bg-gray-700 px-3 py-1 rounded">
-                                        {currentExercise.weight} lbs
-                                    </span>
-                                )}
-                            </div>
-                            
-                            {currentExercise.notes && (
-                                <div className="bg-gray-700 p-4 rounded-lg mb-4">
-                                    <h4 className="font-semibold text-yellow-400 mb-2">Notes from Specialist</h4>
-                                    <p className="text-gray-300">{currentExercise.notes}</p>
-                                </div>
-                            )}
-                            {currentExercise.holdTime && currentExercise.holdTime > 0 && (
-    <div className="bg-purple-900 bg-opacity-50 p-4 rounded-lg mb-4">
-        <h4 className="font-semibold text-purple-300 mb-2">
-            <i className="fas fa-clock mr-2"></i>
-            Hold Time: {currentExercise.holdTime} seconds
-        </h4>
-        {!isTimerRunning ? (
-            <button
-                onClick={() => startTimer(currentExercise.holdTime)}
-                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded transition"
-            >
-                <i className="fas fa-play mr-2"></i>
-                Start Timer
-            </button>
-        ) : (
-            <div className="text-center">
-                <div className="text-4xl font-bold text-white mb-2">
-                    {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}
-                </div>
-                <button
-                    onClick={stopTimer}
-                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition"
-                >
-                    <i className="fas fa-stop mr-2"></i>
-                    Stop Timer
+            return exercise;
+        });
+        
+        // First, update the workout with the actual performed data
+        await API_CONFIG.request(`/workouts/${workoutId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                exercises: updatedExercises,
+                completed: true,
+                completedAt: new Date(),
+                duration,
+                moodFeedback: parseInt(mood) || 3,
+                notes: finalNotes || '',
+                averagePainLevel: parseFloat(avgPainLevel)
+            })
+        });
+        
+        // Then mark it as complete
+        await API_CONFIG.request(`/workouts/${workoutId}/complete`, {
+            method: 'POST',
+            body: JSON.stringify({
+                duration,
+                moodFeedback: parseInt(mood) || 3,
+                notes: finalNotes || '',
+                averagePainLevel: parseFloat(avgPainLevel),
+                sessionData: sessionData.exerciseData
+            })
+        });
+        
+        showSuccess(`Workout completed! Great job! 💪 Duration: ${duration} min, Avg Pain Level: ${avgPainLevel}/10`);
+        onClose();
+    } catch (error) {
+        showError('Failed to complete workout');
+    }
+};
+
+const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
+if (!workout || !currentExercise) {
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="loading-spinner"></div>
+        </div>
+    );
+}
+
+return (
+    <div className="fixed inset-0 bg-gray-900 text-white z-50 overflow-auto">
+        <div className="max-w-4xl mx-auto p-4">
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-3xl font-bold">{workout.name}</h1>
+                <button onClick={() => {
+                    if (confirm('Are you sure you want to exit the workout?')) {
+                        onClose();
+                    }
+                }} className="text-gray-400 hover:text-white">
+                    <i className="fas fa-times text-2xl"></i>
                 </button>
             </div>
-        )}
+            
+            <div className="mb-8">
+                <div className="bg-gray-700 rounded-full h-3">
+                    <div 
+                        className="bg-gradient-to-r from-blue-500 to-green-500 h-3 rounded-full transition-all"
+                        style={{width: `${((currentExerciseIndex) / workout.exercises.length) * 100}%`}}
+                    ></div>
+                </div>
+                <p className="text-sm mt-2 text-gray-400">
+                    Exercise {currentExerciseIndex + 1} of {workout.exercises.length}
+                </p>
+            </div>
+            
+            
+            <div className="bg-gray-800 rounded-lg p-6 mb-6">
+    <h2 className="text-3xl font-bold mb-2">{currentExercise.name}</h2>
+    
+    {/* Target and Previous Display */}
+<div className="grid grid-cols-2 gap-3 mb-4">
+    {/* Target for THIS workout */}
+    <div className="bg-yellow-900 bg-opacity-50 p-3 rounded-lg">
+        <p className="text-yellow-300 text-sm font-semibold">
+            <i className="fas fa-bullseye mr-2"></i>
+            Target: {
+                currentExercise.setDetails?.[currentSet - 1] 
+                    ? `${currentExercise.setDetails[currentSet - 1].reps} reps @ ${currentExercise.setDetails[currentSet - 1].weight} lbs`
+                    : `${currentExercise.reps} reps @ ${currentExercise.weight || 0} lbs`
+            }
+        </p>
+    </div>
+    
+   {/* Current Session Data - Shows what was just completed */}
+{currentSessionData[currentExercise.name] && currentSessionData[currentExercise.name].lastSet && (
+    <div className="bg-green-900 bg-opacity-50 p-3 rounded-lg mb-2 animate-pulse">
+        <p className="text-green-300 text-sm font-semibold">
+            <i className="fas fa-check-circle mr-2"></i>
+            Just Completed: {currentSessionData[currentExercise.name].lastReps} reps @ {currentSessionData[currentExercise.name].lastWeight} lbs (set {currentSessionData[currentExercise.name].lastSet})
+        </p>
     </div>
 )}
-                            {currentExercise.grouping && currentExercise.grouping !== 'none' && (
-                                <div className="bg-purple-900 bg-opacity-50 p-3 rounded-lg mb-4">
-                                    <p className="text-purple-300">
-                                        <i className="fas fa-link mr-2"></i>
-                                        {currentExercise.grouping === 'superset' ? 'Superset' : 'Tri-set'} with next exercise
-                                    </p>
-                                </div>
-                            )}
-                            
-                            {/* Action Buttons */}
-<div className="flex gap-3">
-    <button
-        onClick={() => setShowExerciseDetails(true)}
-        className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition"
-    >
-        <i className="fas fa-info-circle"></i>
-        View Details
-    </button>
-    
-    {currentExercise.youtubeLink && (
-        <a 
-            href={currentExercise.youtubeLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition"
-        >
-            <i className="fab fa-youtube"></i>
-            Watch Tutorial
-        </a>
-    )}
+
+{/* Historical Data from Previous Workouts */}
+<div className="bg-blue-900 bg-opacity-50 p-3 rounded-lg">
+    <p className="text-blue-300 text-sm font-semibold">
+        <i className="fas fa-history mr-2"></i>
+        {previousWorkoutData[currentExercise.name] ? (
+            <>
+                Last Workout: {
+                    previousWorkoutData[currentExercise.name].setDetails?.[currentSet - 1] 
+                        ? `${previousWorkoutData[currentExercise.name].setDetails[currentSet - 1].reps} reps @ ${previousWorkoutData[currentExercise.name].setDetails[currentSet - 1].weight} lbs`
+                        : `${previousWorkoutData[currentExercise.name].reps} reps @ ${previousWorkoutData[currentExercise.name].weight} lbs`
+                }
+                {previousWorkoutData[currentExercise.name].lastPerformed && (
+                    <span className="text-xs text-blue-400 ml-2">
+                        ({new Date(previousWorkoutData[currentExercise.name].lastPerformed).toLocaleDateString()})
+                    </span>
+                )}
+            </>
+        ) : (
+            'No previous workout data'
+        )}
+    </p>
 </div>
+</div>
+    
+    <div className="flex gap-4 text-gray-400 mb-4">
+        <span className="bg-gray-700 px-3 py-1 rounded">
+            Set {currentSet} of {currentExercise.sets}
+        </span>
+        <span className="bg-gray-700 px-3 py-1 rounded">
+            {currentExercise.setDetails?.[currentSet - 1]?.reps || currentExercise.reps} reps
+        </span>
+        {(currentExercise.setDetails?.[currentSet - 1]?.weight > 0 || currentExercise.weight > 0) && (
+            <span className="bg-gray-700 px-3 py-1 rounded">
+                {currentExercise.setDetails?.[currentSet - 1]?.weight || currentExercise.weight} lbs
+            </span>
+        )}
+    </div>
+                
+                {currentExercise.notes && (
+                    <div className="bg-gray-700 p-4 rounded-lg mb-4">
+                        <h4 className="font-semibold text-yellow-400 mb-2">Notes from Specialist</h4>
+                        <p className="text-gray-300">{currentExercise.notes}</p>
+                    </div>
+                )}
+                {currentExercise.holdTime && currentExercise.holdTime > 0 && (
+                    <div className="bg-purple-900 bg-opacity-50 p-4 rounded-lg mb-4">
+                        <h4 className="font-semibold text-purple-300 mb-2">
+                            <i className="fas fa-clock mr-2"></i>
+                            Hold Time: {currentExercise.holdTime} seconds
+                        </h4>
+                        {!isTimerRunning ? (
+                            <button
+                                onClick={() => startTimer(currentExercise.holdTime)}
+                                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded transition"
+                            >
+                                <i className="fas fa-play mr-2"></i>
+                                Start Timer
+                            </button>
+                        ) : (
+                            <div className="text-center">
+                                <div className="text-4xl font-bold text-white mb-2">
+                                    {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}
+                                </div>
+                                <button
+                                    onClick={stopTimer}
+                                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition"
+                                >
+                                    <i className="fas fa-stop mr-2"></i>
+                                    Stop Timer
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
+                {/* Just Completed Indicator */}
+{sessionData.lastCompletedSet && sessionData.lastCompletedSet.exercise === currentExercise.name && (
+    <div className="bg-green-900 bg-opacity-50 p-3 rounded-lg mb-4 animate-pulse">
+        <p className="text-green-300 text-sm font-semibold">
+            <i className="fas fa-check-circle mr-2"></i>
+            Just completed: Set {sessionData.lastCompletedSet.set} - {sessionData.lastCompletedSet.reps} reps @ {sessionData.lastCompletedSet.weight} lbs
+        </p>
+    </div>
+)}
+                {currentExercise.grouping && currentExercise.grouping !== 'none' && (() => {
+    // Count exercises in the same group
+    const exercisesInGroup = workout.exercises.filter(e => e.grouping === currentExercise.grouping).length;
+    return (
+        <div className="bg-purple-900 bg-opacity-50 p-3 rounded-lg mb-4">
+            <p className="text-purple-300">
+                <i className="fas fa-link mr-2"></i>
+                {exercisesInGroup} exercises in Group {currentExercise.grouping}
+            </p>
+        </div>
+    );
+})()}
+                
+                {/* Action Buttons */}
+                <div className="flex gap-3">
+                    <button
+                        onClick={() => setShowExerciseDetails(true)}
+                        className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition"
+                    >
+                        <i className="fas fa-info-circle"></i>
+                        View Details
+                    </button>
+                    
+                    {currentExercise.youtubeLink && (
+                        <a 
+                            href={currentExercise.youtubeLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition"
+                        >
+                            <i className="fab fa-youtube"></i>
+                            Watch Tutorial
+                        </a>
+                    )}
+                </div>
                         
-                            <button 
-    onClick={completeSet}
-    className="w-full bg-green-500 hover:bg-green-600 text-white py-4 rounded-lg text-xl font-bold transition"
->
-    Complete Set {currentSet}
-</button>
+                <button 
+                    onClick={completeSet}
+                    className="w-full bg-green-500 hover:bg-green-600 text-white py-4 rounded-lg text-xl font-bold transition"
+                >
+                    Complete Set {currentSet}
+                </button>
                         
                         <div className="grid grid-cols-3 gap-4 mt-6">
                             <div className="bg-gray-800 rounded-lg p-4 text-center">
-                                <p className="text-gray-400 text-sm text-gray-300">Duration</p>
+                                <p className="text-gray-400 text-sm">Duration</p>
                                 <p className="text-xl font-bold">
                                     {Math.round((new Date() - sessionData.startTime) / 60000)} min
                                 </p>
                             </div>
                             <div className="bg-gray-800 rounded-lg p-4 text-center">
-                                <p className="text-gray-400 text-sm text-gray-300">Avg Pain</p>
+                                <p className="text-gray-400 text-sm">Avg Pain</p>
                                 <p className="text-xl font-bold">
                                     {sessionData.painCount > 0 
                                         ? (sessionData.totalPainLevel / sessionData.painCount).toFixed(1)
@@ -2534,7 +2714,7 @@ if (currentExercise.grouping === 'superset' && currentExerciseIndex < workout.ex
                                 </p>
                             </div>
                             <div className="bg-gray-800 rounded-lg p-4 text-center">
-                                <p className="text-gray-400 text-sm text-gray-300">Sets Done</p>
+                                <p className="text-gray-400 text-sm">Sets Done</p>
                                 <p className="text-xl font-bold">{sessionData.exerciseData.length}</p>
                             </div>
                         </div>
@@ -2657,6 +2837,7 @@ if (currentExercise.grouping === 'superset' && currentExerciseIndex < workout.ex
                 </div>
             );
         };
+  
         
         // Enhanced Workouts Component
         const Workouts = ({ user, isClient, showError, showSuccess }) => {
