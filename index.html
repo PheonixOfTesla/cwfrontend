@@ -2672,15 +2672,17 @@ if (currentExercise.grouping === 'superset' && currentExerciseIndex < workout.ex
 });
               const [editingWorkout, setEditingWorkout] = useState(null);
             const [activeSession, setActiveSession] = useState(null);
-            // Exercise Library Search States
+            
+  // Exercise Library Search States
 const [showExerciseSearch, setShowExerciseSearch] = useState(false);
 const [exerciseSearchTerm, setExerciseSearchTerm] = useState('');
 const [libraryExercises, setLibraryExercises] = useState([]);
 const [filteredLibraryExercises, setFilteredLibraryExercises] = useState([]);
-            const uploadToCloudinary = async (file) => {
+
+const uploadToCloudinary = async (file) => {
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('upload_preset', 'ml_default'); // Use default or create your own
+    formData.append('upload_preset', 'ml_default');
     
     try {
         const response = await fetch(
@@ -2697,23 +2699,29 @@ const [filteredLibraryExercises, setFilteredLibraryExercises] = useState([]);
         return null;
     }
 };
-            const fetchLibraryExercises = async () => {
+
+const fetchLibraryExercises = async () => {
     try {
         const data = await API_CONFIG.request('/exercises');
-        setLibraryExercises(data.data || []);
+        console.log('Library exercises fetched:', data); // Debug log
+        const exercisesArray = Array.isArray(data) ? data : (data.data || []);
+        console.log('Processed exercises:', exercisesArray); // Debug log
+        setLibraryExercises(exercisesArray);
     } catch (error) {
         console.error('Error fetching library exercises:', error);
+        setLibraryExercises([]);
     }
 };
             useEffect(() => {
-                if (!isClient && (user.roles?.includes('specialist') || user.roles?.includes('admin') || user.roles?.includes('owner'))) {
-                    fetchClients();
-                }
-                if (selectedClient) {
-                    fetchWorkouts();
-                }
-            }, [selectedClient, isClient]);
-            // Fetch library exercises when component mounts
+    if (!isClient && (user.roles?.includes('specialist') || user.roles?.includes('admin') || user.roles?.includes('owner'))) {
+        fetchClients();
+    }
+    if (selectedClient) {
+        fetchWorkouts();
+    }
+}, [selectedClient, isClient]);
+
+// Fetch library exercises when component mounts
 useEffect(() => {
     if (!isClient) {
         fetchLibraryExercises();
@@ -2722,14 +2730,21 @@ useEffect(() => {
 
 // Filter exercises based on search term
 useEffect(() => {
+    console.log('Search term changed:', exerciseSearchTerm); // Debug log
+    console.log('Available exercises:', libraryExercises.length); // Debug log
+    
     if (exerciseSearchTerm.trim() === '') {
         setFilteredLibraryExercises([]);
     } else {
+        const searchLower = exerciseSearchTerm.toLowerCase();
         const filtered = libraryExercises.filter(exercise => 
-            exercise.name.toLowerCase().includes(exerciseSearchTerm.toLowerCase()) ||
-            exercise.muscleCategory?.toLowerCase().includes(exerciseSearchTerm.toLowerCase()) ||
-            exercise.tags?.some(tag => tag.toLowerCase().includes(exerciseSearchTerm.toLowerCase()))
+            exercise.name?.toLowerCase().includes(searchLower) ||
+            exercise.muscleCategory?.toLowerCase().includes(searchLower) ||
+            exercise.equipmentNeeded?.toLowerCase().includes(searchLower) ||
+            exercise.difficulty?.toLowerCase().includes(searchLower) ||
+            exercise.tags?.some(tag => tag.toLowerCase().includes(searchLower))
         );
+        console.log('Filtered results:', filtered.length); // Debug log
         setFilteredLibraryExercises(filtered);
     }
 }, [exerciseSearchTerm, libraryExercises]);
@@ -3036,13 +3051,24 @@ const ungroupExercise = (index) => {
         <label className="block text-sm font-medium">Exercises</label>
         <div className="flex gap-2">
             <button 
-                type="button" 
-                onClick={() => setShowExerciseSearch(true)}
-                className="text-purple-500 hover:text-purple-600"
-            >
-                <i className="fas fa-search mr-1"></i>
-                Search Exercises
-            </button>
+    type="button" 
+    onClick={async () => {
+        console.log('Search button clicked, isClient:', isClient);
+        console.log('Current library exercises:', libraryExercises.length);
+        
+        // Force fetch if empty
+        if (libraryExercises.length === 0) {
+            console.log('Fetching library exercises...');
+            await fetchLibraryExercises();
+        }
+        
+        setShowExerciseSearch(true);
+    }}
+    className="text-purple-500 hover:text-purple-600"
+>
+    <i className="fas fa-search mr-1"></i>
+    Search Exercises {libraryExercises.length > 0 && `(${libraryExercises.length})`}
+</button>
             <button type="button" onClick={addExercise} className="text-blue-500 hover:text-blue-600">
                 <i className="fas fa-plus mr-1"></i>
                 Add Exercise
@@ -3050,7 +3076,7 @@ const ungroupExercise = (index) => {
         </div>
     </div>
 
-    {/* Exercise Search Modal */}
+   {/* Exercise Search Modal */}
 {showExerciseSearch && (
     <div className="modal-overlay" onClick={() => {
         setShowExerciseSearch(false);
@@ -3083,12 +3109,21 @@ const ungroupExercise = (index) => {
                     <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                 </div>
                 <p className="text-xs text-gray-400 mt-2">
-                    {libraryExercises.length} exercises in library
+                    {libraryExercises.length === 0 ? (
+                        <span className="text-yellow-400">Loading exercise library...</span>
+                    ) : (
+                        `${libraryExercises.length} exercises available`
+                    )}
                 </p>
             </div>
             
             <div className="max-h-96 overflow-y-auto">
-                {exerciseSearchTerm.trim() === '' ? (
+                {libraryExercises.length === 0 ? (
+                    <div className="text-center py-8 text-gray-400">
+                        <div className="loading-spinner mx-auto mb-3"></div>
+                        <p>Loading exercises from library...</p>
+                    </div>
+                ) : exerciseSearchTerm.trim() === '' ? (
                     <div className="text-center py-8 text-gray-400">
                         <i className="fas fa-search text-4xl mb-3 opacity-50"></i>
                         <p>Start typing to search exercises...</p>
@@ -3119,7 +3154,6 @@ const ungroupExercise = (index) => {
                                     type="button"
                                     onClick={() => {
                                         addExerciseFromLibrary(exercise);
-                                        setExerciseSearchTerm('');
                                     }}
                                     className="coastal-button text-sm py-2 px-4 ml-3"
                                 >
@@ -3133,7 +3167,7 @@ const ungroupExercise = (index) => {
                     <div className="text-center py-8 text-gray-400">
                         <i className="fas fa-exclamation-circle text-4xl mb-3 opacity-50"></i>
                         <p>No exercises found matching "{exerciseSearchTerm}"</p>
-                        <p className="text-sm mt-2">Try different keywords or check the Exercise Library</p>
+                        <p className="text-sm mt-2">Try different keywords</p>
                     </div>
                 )}
             </div>
