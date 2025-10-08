@@ -533,6 +533,30 @@ const ResponseHandler = {
 const ClientManager = {
     clients: [],
     loaded: false,
+    listeners: new Set(),
+    selectedClientId: null,
+    
+    // Subscribe to client changes
+    subscribe(callback) {
+        this.listeners.add(callback);
+        return () => this.listeners.delete(callback);
+    },
+    
+    // Notify all subscribers
+    notify() {
+        this.listeners.forEach(callback => callback(this.clients, this.selectedClientId));
+    },
+    
+    // Set selected client globally
+    setSelectedClient(clientId) {
+        this.selectedClientId = clientId;
+        this.notify();
+    },
+    
+    // Get selected client
+    getSelectedClient() {
+        return this.selectedClientId;
+    },
     
     async loadClients() {
         if (this.loaded && this.clients.length > 0) {
@@ -544,12 +568,13 @@ const ClientManager = {
             const users = Array.isArray(response) ? response : (response.data || []);
             this.clients = users;
             this.loaded = true;
+            this.notify();
             return this.clients;
         } catch (error) {
             console.error('ClientManager: Failed to load clients', error);
             return [];
         }
-    },  // ← Make sure this comma is here!
+    },
     
     getClients() {
         return this.clients;
@@ -558,11 +583,38 @@ const ClientManager = {
     reset() {
         this.clients = [];
         this.loaded = false;
+        this.selectedClientId = null;
+        this.notify();
     }
 };
 
-window.ResponseHandler = ResponseHandler;
 window.ClientManager = ClientManager;
+        // Custom hook to use ClientManager
+const useClientManager = () => {
+    const [clients, setClients] = useState(ClientManager.getClients());
+    const [selectedClient, setSelectedClient] = useState(ClientManager.getSelectedClient());
+    
+    useEffect(() => {
+        // Subscribe to changes
+        const unsubscribe = ClientManager.subscribe((newClients, newSelectedId) => {
+            setClients(newClients);
+            setSelectedClient(newSelectedId);
+        });
+        
+        // Load clients if not loaded
+        if (!ClientManager.loaded) {
+            ClientManager.loadClients();
+        }
+        
+        return unsubscribe;
+    }, []);
+    
+    const selectClient = (clientId) => {
+        ClientManager.setSelectedClient(clientId);
+    };
+    
+    return { clients, selectedClient, selectClient };
+};
         // === CLOCKWORK-GENESIS SYSTEM CONFIGURATION ===
 const SYSTEM_CONFIG = {
     TIERS: {
