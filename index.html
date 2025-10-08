@@ -1041,7 +1041,6 @@ const [resetEmail, setResetEmail] = useState('');
                     console.error('Missing data:', { hasToken: !!token, hasUser: !!user });
                     throw new Error('Invalid server response - missing token or user data');
                 }
-            } else {
         } else {
             // Error responses (400+)
             const errorMessage = data.message || data.error || `Server error (${response.status})`;
