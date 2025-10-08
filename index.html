@@ -5709,36 +5709,41 @@ await API_CONFIG.request(endpoint, {
             <div className="dark-card p-6">
                 <h2 className="text-2xl font-bold mb-4 text-white">Wearable Devices</h2>
                 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-                    {providers.map(provider => {
-                        const connected = isConnected(provider.id);
-                        return (
-                            <div key={provider.id} className={`p-4 rounded-lg border-2 transition ${
-                                connected ? 'border-green-500 bg-green-900 bg-opacity-20' : 'border-gray-600 hover:border-gray-500 bg-gray-800'
-                            }`}>
-                                <div className="text-center">
-                                    <div className="text-4xl mb-2">{provider.icon}</div>
-                                    <h3 className="font-semibold text-white">{provider.name}</h3>
-                                    {connected ? (
-                                        <button
-                                            onClick={() => handleDisconnect(provider.id)}
-                                            className="mt-2 text-sm text-red-400 hover:text-red-300"
-                                        >
-                                            Disconnect
-                                        </button>
-                                    ) : (
-                                        <button
-                                            onClick={() => handleConnect(provider.id)}
-                                            className="mt-2 coastal-button text-sm py-1 px-3"
-                                        >
-                                            Connect
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        );
-                    })}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+    {providers.map(provider => {
+        const connected = isConnected(provider.id);
+        return (
+            <div key={provider.id} className={`p-4 rounded-lg border-2 transition ${
+                connected ? 'border-green-500 bg-green-900 bg-opacity-20' : 'border-gray-600 hover:border-gray-500 bg-gray-800'
+            }`}>
+                <div className="text-center">
+                    <div className="text-4xl mb-2">{provider.icon}</div>
+                    <h3 className="font-semibold text-white">{provider.name}</h3>
+                    {!provider.available && (
+                        <span className="text-xs text-yellow-400 block mt-1">Coming Soon</span>
+                    )}
+                    {provider.available && (
+                        connected ? (
+                            <button
+                                onClick={() => handleDisconnect(provider.id)}
+                                className="mt-2 text-sm text-red-400 hover:text-red-300"
+                            >
+                                Disconnect
+                            </button>
+                        ) : (
+                            <button
+                                onClick={() => handleConnect(provider.id)}
+                                className="mt-2 coastal-button text-sm py-1 px-3"
+                            >
+                                Connect
+                            </button>
+                        )
+                    )}
                 </div>
+            </div>
+        );
+    })}
+</div>
                 
                 <button
                     onClick={() => setShowManualEntry(true)}
