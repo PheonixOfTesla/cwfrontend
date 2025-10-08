@@ -242,11 +242,11 @@
         .coastal-input {
             width: 100%;
             padding: 1rem;
-            border: none;
+            border: 2px solid #374151;
             border-radius: 12px;
             font-size: 1rem;
             transition: all 0.3s ease;
-            background: #1a202c;
+            background: #1f2937;
             color: #e5e7eb;
         }
         
@@ -406,24 +406,29 @@ const DateHandler = {
     },
     
     toDisplay: (dateValue) => {
-        // THIS IS THE KEY FIX - Never return "Invalid Date"
-        if (!dateValue || dateValue === 'Invalid Date') {
-            return ''; // Return empty string instead of "Invalid Date"
+    // Enhanced display with better user feedback
+    if (!dateValue || dateValue === 'Invalid Date') {
+        return 'Not set'; // More informative than empty string
+    }
+    
+    try {
+        const date = new Date(dateValue);
+        if (isNaN(date.getTime())) {
+            return 'Not set'; // Clear feedback for invalid dates
         }
         
-        try {
-            const date = new Date(dateValue);
-            if (isNaN(date.getTime())) {
-                return ''; // Return empty string for invalid dates
-            }
-            
-            // Format the date
-            const options = { year: 'numeric', month: 'short', day: 'numeric' };
-            return date.toLocaleDateString('en-US', options);
-        } catch (e) {
-            return ''; // Return empty string on any error
-        }
-    },
+        // Format the date with better readability
+        const options = { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric',
+            timeZone: APP_TIMEZONE // Use app timezone
+        };
+        return date.toLocaleDateString('en-US', options);
+    } catch (e) {
+        return 'Not set'; // Consistent error handling
+    }
+},
     
     getCurrentETDate: () => {
         const now = new Date();
@@ -528,6 +533,30 @@ const ResponseHandler = {
 const ClientManager = {
     clients: [],
     loaded: false,
+    listeners: new Set(),
+    selectedClientId: null,
+    
+    // Subscribe to client changes
+    subscribe(callback) {
+        this.listeners.add(callback);
+        return () => this.listeners.delete(callback);
+    },
+    
+    // Notify all subscribers
+    notify() {
+        this.listeners.forEach(callback => callback(this.clients, this.selectedClientId));
+    },
+    
+    // Set selected client globally
+    setSelectedClient(clientId) {
+        this.selectedClientId = clientId;
+        this.notify();
+    },
+    
+    // Get selected client
+    getSelectedClient() {
+        return this.selectedClientId;
+    },
     
     async loadClients() {
         if (this.loaded && this.clients.length > 0) {
@@ -535,10 +564,11 @@ const ClientManager = {
         }
         
         try {
-            const response = await API_CONFIG.request('/users');
+            const response = await API_CONFIG.request('/users?role=client');
             const users = Array.isArray(response) ? response : (response.data || []);
-            this.clients = users.filter(user => user.roles?.includes('client'));
+            this.clients = users;
             this.loaded = true;
+            this.notify();
             return this.clients;
         } catch (error) {
             console.error('ClientManager: Failed to load clients', error);
@@ -553,11 +583,38 @@ const ClientManager = {
     reset() {
         this.clients = [];
         this.loaded = false;
+        this.selectedClientId = null;
+        this.notify();
     }
 };
 
-window.ResponseHandler = ResponseHandler;
 window.ClientManager = ClientManager;
+        // Custom hook to use ClientManager
+const useClientManager = () => {
+    const [clients, setClients] = useState(ClientManager.getClients());
+    const [selectedClient, setSelectedClient] = useState(ClientManager.getSelectedClient());
+    
+    useEffect(() => {
+        // Subscribe to changes
+        const unsubscribe = ClientManager.subscribe((newClients, newSelectedId) => {
+            setClients(newClients);
+            setSelectedClient(newSelectedId);
+        });
+        
+        // Load clients if not loaded
+        if (!ClientManager.loaded) {
+            ClientManager.loadClients();
+        }
+        
+        return unsubscribe;
+    }, []);
+    
+    const selectClient = (clientId) => {
+        ClientManager.setSelectedClient(clientId);
+    };
+    
+    return { clients, selectedClient, selectClient };
+};
         // === CLOCKWORK-GENESIS SYSTEM CONFIGURATION ===
 const SYSTEM_CONFIG = {
     TIERS: {
@@ -733,90 +790,121 @@ const [success, setSuccess] = useState(null);
                     )}
                     
                     <main className="max-w-7xl mx-auto px-4 py-6">
-                        {activeTab === 'dashboard' && <Dashboard user={user} isClient={isOnlyClient} selectedClientId={globalSelectedClient} onClientChange={setGlobalSelectedClient} />}
-{activeTab === 'workouts' && <Workouts user={user} isClient={isOnlyClient} showError={showError} showSuccess={showSuccess} selectedClientId={globalSelectedClient} onClientChange={setGlobalSelectedClient} />}
-{activeTab === 'measurements' && <Measurements user={user} isClient={isOnlyClient} showError={showError} showSuccess={showSuccess} selectedClientId={globalSelectedClient} onClientChange={setGlobalSelectedClient} />}
-{activeTab === 'nutrition' && <Nutrition user={user} isClient={isOnlyClient} showError={showError} showSuccess={showSuccess} selectedClientId={globalSelectedClient} onClientChange={setGlobalSelectedClient} />}
-{activeTab === 'goals' && <Goals user={user} isClient={isOnlyClient} showError={showError} showSuccess={showSuccess} selectedClientId={globalSelectedClient} onClientChange={setGlobalSelectedClient} />}
-{activeTab === 'calendar' && <Calendar user={user} showError={showError} showSuccess={showSuccess} />}
-{activeTab === 'reports' && <Reports user={user} isClient={isOnlyClient} showSuccess={showSuccess} showError={showError} selectedClientId={globalSelectedClient} onClientChange={setGlobalSelectedClient} />}
-{activeTab === 'tests' && <Tests user={user} showError={showError} showSuccess={showSuccess} selectedClientId={globalSelectedClient} onClientChange={setGlobalSelectedClient} />}
-{activeTab === 'users' && <Users user={user} showError={showError} showSuccess={showSuccess} />}
+    {activeTab === 'dashboard' && <Dashboard user={user} isClient={isOnlyClient} selectedClientId={globalSelectedClient} onClientChange={setGlobalSelectedClient} />}
+    {activeTab === 'workouts' && <Workouts user={user} isClient={isOnlyClient} showError={showError} showSuccess={showSuccess} selectedClientId={globalSelectedClient} onClientChange={setGlobalSelectedClient} />}
+    {activeTab === 'measurements' && <Measurements user={user} isClient={isOnlyClient} showError={showError} showSuccess={showSuccess} selectedClientId={globalSelectedClient} onClientChange={setGlobalSelectedClient} />}
+    {activeTab === 'nutrition' && <Nutrition user={user} isClient={isOnlyClient} showError={showError} showSuccess={showSuccess} selectedClientId={globalSelectedClient} onClientChange={setGlobalSelectedClient} />}
+    {activeTab === 'goals' && <Goals user={user} isClient={isOnlyClient} showError={showError} showSuccess={showSuccess} selectedClientId={globalSelectedClient} onClientChange={setGlobalSelectedClient} />}
+    {activeTab === 'calendar' && <Calendar user={user} showError={showError} showSuccess={showSuccess} />}
+    {activeTab === 'wearables' && <Wearables user={user} showError={showError} showSuccess={showSuccess} />}
+    {activeTab === 'reports' && <Reports user={user} isClient={isOnlyClient} showSuccess={showSuccess} showError={showError} selectedClientId={globalSelectedClient} onClientChange={setGlobalSelectedClient} />}
+    {activeTab === 'exercises' && <ExerciseLibrary user={user} showError={showError} showSuccess={showSuccess} />}
+    {activeTab === 'tests' && <Tests user={user} showError={showError} showSuccess={showSuccess} selectedClientId={globalSelectedClient} onClientChange={setGlobalSelectedClient} />}
+    {activeTab === 'users' && <Users user={user} showError={showError} showSuccess={showSuccess} />}
                     </main>
                 </div>
             );
         };
         
         // Navigation Component
-        const Navigation = ({ user, activeTab, setActiveTab, isProfessional, isClient, onLogout }) => {
-            const tabs = [
-    { id: "dashboard", label: "Dashboard", icon: "📊" },
-    { id: "workouts", label: "Workouts", icon: "💪" },
-    { id: "measurements", label: "Measurements", icon: "📏" },
-    { id: "nutrition", label: "Nutrition", icon: "🥗" },
-    { id: "goals", label: "Goals", icon: "🎯" },
-    { id: "calendar", label: "Calendar", icon: "📅" },  // ADD THIS
-    { id: "reports", label: "Reports", icon: "📄" }
-];
-            
-            if (isProfessional) {
-                tabs.push({ id: "exercises", label: "Exercise Library", icon: "📚" });
-                tabs.push({ id: "tests", label: "Tests", icon: "🧪" });
-            }
-            
-            if (user.roles?.includes("admin") || user.roles?.includes("owner")) {
-                tabs.push({ id: "users", label: "Users", icon: "👥" });
-            }
-            
-            return (
-                <nav className="bg-gray-900 shadow-xl border-b border-gray-700">
-                    <div className="max-w-7xl mx-auto px-4">
-                        <div className="flex justify-between items-center py-4">
-                            <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-2">
-                           <div className="relative h-8 w-8">
-  <svg viewBox="0 0 40 40" className="absolute inset-0">
-    <path d="M20 35 Q15 30 15 25 T20 15 T25 25 T20 35" 
-          fill="url(#phoenix-gradient)"/>
-    <path d="M12 20 Q20 10 28 20" 
-          stroke="#fbbf24" 
-          strokeWidth="2" 
-          fill="none"
-          className="animate-pulse"/>
-    <defs>
-      <linearGradient id="phoenix-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stopColor="#ef4444"/>
-        <stop offset="50%" stopColor="#f97316"/>
-        <stop offset="100%" stopColor="#fbbf24"/>
-      </linearGradient>
-    </defs>
-  </svg>
-</div>
-                                alt="CF"
-                                className="h-8 w-8 object-contain"
-                            />
-                            <h1 className="text-xl font-bold" style={{color: "var(--clockwork-primary)"}}>
-                                ClockWork
-                            </h1>
-                        </div>
-                            {/* Phoenix of Tesla Signature - INSERT AT LINE 637 */}
-                        <div className="hidden md:flex items-center gap-2 ml-4 opacity-50 hover:opacity-100 transition-opacity">
-                            <span className="text-xs text-yellow-500">Created by</span>
-                           <span 
-    className="text-xs font-bold"
-    style={{
-        background: 'linear-gradient(to right, #EAB308, #F97316)',
-        WebkitBackgroundClip: 'text',
-        WebkitTextFillColor: 'transparent',
-        backgroundClip: 'text',
-        color: 'transparent'
-    }}
->
-    Phoenix of Tesla™
-</span>
-                        </div>
-                        {/* END Phoenix Signature */}    
+       const Navigation = ({ user, activeTab, setActiveTab, isProfessional, isClient, onLogout }) => {
+    const tabs = [
+        { id: "dashboard", label: "Dashboard", icon: "📊" },
+        { id: "workouts", label: "Workouts", icon: "💪" },
+        { id: "measurements", label: "Measurements", icon: "📏" },
+        { id: "nutrition", label: "Nutrition", icon: "🥗" },
+        { id: "goals", label: "Goals", icon: "🎯" },
+        { id: "calendar", label: "Calendar", icon: "📅" },
+        { id: "wearables", label: "Wearables", icon: "⌚" },
+        { id: "reports", label: "Reports", icon: "📄" }
+    ];
+    
+    if (isProfessional) {
+        tabs.push({ id: "exercises", label: "Exercise Library", icon: "📚" });
+        tabs.push({ id: "tests", label: "Tests", icon: "🧪" });
+    }
+    
+    if (user.roles?.includes("admin") || user.roles?.includes("owner") || user.roles?.includes("engineer")) {
+        tabs.push({ id: "users", label: "Users", icon: "👥" });
+    }
+    
+    return (
+        <nav className="bg-gray-900 shadow-xl border-b border-gray-700">
+            <div className="max-w-7xl mx-auto px-4">
+                <div className="flex justify-between items-center py-4">
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                            <div className="relative h-10 w-10">
+                                <div className="relative h-full w-full">
+                                    {/* Animated flame background */}
+                                    <div className="absolute inset-0 animate-pulse">
+                                        <div className="absolute inset-0 bg-gradient-to-t from-yellow-500 via-orange-500 to-red-500 opacity-30 blur-xl animate-spin-slow"></div>
+                                    </div>
+                                    
+                                    {/* Main Phoenix */}
+                                    <svg viewBox="0 0 100 100" className="relative z-10 h-full w-full animate-float">
+                                        {/* Phoenix body */}
+                                        <path d="M50 70 Q35 55 35 40 Q35 25 50 10 Q65 25 65 40 Q65 55 50 70Z" 
+                                              fill="url(#phoenix-body)"
+                                              filter="url(#glow)"/>
+                                        
+                                        {/* Left wing */}
+                                        <path d="M35 40 Q15 35 10 45 Q15 50 25 48 Q30 45 35 40" 
+                                              fill="url(#wing-gradient)"
+                                              className="animate-wing-left origin-center"/>
+                                        
+                                        {/* Right wing */}
+                                        <path d="M65 40 Q70 45 75 48 Q85 50 90 45 Q85 35 65 40" 
+                                              fill="url(#wing-gradient)"
+                                              className="animate-wing-right origin-center"/>
+                                        
+                                        {/* Flame feathers */}
+                                        <path d="M50 10 Q48 5 50 0 Q52 5 50 10" fill="#fbbf24" className="animate-flicker"/>
+                                        <path d="M45 12 Q43 8 42 5 Q44 8 45 12" fill="#f97316" className="animate-flicker-delay-1"/>
+                                        <path d="M55 12 Q56 8 58 5 Q57 8 55 12" fill="#f97316" className="animate-flicker-delay-2"/>
+                                        
+                                        {/* Eye */}
+                                        <circle cx="46" cy="35" r="2" fill="#fff" className="animate-pulse"/>
+                                        
+                                        {/* Tail feathers */}
+                                        <path d="M50 70 Q45 75 40 80 Q45 77 50 70" fill="#ef4444" className="animate-flicker"/>
+                                        <path d="M50 70 Q55 75 60 80 Q55 77 50 70" fill="#ef4444" className="animate-flicker-delay-1"/>
+                                        
+                                        <defs>
+                                            <linearGradient id="phoenix-body" x1="0%" y1="0%" x2="0%" y2="100%">
+                                                <stop offset="0%" stopColor="#fbbf24">
+                                                    <animate attributeName="stop-color" values="#fbbf24;#f97316;#ef4444;#fbbf24" dur="3s" repeatCount="indefinite"/>
+                                                </stop>
+                                                <stop offset="50%" stopColor="#f97316"/>
+                                                <stop offset="100%" stopColor="#ef4444">
+                                                    <animate attributeName="stop-color" values="#ef4444;#fbbf24;#f97316;#ef4444" dur="3s" repeatCount="indefinite"/>
+                                                </stop>
+                                            </linearGradient>
+                                            
+                                            <linearGradient id="wing-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                                <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.8"/>
+                                                <stop offset="100%" stopColor="#ef4444" stopOpacity="0.3"/>
+                                            </linearGradient>
+                                            
+                                            <filter id="glow">
+                                                <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                                                <feMerge>
+                                                    <feMergeNode in="coloredBlur"/>
+                                                    <feMergeNode in="SourceGraphic"/>
+                                                </feMerge>
+                                            </filter>
+                                        </defs>
+                                    </svg>
+                                    
+                                    {/* Floating sparks */}
+                                    <div className="absolute inset-0">
+                                        <div className="spark-1 absolute h-1 w-1 bg-yellow-400 rounded-full animate-spark-float-1"></div>
+                                        <div className="spark-2 absolute h-1 w-1 bg-orange-400 rounded-full animate-spark-float-2"></div>
+                                        <div className="spark-3 absolute h-1 w-1 bg-red-400 rounded-full animate-spark-float-3"></div>
+                                    </div>
+                                </div>
                             </div>
+                            
                             <div className="flex items-center gap-4">
                                 <span className="text-sm text-gray-200">
                                     {user.name} ({user.roles?.join(", ")})
@@ -826,26 +914,29 @@ const [success, setSuccess] = useState(null);
                                 </button>
                             </div>
                         </div>
-                        <div className="flex gap-2 pb-2 overflow-x-auto">
-                            {tabs.map(tab => (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => setActiveTab(tab.id)}
-                                    className={`px-4 py-2 rounded whitespace-nowrap ${
-                                        activeTab === tab.id 
-                                            ? "bg-blue-500 text-white" 
-                                            : "bg-gray-700 hover:bg-gray-600 text-gray-300"
-                                    }`}
-                                >
-                                    <span className="mr-2">{tab.icon}</span>
-                                    {tab.label}
-                                </button>
-                            ))}
-                        </div>
                     </div>
-                </nav>
-            );
-        };
+                    
+                    <div className="flex gap-2 pb-2 overflow-x-auto">
+                        {tabs.map(tab => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`px-4 py-2 rounded whitespace-nowrap ${
+                                    activeTab === tab.id 
+                                        ? "bg-blue-500 text-white" 
+                                        : "bg-gray-700 hover:bg-gray-600 text-gray-300"
+                                }`}
+                            >
+                                <span className="mr-2">{tab.icon}</span>
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </nav>
+    );
+};
         
         // Login Page Component
         const LoginPage = ({ onLogin, showError }) => {
@@ -1065,19 +1156,19 @@ const [resetEmail, setResetEmail] = useState('');
                         
                         {!isResetting && (
                         <div className="flex mb-6">
-                            <button
-                                onClick={() => setIsSignup(false)}
-                                className={`flex-1 py-2 ${!isSignup ? 'bg-blue-500 text-white' : 'bg-gray-200'} rounded-l`}
-                            >
-                                Login
-                            </button>
-                            <button
-                                onClick={() => setIsSignup(true)}
-                                className={`flex-1 py-2 ${isSignup ? 'bg-blue-500 text-white' : 'bg-gray-200'} rounded-r`}
-                            >
-                                Sign Up
-                            </button>
-                        </div>
+    <button
+        onClick={() => setIsSignup(false)}
+        className={`flex-1 py-2 ${!isSignup ? 'bg-blue-500 text-white' : 'bg-gray-600 text-gray-200'} rounded-l`}
+    >
+        Login
+    </button>
+    <button
+        onClick={() => setIsSignup(true)}
+        className={`flex-1 py-2 ${isSignup ? 'bg-blue-500 text-white' : 'bg-gray-600 text-gray-200'} rounded-r`}
+    >
+        Sign Up
+    </button>
+</div>
                     )}
                         <form onSubmit={handleSubmit}>
                           {!isResetting && isSignup && (
@@ -1248,12 +1339,8 @@ useEffect(() => {
 }, [selectedClient, isClient, user]);
     
     const fetchClients = async () => {
-    try {
-        const data = await API_CONFIG.request('/users?role=client');
-        setClients(data.data || []);  // <-- FIXED
-    } catch (error) {
-        console.error('Error fetching clients:', error);
-    }
+    const clients = await ClientManager.loadClients();
+    setClients(clients);
 };
     
     const fetchGoals = async () => {
@@ -1779,18 +1866,20 @@ submitData = {
         </div>
     );
 };
-        // Enhanced Dashboard Component
+        // Enhanced Dashboard Component - ULTIMATE VERSION
         const Dashboard = ({ user, isClient, selectedClientId, onClientChange }) => {
-    const [selectedClient, setSelectedClient] = useState(
-        selectedClientId || (isClient ? user._id : null)
-    );
-    const [clients, setClients] = useState([]);
+            const [selectedClient, setSelectedClient] = useState(
+                selectedClientId || (isClient ? user._id : null)
+            );
+            const [clients, setClients] = useState([]);
             const [stats, setStats] = useState({
                 workouts: { total: 0, completed: 0, completionRate: 0, lastWorkout: null },
                 measurements: { latest: null, change: { weight: 0, bodyFat: 0 }, history: [] },
                 wellness: { moodTrend: 0, painLevel: 0, lastMood: null },
-                nutrition: { adherence: 0, currentMacros: {} }
+                nutrition: { adherence: 0, currentMacros: {} },
+                wearables: { steps: 0, sleep: 0, heartRate: 0, recovery: 0 }
             });
+            const [goals, setGoals] = useState([]);
             const chartRef = useRef(null);
             const chartInstance = useRef(null);
             
@@ -1800,6 +1889,7 @@ submitData = {
                 }
                 if (selectedClient) {
                     fetchStats();
+                    fetchGoals();
                 }
                 return () => {
                     if (chartInstance.current) {
@@ -1810,32 +1900,44 @@ submitData = {
             }, [selectedClient, isClient]);
             
             const fetchClients = async () => {
+                const clients = await ClientManager.loadClients();
+                setClients(clients);
+            };
+            
+            const fetchGoals = async () => {
                 try {
-                    const data = await API_CONFIG.request('/users?role=client');
-                    setClients(data.data || []);
+                    const data = await API_CONFIG.request(`/goals/client/${selectedClient}`);
+                    const allGoals = Array.isArray(data) ? data : (data.data || []);
+                    setGoals(allGoals.filter(g => !g.isHabit && !g.completed));
                 } catch (error) {
-                    console.error('Error fetching clients:', error);
+                    console.error('Error fetching goals:', error);
                 }
             };
             
             const fetchStats = async () => {
                 try {
-                    const [workouts, measurements, nutrition] = await Promise.all([
+                    const [workouts, measurements, nutrition, wearableData] = await Promise.all([
                         API_CONFIG.request(`/workouts/client/${selectedClient}`),
                         API_CONFIG.request(`/measurements/client/${selectedClient}`),
-                        API_CONFIG.request(`/nutrition/client/${selectedClient}`)
+                        API_CONFIG.request(`/nutrition/client/${selectedClient}`),
+                        API_CONFIG.request(`/wearables/user/${selectedClient}?days=7`).catch(() => ({ data: [] }))
                     ]);
                     
                     const workoutsData = Array.isArray(workouts) ? workouts : (workouts.data || []);
                     const measurementsData = Array.isArray(measurements) ? measurements : (measurements.data || []);
                     const nutritionData = nutrition;
+                    const wearablesArray = Array.isArray(wearableData) ? wearableData : (wearableData.data || []);
                     
                     const latestMeasurement = measurementsData[measurementsData.length - 1];
                     const previousMeasurement = measurementsData[measurementsData.length - 2];
                     const completedWorkouts = workoutsData.filter(w => w.completed);
                     const lastWorkout = completedWorkouts[completedWorkouts.length - 1];
                     
-                    // Calculate wellness metrics
+                    // Wearable aggregation
+                    const latestWearable = wearablesArray[wearablesArray.length - 1] || {};
+                    const avgSteps = wearablesArray.reduce((sum, w) => sum + (w.steps || 0), 0) / (wearablesArray.length || 1);
+                    const avgSleep = wearablesArray.reduce((sum, w) => sum + (w.sleepDuration || 0), 0) / (wearablesArray.length || 1);
+                    
                     const moodSum = completedWorkouts.reduce((sum, w) => sum + (w.moodFeedback || 3), 0);
                     const avgMood = completedWorkouts.length ? moodSum / completedWorkouts.length : 3;
                     
@@ -1860,12 +1962,18 @@ submitData = {
                         },
                         wellness: {
                             moodTrend: avgMood,
-                            painLevel: 1.5, // This would come from actual data
+                            painLevel: 1.5,
                             lastMood: lastWorkout?.moodFeedback
                         },
                         nutrition: {
                             adherence: nutritionData ? calculateNutritionAdherence(nutritionData) : 0,
                             currentMacros: nutritionData || {}
+                        },
+                        wearables: {
+                            steps: Math.round(avgSteps),
+                            sleep: Math.round(avgSleep),
+                            heartRate: latestWearable.restingHeartRate || 0,
+                            recovery: latestWearable.recoveryScore || 0
                         }
                     });
                     
@@ -1901,21 +2009,19 @@ submitData = {
                 
                 const ctx = chartRef.current.getContext('2d');
                 
-                // Prepare data for multiple metrics
                 const datasets = [{
                     label: 'Weight (lbs)',
                     data: measurements.map(m => m.weight),
-                    borderColor: '#244398',
+                    borderColor: '#3b82f6',
                     yAxisID: 'y',
                     tension: 0.4
                 }];
                 
-                // Add body fat if available
                 if (measurements.some(m => m.bodyFat)) {
                     datasets.push({
                         label: 'Body Fat (%)',
                         data: measurements.map(m => m.bodyFat || null),
-                        borderColor: '#60E0E0',
+                        borderColor: '#10b981',
                         yAxisID: 'y1',
                         tension: 0.4
                     });
@@ -1939,23 +2045,18 @@ submitData = {
                                 type: 'linear',
                                 display: true,
                                 position: 'left',
-                                title: {
-                                    display: true,
-                                    text: 'Weight (lbs)'
-                                }
+                                title: { display: true, text: 'Weight (lbs)', color: '#9ca3af' },
+                                ticks: { color: '#9ca3af' }
                             },
                             y1: {
                                 type: 'linear',
                                 display: measurements.some(m => m.bodyFat),
                                 position: 'right',
-                                title: {
-                                    display: true,
-                                    text: 'Body Fat (%)'
-                                },
-                                grid: {
-                                    drawOnChartArea: false
-                                }
-                            }
+                                title: { display: true, text: 'Body Fat (%)', color: '#9ca3af' },
+                                grid: { drawOnChartArea: false },
+                                ticks: { color: '#9ca3af' }
+                            },
+                            x: { ticks: { color: '#9ca3af' } }
                         }
                     }
                 });
@@ -1966,18 +2067,10 @@ submitData = {
                 return emojis[Math.floor(mood - 1)] || '😐';
             };
             
-            const getPainLevelText = (level) => {
-                if (level <= 2) return 'Excellent';
-                if (level <= 4) return 'Good';
-                if (level <= 6) return 'Moderate';
-                if (level <= 8) return 'Poor';
-                return 'Severe';
-            };
-            
             return (
                 <div className="space-y-6">
                     <div className="dark-card p-6">
-                        <h2 className="text-2xl font-bold mb-4">
+                        <h2 className="text-2xl font-bold mb-4 text-white">
                             {isClient ? 'My Dashboard' : 'Client Dashboard'}
                         </h2>
                         
@@ -1999,18 +2092,19 @@ submitData = {
                     
                     {selectedClient && (
                         <>
-                            {/* Primary Stats */}
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <div className="metric-card">
+                            {/* ULTIMATE 4-QUADRANT GRID */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                {/* Workouts */}
+                                <div className="metric-card bg-gradient-to-br from-blue-900 to-blue-800">
                                     <div className="flex items-center justify-between mb-2">
-                                        <h3 className="text-sm font-medium text-gray-400">Workouts</h3>
-                                        <span className="text-2xl">💪</span>
+                                        <h3 className="text-sm font-medium text-gray-300">Workouts</h3>
+                                        <span className="text-3xl">💪</span>
                                     </div>
-                                    <p className="text-3xl font-bold">{stats.workouts.completed}/{stats.workouts.total}</p>
-                                    <div className="mt-2">
-                                        <div className="progress-bar">
+                                    <p className="text-4xl font-bold text-white">{stats.workouts.completed}/{stats.workouts.total}</p>
+                                    <div className="mt-3">
+                                        <div className="progress-bar bg-gray-700">
                                             <div 
-                                                className="progress-bar-fill bg-blue-500"
+                                                className="progress-bar-fill bg-blue-400"
                                                 style={{width: `${stats.workouts.completionRate}%`}}
                                             ></div>
                                         </div>
@@ -2018,95 +2112,117 @@ submitData = {
                                     </div>
                                 </div>
                                 
-                                <div className="metric-card">
+                                {/* Weight */}
+                                <div className="metric-card bg-gradient-to-br from-green-900 to-green-800">
                                     <div className="flex items-center justify-between mb-2">
-                                        <h3 className="text-sm font-medium text-gray-400">Current Weight</h3>
-                                        <span className="text-2xl">⚖️</span>
+                                        <h3 className="text-sm font-medium text-gray-300">Current Weight</h3>
+                                        <span className="text-3xl">⚖️</span>
                                     </div>
-                                    <p className="text-3xl font-bold">
-                                        {stats.measurements.latest?.weight || '--'} lbs
+                                    <p className="text-4xl font-bold text-white">
+                                        {stats.measurements.latest?.weight || '--'} <span className="text-2xl text-gray-400">lbs</span>
                                     </p>
                                     <p className="text-sm mt-2">
-                                        <span className={stats.measurements.change.weight > 0 ? 'text-red-500' : 'text-green-500'}>
+                                        <span className={stats.measurements.change.weight > 0 ? 'text-red-400' : 'text-green-400'}>
                                             {stats.measurements.change.weight > 0 ? '↑' : '↓'} {Math.abs(stats.measurements.change.weight)} lbs
                                         </span>
                                     </p>
                                 </div>
                                 
-                                <div className="metric-card">
+                                {/* Nutrition */}
+                                <div className="metric-card bg-gradient-to-br from-yellow-900 to-yellow-800">
                                     <div className="flex items-center justify-between mb-2">
-                                        <h3 className="text-sm font-medium text-gray-400">Body Fat</h3>
-                                        <span className="text-2xl">📊</span>
+                                        <h3 className="text-sm font-medium text-gray-300">Nutrition</h3>
+                                        <span className="text-3xl">🥗</span>
                                     </div>
-                                    <p className="text-3xl font-bold">
-                                        {stats.measurements.latest?.bodyFat || '--'}%
-                                    </p>
-                                    {stats.measurements.change.bodyFat !== 0 && (
-                                        <p className="text-sm mt-2">
-                                            <span className={stats.measurements.change.bodyFat > 0 ? 'text-red-500' : 'text-green-500'}>
-                                                {stats.measurements.change.bodyFat > 0 ? '↑' : '↓'} {Math.abs(stats.measurements.change.bodyFat)}%
-                                            </span>
-                                        </p>
-                                    )}
+                                    <p className="text-4xl font-bold text-white">{stats.nutrition.adherence}%</p>
+                                    <p className="text-sm text-gray-400 mt-2">Daily Adherence</p>
                                 </div>
                                 
-                                <div className="metric-card">
+                                {/* Wearables */}
+                                <div className="metric-card bg-gradient-to-br from-purple-900 to-purple-800">
                                     <div className="flex items-center justify-between mb-2">
-                                        <h3 className="text-sm font-medium text-gray-400">Nutrition</h3>
-                                        <span className="text-2xl">🥗</span>
+                                        <h3 className="text-sm font-medium text-gray-300">Activity</h3>
+                                        <span className="text-3xl">⌚</span>
                                     </div>
-                                    <p className="text-3xl font-bold">{stats.nutrition.adherence}%</p>
-                                    <p className="text-sm text-gray-400 mt-2">Daily Adherence</p>
+                                    <p className="text-4xl font-bold text-white">{stats.wearables.steps.toLocaleString()}</p>
+                                    <p className="text-sm text-gray-400 mt-2">Avg Steps/Day</p>
                                 </div>
                             </div>
                             
-                            {/* Wellness Summary */}
-                            <div className="dark-card p-6">
-                                <h3 className="text-xl font-bold mb-4">Wellness Summary</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="wellness-indicator">
-                                        <div>
-                                            <p className="text-sm text-gray-400">Mood Trend</p>
-                                            <p className="text-lg font-semibold">
-                                                {stats.wellness.lastMood ? `Last: ${stats.wellness.lastMood}/5` : 'No data'}
-                                            </p>
-                                        </div>
-                                        <span className="mood-emoji">
-                                            {getMoodEmoji(stats.wellness.moodTrend)}
-                                        </span>
-                                    </div>
-                                    
-                                    <div className="wellness-indicator">
-                                        <div>
-                                            <p className="text-sm text-gray-400">Average Pain Level</p>
-                                            <p className="text-2xl font-bold text-white">{stats.wellness.painLevel}</p>
-                                            <p className="text-sm text-green-600">{getPainLevelText(stats.wellness.painLevel)}</p>
-                                        </div>
-                                        <div className="flex-1">
-                                            <div className="progress-bar">
-                                                <div 
-                                                    className="progress-bar-fill bg-gradient-to-r from-green-500 to-yellow-500"
-                                                    style={{width: `${(stats.wellness.painLevel / 10) * 100}%`}}
-                                                ></div>
-                                            </div>
-                                        </div>
+                            {/* SMART GOALS OVERVIEW WITH WEARABLE SYNC */}
+                            {goals.length > 0 && (
+                                <div className="dark-card p-6">
+                                    <h3 className="text-xl font-bold mb-4 text-white flex items-center gap-2">
+                                        🎯 Active Goals
+                                        <span className="text-sm text-gray-400 font-normal">({goals.length})</span>
+                                    </h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {goals.slice(0, 4).map(goal => {
+                                            const progress = Math.min(Math.round((goal.current / goal.target) * 100), 100);
+                                            const daysLeft = Math.ceil((new Date(goal.deadline) - new Date()) / (1000 * 60 * 60 * 24));
+                                            
+                                            return (
+                                                <div key={goal._id} className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <h4 className="font-semibold text-white">{goal.name}</h4>
+                                                        {daysLeft > 0 && (
+                                                            <span className={`text-xs px-2 py-1 rounded ${
+                                                                daysLeft < 7 ? 'bg-red-900 text-red-300' : 'bg-blue-900 text-blue-300'
+                                                            }`}>
+                                                                {daysLeft}d left
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-sm text-gray-400 mb-3">
+                                                        <span>{goal.current}</span>
+                                                        <span>/</span>
+                                                        <span>{goal.target}</span>
+                                                    </div>
+                                                    <div className="progress-bar bg-gray-700">
+                                                        <div 
+                                                            className="progress-bar-fill bg-gradient-to-r from-green-500 to-blue-500"
+                                                            style={{width: `${progress}%`}}
+                                                        ></div>
+                                                    </div>
+                                                    <p className="text-xs text-gray-500 mt-1">{progress}% Complete</p>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
-                                
-                                {stats.workouts.lastWorkout && (
-                                    <div className="mt-4 p-4 bg-gray-800 rounded-lg">
-                                        <p className="text-sm text-gray-400">Last Workout</p>
-                                        <p className="font-semibold">{stats.workouts.lastWorkout.name}</p>
-                                        <p className="text-sm text-gray-500">
-                                            {new Date(stats.workouts.lastWorkout.completedAt).toLocaleDateString()}
+                            )}
+                            
+                            {/* Wellness Summary */}
+                            <div className="dark-card p-6">
+                                <h3 className="text-xl font-bold mb-4 text-white">Wellness Summary</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="bg-gray-800 rounded-lg p-4">
+                                        <p className="text-sm text-gray-400 mb-1">Mood Trend</p>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-3xl">{getMoodEmoji(stats.wellness.moodTrend)}</span>
+                                            <span className="text-2xl font-bold text-white">{stats.wellness.moodTrend.toFixed(1)}/5</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="bg-gray-800 rounded-lg p-4">
+                                        <p className="text-sm text-gray-400 mb-1">Avg Sleep</p>
+                                        <p className="text-2xl font-bold text-white">
+                                            {Math.floor(stats.wearables.sleep / 60)}h {stats.wearables.sleep % 60}m
                                         </p>
                                     </div>
-                                )}
+                                    
+                                    <div className="bg-gray-800 rounded-lg p-4">
+                                        <p className="text-sm text-gray-400 mb-1">Resting HR</p>
+                                        <p className="text-2xl font-bold text-white">
+                                            {stats.wearables.heartRate || '--'} <span className="text-sm text-gray-400">bpm</span>
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                             
                             {/* Progress Chart */}
                             <div className="dark-card p-6">
-                                <h3 className="text-xl font-bold mb-4">Progress Tracking</h3>
+                                <h3 className="text-xl font-bold mb-4 text-white">Progress Tracking</h3>
                                 <div style={{height: '300px'}}>
                                     <canvas ref={chartRef}></canvas>
                                 </div>
@@ -2118,11 +2234,12 @@ submitData = {
         };
         // Add this at line 1435
         // Workout Session Component - Interactive workout guide
+          // Workout Session Component - Interactive workout guide
         const WorkoutSession = ({ workoutId, onClose, showSuccess, showError }) => {
             const [workout, setWorkout] = useState(null);
-            const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
-            const [currentSet, setCurrentSet] = useState(1);
-            const [previousWorkoutData, setPreviousWorkoutData] = useState({});
+const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
+const [currentSet, setCurrentSet] = useState(1);
+const [previousWorkoutData, setPreviousWorkoutData] = useState({});
 const [currentSessionData, setCurrentSessionData] = useState({});
 const [sessionData, setSessionData] = useState({
     startTime: new Date(),
@@ -2146,6 +2263,13 @@ const [timerInterval, setTimerInterval] = useState(null);
         }
     };
 }, [workoutId]);
+
+// Add new useEffect for previous data
+useEffect(() => {
+    if (workout) {
+        fetchPreviousWorkoutData();
+    }
+}, [workout]);
             
           const fetchWorkoutDetails = async () => {
     try {
@@ -2198,8 +2322,83 @@ const [timerInterval, setTimerInterval] = useState(null);
         onClose();
     }
 };
+
+const fetchPreviousWorkoutData = async () => {
+    try {
+        // Get client ID more reliably
+        let clientId;
+        if (workout.clientId && typeof workout.clientId === 'object') {
+            clientId = workout.clientId._id;
+        } else if (workout.clientId) {
+            clientId = workout.clientId;
+        } else {
+            // Try to get from current user if client
+            const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+            if (currentUser.roles?.includes('client')) {
+                clientId = currentUser._id;
+            }
+        }
+        
+        if (!clientId) {
+            console.log('No clientId found, skipping previous data fetch');
+            return;
+        }
+        
+        // Get all workouts for this client
+        const response = await fetch(`${API_CONFIG.baseURL}/workouts/client/${clientId}`, {
+            headers: API_CONFIG.getHeaders()
+        });
+        
+        if (!response.ok) {
+            console.log('Failed to fetch previous workouts');
+            return;
+        }
+        
+        const data = await response.json();
+        const allWorkouts = Array.isArray(data) ? data : (data.data || data);
+        
+        // Build a map of ALL previous exercise data, not just from same workout name
+        const prevData = {};
+        
+        // Get all completed workouts, sorted by date (newest first)
+        const completedWorkouts = allWorkouts
+            .filter(w => w.completed && w._id !== workoutId)
+            .sort((a, b) => new Date(b.completedAt || b.createdAt) - new Date(a.completedAt || a.createdAt));
+        
+        // For each exercise in current workout, find its most recent data
+        workout.exercises?.forEach(currentExercise => {
+            // Normalize the exercise name for matching
+            const normalizedName = currentExercise.name.toLowerCase().trim();
             
-            const currentExercise = workout?.exercises[currentExerciseIndex];
+            // Search through all completed workouts for this exercise
+            for (const prevWorkout of completedWorkouts) {
+                const matchingExercise = prevWorkout.exercises?.find(e => 
+                    e.name.toLowerCase().trim() === normalizedName
+                );
+                
+                if (matchingExercise && !prevData[currentExercise.name]) {
+                    prevData[currentExercise.name] = {
+                        weight: matchingExercise.weight || 0,
+                        reps: matchingExercise.reps || 0,
+                        setDetails: matchingExercise.setDetails || [],
+                        lastPerformed: prevWorkout.completedAt || prevWorkout.createdAt,
+                        fromWorkout: prevWorkout.name
+                    };
+                    break; // Found the most recent, stop searching
+                }
+            }
+        });
+        
+        console.log(`Found previous data for ${Object.keys(prevData).length} exercises`);
+        setPreviousWorkoutData(prevData);
+        
+    } catch (error) {
+        console.log('Error fetching previous workout data:', error);
+        // Don't crash, just continue without previous data
+    }
+};
+
+const currentExercise = workout?.exercises[currentExerciseIndex];
             const startTimer = (seconds) => {
     setTimeRemaining(seconds);
     setIsTimerRunning(true);
@@ -2229,273 +2428,370 @@ const stopTimer = () => {
     setTimeRemaining(0);
 };
             
-            const completeSet = () => {
-                const reps = prompt(`How many reps did you complete? (Target: ${currentExercise.reps})`);
-                const weight = prompt(`What weight did you use? (Target: ${currentExercise.weight || 0} lbs)`);
-                const difficulty = prompt('How difficult was it? (1-5, where 5 is very hard)');
-                const painLevel = prompt('Pain level? (0-10, where 0 is no pain)');
-                const notes = prompt('Any notes for this set? (optional)');
-                
-                if (reps && weight) {
-                    const setData = {
-                        reps: parseInt(reps),
-                        weight: parseFloat(weight),
-                        difficulty: parseInt(difficulty) || 3,
-                        painLevel: parseInt(painLevel) || 0,
-                        notes: notes || '',
-                        timestamp: new Date()
-                    };
-                    
-                    // Track pain levels
-                    setSessionData(prev => ({
-                        ...prev,
-                        totalPainLevel: prev.totalPainLevel + (parseInt(painLevel) || 0),
-                        painCount: prev.painCount + 1,
-                        exerciseData: [...prev.exerciseData, {
-                            exercise: currentExercise.name,
-                            set: currentSet,
-                            ...setData
-                        }]
-                    }));
-                    
-                    // Handle supersets and tri-sets
-if (currentExercise.grouping === 'superset' && currentExerciseIndex < workout.exercises.length - 1) {
-    // In a superset - alternate between two exercises
-    const nextExercise = workout.exercises[currentExerciseIndex + 1];
-    if (nextExercise) {
-        // Move to paired exercise, keep same set number
-        setCurrentExerciseIndex(currentExerciseIndex + 1);
-    }
-} else if (currentExercise.grouping === 'triset' && currentExerciseIndex < workout.exercises.length - 2) {
-    // First exercise of tri-set - move to second
-    setCurrentExerciseIndex(currentExerciseIndex + 1);
-} else if (currentExerciseIndex > 0) {
-    // Check if we're in middle/end of a superset or tri-set
-    const prevExercise = workout.exercises[currentExerciseIndex - 1];
+    // REPLACE the completeSet function (around line 1500) with this:
+
+const completeSet = () => {
+    // Check if this exercise has individual set details
+    const targetReps = currentExercise.setDetails?.[currentSet - 1]?.reps || currentExercise.reps;
+    const targetWeight = currentExercise.setDetails?.[currentSet - 1]?.weight || currentExercise.weight || 0;
     
-    if (prevExercise?.grouping === 'superset') {
-        // We're the second exercise in a superset
-        if (currentSet < currentExercise.sets) {
-            // Go back to first exercise for next set
-            setCurrentSet(currentSet + 1);
-            setCurrentExerciseIndex(currentExerciseIndex - 1);
-        } else {
-            // Superset complete, move to next exercise group
-            nextExercise();
-        }
-    } else if (prevExercise?.grouping === 'triset' && currentExerciseIndex > 1) {
-        const prevPrevExercise = workout.exercises[currentExerciseIndex - 2];
-        if (prevPrevExercise?.grouping === 'triset') {
-            // We're the third exercise in a tri-set
-            if (currentSet < currentExercise.sets) {
-                // Go back to first exercise for next set
-                setCurrentSet(currentSet + 1);
-                setCurrentExerciseIndex(currentExerciseIndex - 2);
+    const reps = prompt(`How many reps did you complete? (Target: ${targetReps})`);
+    const weight = prompt(`What weight did you use? (Target: ${targetWeight} lbs)`);
+    const difficulty = prompt('How difficult was it? (1-5, where 5 is very hard)');
+    const painLevel = prompt('Pain level? (0-10, where 0 is no pain)');
+    const notes = prompt('Any notes for this set? (optional)');
+    
+    if (reps && weight) {
+        const actualReps = parseInt(reps);
+        const actualWeight = parseFloat(weight);
+        
+        const setData = {
+            reps: actualReps,
+            weight: actualWeight,
+            difficulty: parseInt(difficulty) || 3,
+            painLevel: parseInt(painLevel) || 0,
+            notes: notes || '',
+            timestamp: new Date()
+        };
+        
+        // UPDATE CURRENT SESSION DATA
+        setCurrentSessionData(prev => ({
+            ...prev,
+            [currentExercise.name]: {
+                ...prev[currentExercise.name],
+                [`set${currentSet}`]: {
+                    reps: actualReps,
+                    weight: actualWeight
+                },
+                lastSet: currentSet,
+                lastReps: actualReps,
+                lastWeight: actualWeight
+            }
+        }));
+        
+        // Track in session data WITH EXERCISE NAME
+        setSessionData(prev => ({
+            ...prev,
+            totalPainLevel: prev.totalPainLevel + (parseInt(painLevel) || 0),
+            painCount: prev.painCount + 1,
+            exerciseData: [...prev.exerciseData, {
+                exercise: currentExercise.name,  // CRITICAL: Include exercise name
+                set: currentSet,
+                ...setData
+            }],
+            lastCompletedSet: {
+                exercise: currentExercise.name,
+                set: currentSet,
+                reps: actualReps,
+                weight: actualWeight
+            }
+        }));
+        
+        // Determine next move based on grouping
+        const nextExercise = workout.exercises[currentExerciseIndex + 1];
+        
+        // GROUP-BASED LOGIC
+        if (currentExercise.grouping && currentExercise.grouping !== 'none') {
+            const currentGroup = currentExercise.grouping;
+            
+            if (nextExercise && nextExercise.grouping === currentGroup) {
+                setCurrentExerciseIndex(currentExerciseIndex + 1);
             } else {
-                // Tri-set complete
-                nextExercise();
+                if (currentSet < currentExercise.sets) {
+                    setCurrentSet(currentSet + 1);
+                    let firstGroupIndex = currentExerciseIndex;
+                    while (firstGroupIndex > 0 && 
+                           workout.exercises[firstGroupIndex - 1]?.grouping === currentGroup) {
+                        firstGroupIndex--;
+                    }
+                    setCurrentExerciseIndex(firstGroupIndex);
+                } else {
+                    moveToNextExercise();
+                }
             }
         } else {
-            // We're the second exercise in a tri-set - move to third
-            setCurrentExerciseIndex(currentExerciseIndex + 1);
+            if (currentSet < currentExercise.sets) {
+                setCurrentSet(currentSet + 1);
+            } else {
+                moveToNextExercise();
+            }
         }
-    } else {
-        // Normal single exercise - standard progression
-        if (currentSet < currentExercise.sets) {
-            setCurrentSet(currentSet + 1);
-        } else {
-            nextExercise();
-        }
-    }
-} else {
-    // Normal exercise (not in a group)
-    if (currentSet < currentExercise.sets) {
-        setCurrentSet(currentSet + 1);
-    } else {
-        nextExercise();
-    }
-}
-                }
-            };
-            
-            const nextExercise = () => {
-    if (currentExerciseIndex < workout.exercises.length - 1) {
-        setCurrentExerciseIndex(currentExerciseIndex + 1);
-        setCurrentSet(1);
-        setShowInstructions(true);
-    } else {
-        completeWorkout();
     }
 };
+
+// REPLACE the completeWorkout function (around line 1435) with this ENHANCED version:
+
+const completeWorkout = async () => {
+    const duration = Math.round((new Date() - sessionData.startTime) / 60000);
+    const avgPainLevel = sessionData.painCount > 0 
+        ? (sessionData.totalPainLevel / sessionData.painCount).toFixed(1)
+        : 0;
+    
+    const mood = prompt('Rate your overall workout (1-5):\n1=😔 2=😕 3=😐 4=🙂 5=😄');
+    const finalNotes = prompt('Any final notes about the workout?');
+    
+    try {
+        // GENIUS FIX: Update the workout WITH the actual performed data
+        const updatedExercises = workout.exercises.map((exercise, index) => {
+            const exerciseSessionData = sessionData.exerciseData.filter(
+                data => data.exercise === exercise.name
+            );
             
-            const completeWorkout = async () => {
-                const duration = Math.round((new Date() - sessionData.startTime) / 60000);
-                const avgPainLevel = sessionData.painCount > 0 
-                    ? (sessionData.totalPainLevel / sessionData.painCount).toFixed(1)
-                    : 0;
+            // If we have session data for this exercise, update its setDetails
+            if (exerciseSessionData.length > 0) {
+                const setDetails = exerciseSessionData.map(data => ({
+                    reps: data.reps,
+                    weight: data.weight
+                }));
                 
-                const mood = prompt('Rate your overall workout (1-5):\n1=😔 2=😕 3=😐 4=🙂 5=😄');
-                const finalNotes = prompt('Any final notes about the workout?');
-                
-                try {
-                    await API_CONFIG.request(`/workouts/${workoutId}/complete`, {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            duration,
-                            moodFeedback: parseInt(mood) || 3,
-                            notes: finalNotes || '',
-                            averagePainLevel: parseFloat(avgPainLevel),
-                            sessionData: sessionData.exerciseData
-                        })
-                    });
-                    showSuccess(`Workout completed! Great job! 💪 Duration: ${duration} min, Avg Pain Level: ${avgPainLevel}/10`);
-                    onClose();
-                } catch (error) {
-                    showError('Failed to complete workout');
-                }
-            };
-            
-            const formatTime = (seconds) => {
-                const mins = Math.floor(seconds / 60);
-                const secs = seconds % 60;
-                return `${mins}:${secs.toString().padStart(2, '0')}`;
-            };
-            
-            if (!workout || !currentExercise) {
-                return (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                        <div className="loading-spinner"></div>
-                    </div>
-                );
+                return {
+                    ...exercise,
+                    setDetails: setDetails,
+                    // Also update the main values with the average/last
+                    weight: setDetails[setDetails.length - 1]?.weight || exercise.weight,
+                    reps: setDetails[setDetails.length - 1]?.reps || exercise.reps
+                };
             }
             
-            return (
-                <div className="fixed inset-0 bg-gray-900 text-white z-50 overflow-auto">
-                    <div className="max-w-4xl mx-auto p-4">
-                        <div className="flex justify-between items-center mb-6">
-                            <h1 className="text-3xl font-bold">{workout.name}</h1>
-                            <button onClick={() => {
-                                if (confirm('Are you sure you want to exit the workout?')) {
-                                    onClose();
-                                }
-                            }} className="text-gray-400 hover:text-white">
-                                <i className="fas fa-times text-2xl"></i>
-                            </button>
-                        </div>
-                        
-                        <div className="mb-8">
-                            <div className="bg-gray-700 rounded-full h-3">
-                                <div 
-                                    className="bg-gradient-to-r from-blue-500 to-green-500 h-3 rounded-full transition-all"
-                                    style={{width: `${((currentExerciseIndex) / workout.exercises.length) * 100}%`}}
-                                ></div>
-                            </div>
-                            <p className="text-sm mt-2 text-gray-400">
-                                Exercise {currentExerciseIndex + 1} of {workout.exercises.length}
-                            </p>
-                        </div>
-                        
-                        
-                        <div className="bg-gray-800 rounded-lg p-6 mb-6">
-                            <h2 className="text-3xl font-bold mb-2">{currentExercise.name}</h2>
-                            <div className="flex gap-4 text-gray-400 mb-4">
-                                <span className="bg-gray-700 px-3 py-1 rounded">
-                                    Set {currentSet} of {currentExercise.sets}
-                                </span>
-                                <span className="bg-gray-700 px-3 py-1 rounded">
-                                    {currentExercise.reps} reps
-                                </span>
-                                {currentExercise.weight > 0 && (
-                                    <span className="bg-gray-700 px-3 py-1 rounded">
-                                        {currentExercise.weight} lbs
-                                    </span>
-                                )}
-                            </div>
-                            
-                            {currentExercise.notes && (
-                                <div className="bg-gray-700 p-4 rounded-lg mb-4">
-                                    <h4 className="font-semibold text-yellow-400 mb-2">Notes from Specialist</h4>
-                                    <p className="text-gray-300">{currentExercise.notes}</p>
-                                </div>
-                            )}
-                            {currentExercise.holdTime && currentExercise.holdTime > 0 && (
-    <div className="bg-purple-900 bg-opacity-50 p-4 rounded-lg mb-4">
-        <h4 className="font-semibold text-purple-300 mb-2">
-            <i className="fas fa-clock mr-2"></i>
-            Hold Time: {currentExercise.holdTime} seconds
-        </h4>
-        {!isTimerRunning ? (
-            <button
-                onClick={() => startTimer(currentExercise.holdTime)}
-                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded transition"
-            >
-                <i className="fas fa-play mr-2"></i>
-                Start Timer
-            </button>
-        ) : (
-            <div className="text-center">
-                <div className="text-4xl font-bold text-white mb-2">
-                    {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}
-                </div>
-                <button
-                    onClick={stopTimer}
-                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition"
-                >
-                    <i className="fas fa-stop mr-2"></i>
-                    Stop Timer
+            return exercise;
+        });
+        
+        // First, update the workout with the actual performed data
+        await API_CONFIG.request(`/workouts/${workoutId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                exercises: updatedExercises,
+                completed: true,
+                completedAt: new Date(),
+                duration,
+                moodFeedback: parseInt(mood) || 3,
+                notes: finalNotes || '',
+                averagePainLevel: parseFloat(avgPainLevel)
+            })
+        });
+        
+        // Then mark it as complete
+        await API_CONFIG.request(`/workouts/${workoutId}/complete`, {
+            method: 'POST',
+            body: JSON.stringify({
+                duration,
+                moodFeedback: parseInt(mood) || 3,
+                notes: finalNotes || '',
+                averagePainLevel: parseFloat(avgPainLevel),
+                sessionData: sessionData.exerciseData
+            })
+        });
+        
+        showSuccess(`Workout completed! Great job! 💪 Duration: ${duration} min, Avg Pain Level: ${avgPainLevel}/10`);
+        onClose();
+    } catch (error) {
+        showError('Failed to complete workout');
+    }
+};
+
+const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
+if (!workout || !currentExercise) {
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="loading-spinner"></div>
+        </div>
+    );
+}
+
+return (
+    <div className="fixed inset-0 bg-gray-900 text-white z-50 overflow-auto">
+        <div className="max-w-4xl mx-auto p-4">
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-3xl font-bold">{workout.name}</h1>
+                <button onClick={() => {
+                    if (confirm('Are you sure you want to exit the workout?')) {
+                        onClose();
+                    }
+                }} className="text-gray-400 hover:text-white">
+                    <i className="fas fa-times text-2xl"></i>
                 </button>
             </div>
-        )}
+            
+            <div className="mb-8">
+                <div className="bg-gray-700 rounded-full h-3">
+                    <div 
+                        className="bg-gradient-to-r from-blue-500 to-green-500 h-3 rounded-full transition-all"
+                        style={{width: `${((currentExerciseIndex) / workout.exercises.length) * 100}%`}}
+                    ></div>
+                </div>
+                <p className="text-sm mt-2 text-gray-400">
+                    Exercise {currentExerciseIndex + 1} of {workout.exercises.length}
+                </p>
+            </div>
+            
+            
+            <div className="bg-gray-800 rounded-lg p-6 mb-6">
+    <h2 className="text-3xl font-bold mb-2">{currentExercise.name}</h2>
+    
+    {/* Target and Previous Display */}
+<div className="grid grid-cols-2 gap-3 mb-4">
+    {/* Target for THIS workout */}
+    <div className="bg-yellow-900 bg-opacity-50 p-3 rounded-lg">
+        <p className="text-yellow-300 text-sm font-semibold">
+            <i className="fas fa-bullseye mr-2"></i>
+            Target: {
+                currentExercise.setDetails?.[currentSet - 1] 
+                    ? `${currentExercise.setDetails[currentSet - 1].reps} reps @ ${currentExercise.setDetails[currentSet - 1].weight} lbs`
+                    : `${currentExercise.reps} reps @ ${currentExercise.weight || 0} lbs`
+            }
+        </p>
+    </div>
+    
+   {/* Current Session Data - Shows what was just completed */}
+{currentSessionData[currentExercise.name] && currentSessionData[currentExercise.name].lastSet && (
+    <div className="bg-green-900 bg-opacity-50 p-3 rounded-lg mb-2 animate-pulse">
+        <p className="text-green-300 text-sm font-semibold">
+            <i className="fas fa-check-circle mr-2"></i>
+            Just Completed: {currentSessionData[currentExercise.name].lastReps} reps @ {currentSessionData[currentExercise.name].lastWeight} lbs (set {currentSessionData[currentExercise.name].lastSet})
+        </p>
     </div>
 )}
-                            {currentExercise.grouping && currentExercise.grouping !== 'none' && (
-                                <div className="bg-purple-900 bg-opacity-50 p-3 rounded-lg mb-4">
-                                    <p className="text-purple-300">
-                                        <i className="fas fa-link mr-2"></i>
-                                        {currentExercise.grouping === 'superset' ? 'Superset' : 'Tri-set'} with next exercise
-                                    </p>
-                                </div>
-                            )}
-                            
-                            {/* Action Buttons */}
-<div className="flex gap-3">
-    <button
-        onClick={() => setShowExerciseDetails(true)}
-        className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition"
-    >
-        <i className="fas fa-info-circle"></i>
-        View Details
-    </button>
-    
-    {currentExercise.youtubeLink && (
-        <a 
-            href={currentExercise.youtubeLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition"
-        >
-            <i className="fab fa-youtube"></i>
-            Watch Tutorial
-        </a>
-    )}
+
+{/* Historical Data from Previous Workouts */}
+<div className="bg-blue-900 bg-opacity-50 p-3 rounded-lg">
+    <p className="text-blue-300 text-sm font-semibold">
+        <i className="fas fa-history mr-2"></i>
+        {previousWorkoutData[currentExercise.name] ? (
+            <>
+                Last Workout: {
+                    previousWorkoutData[currentExercise.name].setDetails?.[currentSet - 1] 
+                        ? `${previousWorkoutData[currentExercise.name].setDetails[currentSet - 1].reps} reps @ ${previousWorkoutData[currentExercise.name].setDetails[currentSet - 1].weight} lbs`
+                        : `${previousWorkoutData[currentExercise.name].reps} reps @ ${previousWorkoutData[currentExercise.name].weight} lbs`
+                }
+                {previousWorkoutData[currentExercise.name].lastPerformed && (
+                    <span className="text-xs text-blue-400 ml-2">
+                        ({new Date(previousWorkoutData[currentExercise.name].lastPerformed).toLocaleDateString()})
+                    </span>
+                )}
+            </>
+        ) : (
+            'No previous workout data'
+        )}
+    </p>
 </div>
+</div>
+    
+    <div className="flex gap-4 text-gray-400 mb-4">
+        <span className="bg-gray-700 px-3 py-1 rounded">
+            Set {currentSet} of {currentExercise.sets}
+        </span>
+        <span className="bg-gray-700 px-3 py-1 rounded">
+            {currentExercise.setDetails?.[currentSet - 1]?.reps || currentExercise.reps} reps
+        </span>
+        {(currentExercise.setDetails?.[currentSet - 1]?.weight > 0 || currentExercise.weight > 0) && (
+            <span className="bg-gray-700 px-3 py-1 rounded">
+                {currentExercise.setDetails?.[currentSet - 1]?.weight || currentExercise.weight} lbs
+            </span>
+        )}
+    </div>
+                
+                {currentExercise.notes && (
+                    <div className="bg-gray-700 p-4 rounded-lg mb-4">
+                        <h4 className="font-semibold text-yellow-400 mb-2">Notes from Specialist</h4>
+                        <p className="text-gray-300">{currentExercise.notes}</p>
+                    </div>
+                )}
+                {currentExercise.holdTime && currentExercise.holdTime > 0 && (
+                    <div className="bg-purple-900 bg-opacity-50 p-4 rounded-lg mb-4">
+                        <h4 className="font-semibold text-purple-300 mb-2">
+                            <i className="fas fa-clock mr-2"></i>
+                            Hold Time: {currentExercise.holdTime} seconds
+                        </h4>
+                        {!isTimerRunning ? (
+                            <button
+                                onClick={() => startTimer(currentExercise.holdTime)}
+                                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded transition"
+                            >
+                                <i className="fas fa-play mr-2"></i>
+                                Start Timer
+                            </button>
+                        ) : (
+                            <div className="text-center">
+                                <div className="text-4xl font-bold text-white mb-2">
+                                    {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}
+                                </div>
+                                <button
+                                    onClick={stopTimer}
+                                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition"
+                                >
+                                    <i className="fas fa-stop mr-2"></i>
+                                    Stop Timer
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
+                {/* Just Completed Indicator */}
+{sessionData.lastCompletedSet && sessionData.lastCompletedSet.exercise === currentExercise.name && (
+    <div className="bg-green-900 bg-opacity-50 p-3 rounded-lg mb-4 animate-pulse">
+        <p className="text-green-300 text-sm font-semibold">
+            <i className="fas fa-check-circle mr-2"></i>
+            Just completed: Set {sessionData.lastCompletedSet.set} - {sessionData.lastCompletedSet.reps} reps @ {sessionData.lastCompletedSet.weight} lbs
+        </p>
+    </div>
+)}
+                {currentExercise.grouping && currentExercise.grouping !== 'none' && (() => {
+    // Count exercises in the same group
+    const exercisesInGroup = workout.exercises.filter(e => e.grouping === currentExercise.grouping).length;
+    return (
+        <div className="bg-purple-900 bg-opacity-50 p-3 rounded-lg mb-4">
+            <p className="text-purple-300">
+                <i className="fas fa-link mr-2"></i>
+                {exercisesInGroup} exercises in Group {currentExercise.grouping}
+            </p>
+        </div>
+    );
+})()}
+                
+                {/* Action Buttons */}
+                <div className="flex gap-3">
+                    <button
+                        onClick={() => setShowExerciseDetails(true)}
+                        className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition"
+                    >
+                        <i className="fas fa-info-circle"></i>
+                        View Details
+                    </button>
+                    
+                    {currentExercise.youtubeLink && (
+                        <a 
+                            href={currentExercise.youtubeLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition"
+                        >
+                            <i className="fab fa-youtube"></i>
+                            Watch Tutorial
+                        </a>
+                    )}
+                </div>
                         
-                            <button 
-    onClick={completeSet}
-    className="w-full bg-green-500 hover:bg-green-600 text-white py-4 rounded-lg text-xl font-bold transition"
->
-    Complete Set {currentSet}
-</button>
+                <button 
+                    onClick={completeSet}
+                    className="w-full bg-green-500 hover:bg-green-600 text-white py-4 rounded-lg text-xl font-bold transition"
+                >
+                    Complete Set {currentSet}
+                </button>
                         
                         <div className="grid grid-cols-3 gap-4 mt-6">
                             <div className="bg-gray-800 rounded-lg p-4 text-center">
-                                <p className="text-gray-400 text-sm text-gray-300">Duration</p>
+                                <p className="text-gray-400 text-sm">Duration</p>
                                 <p className="text-xl font-bold">
                                     {Math.round((new Date() - sessionData.startTime) / 60000)} min
                                 </p>
                             </div>
                             <div className="bg-gray-800 rounded-lg p-4 text-center">
-                                <p className="text-gray-400 text-sm text-gray-300">Avg Pain</p>
+                                <p className="text-gray-400 text-sm">Avg Pain</p>
                                 <p className="text-xl font-bold">
                                     {sessionData.painCount > 0 
                                         ? (sessionData.totalPainLevel / sessionData.painCount).toFixed(1)
@@ -2503,7 +2799,7 @@ if (currentExercise.grouping === 'superset' && currentExerciseIndex < workout.ex
                                 </p>
                             </div>
                             <div className="bg-gray-800 rounded-lg p-4 text-center">
-                                <p className="text-gray-400 text-sm text-gray-300">Sets Done</p>
+                                <p className="text-gray-400 text-sm">Sets Done</p>
                                 <p className="text-xl font-bold">{sessionData.exerciseData.length}</p>
                             </div>
                         </div>
@@ -2626,6 +2922,7 @@ if (currentExercise.grouping === 'superset' && currentExerciseIndex < workout.ex
                 </div>
             );
         };
+  
         
         // Enhanced Workouts Component
         const Workouts = ({ user, isClient, showError, showSuccess }) => {
@@ -2641,15 +2938,17 @@ if (currentExercise.grouping === 'superset' && currentExerciseIndex < workout.ex
 });
               const [editingWorkout, setEditingWorkout] = useState(null);
             const [activeSession, setActiveSession] = useState(null);
-            // Exercise Library Search States
+            
+  // Exercise Library Search States
 const [showExerciseSearch, setShowExerciseSearch] = useState(false);
 const [exerciseSearchTerm, setExerciseSearchTerm] = useState('');
 const [libraryExercises, setLibraryExercises] = useState([]);
 const [filteredLibraryExercises, setFilteredLibraryExercises] = useState([]);
-            const uploadToCloudinary = async (file) => {
+
+const uploadToCloudinary = async (file) => {
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('upload_preset', 'ml_default'); // Use default or create your own
+    formData.append('upload_preset', 'ml_default');
     
     try {
         const response = await fetch(
@@ -2666,23 +2965,29 @@ const [filteredLibraryExercises, setFilteredLibraryExercises] = useState([]);
         return null;
     }
 };
-            const fetchLibraryExercises = async () => {
+
+const fetchLibraryExercises = async () => {
     try {
         const data = await API_CONFIG.request('/exercises');
-        setLibraryExercises(data.data || []);
+        console.log('Library exercises fetched:', data); // Debug log
+        const exercisesArray = Array.isArray(data) ? data : (data.data || []);
+        console.log('Processed exercises:', exercisesArray); // Debug log
+        setLibraryExercises(exercisesArray);
     } catch (error) {
         console.error('Error fetching library exercises:', error);
+        setLibraryExercises([]);
     }
 };
             useEffect(() => {
-                if (!isClient && (user.roles?.includes('specialist') || user.roles?.includes('admin') || user.roles?.includes('owner'))) {
-                    fetchClients();
-                }
-                if (selectedClient) {
-                    fetchWorkouts();
-                }
-            }, [selectedClient, isClient]);
-            // Fetch library exercises when component mounts
+    if (!isClient && (user.roles?.includes('specialist') || user.roles?.includes('admin') || user.roles?.includes('owner'))) {
+        fetchClients();
+    }
+    if (selectedClient) {
+        fetchWorkouts();
+    }
+}, [selectedClient, isClient]);
+
+// Fetch library exercises when component mounts
 useEffect(() => {
     if (!isClient) {
         fetchLibraryExercises();
@@ -2691,14 +2996,21 @@ useEffect(() => {
 
 // Filter exercises based on search term
 useEffect(() => {
+    console.log('Search term changed:', exerciseSearchTerm); // Debug log
+    console.log('Available exercises:', libraryExercises.length); // Debug log
+    
     if (exerciseSearchTerm.trim() === '') {
         setFilteredLibraryExercises([]);
     } else {
+        const searchLower = exerciseSearchTerm.toLowerCase();
         const filtered = libraryExercises.filter(exercise => 
-            exercise.name.toLowerCase().includes(exerciseSearchTerm.toLowerCase()) ||
-            exercise.muscleCategory?.toLowerCase().includes(exerciseSearchTerm.toLowerCase()) ||
-            exercise.tags?.some(tag => tag.toLowerCase().includes(exerciseSearchTerm.toLowerCase()))
+            exercise.name?.toLowerCase().includes(searchLower) ||
+            exercise.muscleCategory?.toLowerCase().includes(searchLower) ||
+            exercise.equipmentNeeded?.toLowerCase().includes(searchLower) ||
+            exercise.difficulty?.toLowerCase().includes(searchLower) ||
+            exercise.tags?.some(tag => tag.toLowerCase().includes(searchLower))
         );
+        console.log('Filtered results:', filtered.length); // Debug log
         setFilteredLibraryExercises(filtered);
     }
 }, [exerciseSearchTerm, libraryExercises]);
@@ -2835,12 +3147,14 @@ const response = await API_CONFIG.request(`/workouts/client/${selectedClient}`);
             weight: 0,
             notes: exercise.description || '',
             grouping: 'none',
+            youtubeLink: exercise.videoUrl || ''
         }]
     });
     setShowExerciseSearch(false);
     setExerciseSearchTerm('');
+    setFilteredLibraryExercises([]);
     showSuccess(`Added "${exercise.name}" to workout`);
-};      
+};
 const addExercise = () => {
     // Check if an exercise was selected from library
     if (window.selectedExerciseFromLibrary) {
@@ -3003,13 +3317,24 @@ const ungroupExercise = (index) => {
         <label className="block text-sm font-medium">Exercises</label>
         <div className="flex gap-2">
             <button 
-                type="button" 
-                onClick={() => setShowExerciseSearch(true)}
-                className="text-purple-500 hover:text-purple-600"
-            >
-                <i className="fas fa-search mr-1"></i>
-                Search Exercises
-            </button>
+    type="button" 
+    onClick={async () => {
+        console.log('Search button clicked, isClient:', isClient);
+        console.log('Current library exercises:', libraryExercises.length);
+        
+        // Force fetch if empty
+        if (libraryExercises.length === 0) {
+            console.log('Fetching library exercises...');
+            await fetchLibraryExercises();
+        }
+        
+        setShowExerciseSearch(true);
+    }}
+    className="text-purple-500 hover:text-purple-600"
+>
+    <i className="fas fa-search mr-1"></i>
+    Search Exercises {libraryExercises.length > 0 && `(${libraryExercises.length})`}
+</button>
             <button type="button" onClick={addExercise} className="text-blue-500 hover:text-blue-600">
                 <i className="fas fa-plus mr-1"></i>
                 Add Exercise
@@ -3017,61 +3342,104 @@ const ungroupExercise = (index) => {
         </div>
     </div>
 
-    {/* Exercise Search Modal */}
-    {showExerciseSearch && (
-        <div className="modal-overlay" onClick={() => setShowExerciseSearch(false)}>
-            <div className="modal-content max-w-2xl" onClick={(e) => e.stopPropagation()}>
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-xl font-semibold">Search Exercises</h3>
-                    <button 
-                        onClick={() => setShowExerciseSearch(false)}
-                        className="text-gray-500 hover:text-gray-700"
-                    >
-                        <i className="fas fa-times text-xl"></i>
-                    </button>
-                </div>
-                
-                <div className="mb-4">
+   {/* Exercise Search Modal */}
+{showExerciseSearch && (
+    <div className="modal-overlay" onClick={() => {
+        setShowExerciseSearch(false);
+        setExerciseSearchTerm('');
+    }}>
+        <div className="modal-content max-w-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-semibold text-white">Search Exercise Library</h3>
+                <button 
+                    onClick={() => {
+                        setShowExerciseSearch(false);
+                        setExerciseSearchTerm('');
+                    }}
+                    className="text-gray-400 hover:text-white"
+                >
+                    <i className="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div className="mb-4">
+                <div className="relative">
                     <input
                         type="text"
-                        placeholder="Search exercises by name or muscle group..."
-                        className="coastal-input"
+                        placeholder="Search by name, muscle group, or equipment..."
+                        className="coastal-input pl-10"
                         value={exerciseSearchTerm}
                         onChange={(e) => setExerciseSearchTerm(e.target.value)}
                         autoFocus
                     />
+                    <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                 </div>
-                
-                <div className="max-h-96 overflow-y-auto">
-                    {filteredLibraryExercises.length > 0 ? (
-                        <div className="grid grid-cols-1 gap-2">
-                            {filteredLibraryExercises.map(exercise => (
-                                <div key={exercise._id} className="flex justify-between items-center p-3 border rounded hover:bg-gray-800">
-                                    <div>
-                                        <h4 className="font-medium">{exercise.name}</h4>
-                                        <p className="text-sm text-gray-400">
-                                            {exercise.muscleCategory} • {exercise.difficulty}
-                                        </p>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => addExerciseFromLibrary(exercise)}
-                                        className="coastal-button text-sm py-1 px-3"
-                                    >
-                                        Add
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
+                <p className="text-xs text-gray-400 mt-2">
+                    {libraryExercises.length === 0 ? (
+                        <span className="text-yellow-400">Loading exercise library...</span>
                     ) : (
-                        <div className="text-center py-8 text-gray-500">
-                            {exerciseSearchTerm ? 'No exercises found matching your search.' : 'Start typing to search exercises...'}
-                        </div>
+                        `${libraryExercises.length} exercises available`
                     )}
-                </div>
+                </p>
+            </div>
+            
+            <div className="max-h-96 overflow-y-auto">
+                {libraryExercises.length === 0 ? (
+                    <div className="text-center py-8 text-gray-400">
+                        <div className="loading-spinner mx-auto mb-3"></div>
+                        <p>Loading exercises from library...</p>
+                    </div>
+                ) : exerciseSearchTerm.trim() === '' ? (
+                    <div className="text-center py-8 text-gray-400">
+                        <i className="fas fa-search text-4xl mb-3 opacity-50"></i>
+                        <p>Start typing to search exercises...</p>
+                        <p className="text-sm mt-2">Search by name, muscle group, difficulty, or equipment</p>
+                    </div>
+                ) : filteredLibraryExercises.length > 0 ? (
+                    <div className="space-y-2">
+                        {filteredLibraryExercises.map(exercise => (
+                            <div 
+                                key={exercise._id} 
+                                className="flex justify-between items-center p-3 bg-gray-800 rounded-lg hover:bg-gray-700 transition"
+                            >
+                                <div className="flex-1">
+                                    <h4 className="font-medium text-white">{exercise.name}</h4>
+                                    <div className="flex gap-2 mt-1">
+                                        <span className="text-xs bg-blue-900 bg-opacity-50 text-blue-300 px-2 py-1 rounded">
+                                            {exercise.muscleCategory}
+                                        </span>
+                                        <span className="text-xs bg-purple-900 bg-opacity-50 text-purple-300 px-2 py-1 rounded">
+                                            {exercise.difficulty}
+                                        </span>
+                                        <span className="text-xs bg-gray-700 text-gray-300 px-2 py-1 rounded">
+                                            {exercise.equipmentNeeded}
+                                        </span>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        addExerciseFromLibrary(exercise);
+                                    }}
+                                    className="coastal-button text-sm py-2 px-4 ml-3"
+                                >
+                                    <i className="fas fa-plus mr-1"></i>
+                                    Add
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center py-8 text-gray-400">
+                        <i className="fas fa-exclamation-circle text-4xl mb-3 opacity-50"></i>
+                        <p>No exercises found matching "{exerciseSearchTerm}"</p>
+                        <p className="text-sm mt-2">Try different keywords</p>
+                    </div>
+                )}
             </div>
         </div>
-    )}
+    </div>
+)}
                                     
                      {formData.exercises.map((exercise, index) => (
     <div key={index} className="bg-gray-800 p-4 rounded mb-3">
@@ -3371,7 +3739,7 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
             if (selectedDifficulty !== 'all') params.append('difficulty', selectedDifficulty);
             
             const data = await API_CONFIG.request(`/exercises?${params.toString()}`);
-            setExercises(data.data || []);
+           setExercises(Array.isArray(data) ? data : (data.data || []));
         } catch (error) {
             console.error('Error fetching exercises:', error);
         }
@@ -3950,7 +4318,7 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
                         
                         <div className="mb-4">
                             <h3 className="font-semibold mb-2">Description</h3>
-                            <p className="text-gray-700">{showDetails.description}</p>
+                            <p className="text-gray-300">{showDetails.description}</p>
                         </div>
                         
                         {showDetails.instructions?.length > 0 && (
@@ -3958,7 +4326,7 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
                                 <h3 className="font-semibold mb-2">Instructions</h3>
                                 <ol className="list-decimal list-inside space-y-1">
                                     {showDetails.instructions.map((instruction, index) => (
-                                        <li key={index} className="text-gray-700">{instruction}</li>
+                                        <li key={index} className="text-gray-300">{instruction}</li>
                                     ))}
                                 </ol>
                             </div>
@@ -3969,7 +4337,7 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
                                 <h3 className="font-semibold mb-2">Pro Tips</h3>
                                 <ul className="list-disc list-inside space-y-1">
                                     {showDetails.tips.map((tip, index) => (
-                                        <li key={index} className="text-gray-700">{tip}</li>
+                                        <li key={index} className="text-gray-300">{tip}</li>
                                     ))}
                                 </ul>
                             </div>
@@ -3980,7 +4348,7 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
                                 <h3 className="font-semibold mb-2">Common Mistakes to Avoid</h3>
                                 <ul className="list-disc list-inside space-y-1">
                                     {showDetails.commonMistakes.map((mistake, index) => (
-                                        <li key={index} className="text-gray-700">{mistake}</li>
+                                        <li key={index} className="text-gray-300">{mistake}</li>
                                     ))}
                                 </ul>
                             </div>
@@ -4053,13 +4421,9 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
             }, [selectedClient, isClient]);
             
             const fetchClients = async () => {
-                try {
-                    const data = await API_CONFIG.request('/users?role=client');
-                    setClients(data.data || []);
-                } catch (error) {
-                    console.error('Error fetching clients:', error);
-                }
-            };
+    const clients = await ClientManager.loadClients();
+    setClients(clients);
+};
             
             const fetchMeasurements = async () => {
                 try {
@@ -4576,13 +4940,9 @@ const ExerciseLibrary = ({ user, showError, showSuccess }) => {
             }, [selectedClient, isClient]);
             
             const fetchClients = async () => {
-                try {
-                    const data = await API_CONFIG.request('/users?role=client');
-                    setClients(data.data || []);
-                } catch (error) {
-                    console.error('Error fetching clients:', error);
-                }
-            };
+    const clients = await ClientManager.loadClients();
+    setClients(clients);
+};
             
       const fetchNutrition = async () => {
     try {
@@ -4989,6 +5349,583 @@ await API_CONFIG.request(endpoint, {
                 </div>
             );
         };
+       const Wearables = ({ user, showError, showSuccess }) => {
+    const [connections, setConnections] = useState([]);
+    const [wearableData, setWearableData] = useState([]);
+    const [insights, setInsights] = useState(null);
+    const [showManualEntry, setShowManualEntry] = useState(false);
+    const [selectedMetric, setSelectedMetric] = useState('steps');
+    const [healthMetrics, setHealthMetrics] = useState({
+        heartRate: { current: 0, zones: [], trend: 'stable' },
+        sleep: { score: 0, duration: 0, deep: 0, rem: 0, light: 0, awake: 0 },
+        recovery: { score: 0, hrv: 0, restingHR: 0 },
+        activity: { steps: 0, activeMinutes: 0, calories: 0, distance: 0 }
+    });
+    const [manualData, setManualData] = useState({
+        date: new Date().toISOString().split('T')[0],
+        steps: '',
+        distance: '',
+        activeMinutes: '',
+        sleepDuration: '',
+        caloriesBurned: '',
+        restingHeartRate: ''
+    });
+    
+    const providers = [
+        { id: 'fitbit', name: 'Fitbit', icon: '🏃', color: 'bg-teal-500' },
+        { id: 'apple', name: 'Apple Watch', icon: '⌚', color: 'bg-gray-800' },
+        { id: 'garmin', name: 'Garmin', icon: '🏔️', color: 'bg-blue-600' },
+        { id: 'whoop', name: 'WHOOP', icon: '💪', color: 'bg-black' },
+        { id: 'oura', name: 'Oura Ring', icon: '💍', color: 'bg-purple-600' },
+        { id: 'polar', name: 'Polar', icon: '❄️', color: 'bg-red-500' }
+    ];
+    
+    const metrics = [
+        { id: 'steps', label: 'Steps', icon: '👣', unit: 'steps' },
+        { id: 'distance', label: 'Distance', icon: '📏', unit: 'miles' },
+        { id: 'activeMinutes', label: 'Active Minutes', icon: '⏱️', unit: 'min' },
+        { id: 'caloriesBurned', label: 'Calories', icon: '🔥', unit: 'cal' },
+        { id: 'sleepDuration', label: 'Sleep', icon: '😴', unit: 'hrs' },
+        { id: 'restingHeartRate', label: 'Resting HR', icon: '❤️', unit: 'bpm' },
+        { id: 'hrv', label: 'HRV', icon: '📊', unit: 'ms' }
+    ];
+    
+    useEffect(() => {
+        fetchConnections();
+        fetchWearableData();
+        fetchInsights();
+        fetchHealthMetrics();
+    }, []);
+    
+    const fetchConnections = async () => {
+        try {
+            const response = await API_CONFIG.request('/wearables/connections');
+            let connectionsData = [];
+            if (Array.isArray(response)) {
+                connectionsData = response;
+            } else if (response.connections && Array.isArray(response.connections)) {
+                connectionsData = response.connections;
+            } else if (response.data && Array.isArray(response.data)) {
+                connectionsData = response.data;
+            }
+            setConnections(connectionsData);
+        } catch (error) {
+            console.error('Error fetching connections:', error);
+            setConnections([]);
+        }
+    };
+    
+    const fetchWearableData = async () => {
+        try {
+            const response = await API_CONFIG.request(`/wearables/user/${user._id}?days=30`);
+            let wearableDataArray = [];
+            if (Array.isArray(response)) {
+                wearableDataArray = response;
+            } else if (response.data && Array.isArray(response.data)) {
+                wearableDataArray = response.data;
+            } else if (response.wearableData && Array.isArray(response.wearableData)) {
+                wearableDataArray = response.wearableData;
+            }
+            setWearableData(wearableDataArray);
+        } catch (error) {
+            console.error('Error fetching wearable data:', error);
+            setWearableData([]);
+        }
+    };
+    
+    const fetchInsights = async () => {
+        try {
+            const response = await API_CONFIG.request(`/wearables/insights/${user._id}?days=7`);
+            let insightsData = null;
+            if (response.insights) {
+                insightsData = response.insights;
+            } else if (response.data) {
+                insightsData = response.data;
+            } else {
+                insightsData = response;
+            }
+            setInsights(insightsData);
+        } catch (error) {
+            console.error('Error fetching insights:', error);
+            setInsights(null);
+        }
+    };
+    
+    const fetchHealthMetrics = async () => {
+        try {
+            const recent = await API_CONFIG.request(`/wearables/user/${user._id}?days=1`);
+            const recentData = Array.isArray(recent) ? recent[0] : (recent.data?.[0] || {});
+            
+            setHealthMetrics({
+                heartRate: {
+                    current: recentData.restingHeartRate || 0,
+                    zones: recentData.heartRateZones || [],
+                    trend: 'stable'
+                },
+                sleep: {
+                    score: recentData.sleepScore || 0,
+                    duration: recentData.sleepDuration || 0,
+                    deep: recentData.deepSleep || 0,
+                    rem: recentData.remSleep || 0,
+                    light: recentData.lightSleep || 0,
+                    awake: recentData.awakeTime || 0
+                },
+                recovery: {
+                    score: recentData.recoveryScore || 0,
+                    hrv: recentData.hrv || 0,
+                    restingHR: recentData.restingHeartRate || 0
+                },
+                activity: {
+                    steps: recentData.steps || 0,
+                    activeMinutes: recentData.activeMinutes || 0,
+                    calories: recentData.caloriesBurned || 0,
+                    distance: recentData.distance || 0
+                }
+            });
+        } catch (error) {
+            console.error('Error fetching health metrics:', error);
+        }
+    };
+    
+    const handleConnect = async (provider) => {
+        try {
+            const response = await fetch(`${API_CONFIG.baseURL}/wearables/connect/${provider}`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok && data.authUrl) {
+                window.location.href = data.authUrl;
+            } else {
+                showError(data.error || 'Failed to initiate connection');
+            }
+        } catch (error) {
+            showError('Failed to connect: ' + error.message);
+        }
+    };
+    
+    const handleDisconnect = async (provider) => {
+        if (confirm(`Disconnect ${provider}?`)) {
+            try {
+                await API_CONFIG.request(`/wearables/disconnect/${provider}`, {
+                    method: 'DELETE'
+                });
+                showSuccess(`${provider} disconnected`);
+                fetchConnections();
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+    };
+    
+    const handleManualSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            await API_CONFIG.request(`/wearables/user/${user._id}/manual`, {
+                method: 'POST',
+                body: JSON.stringify(manualData)
+            });
+            showSuccess('Data logged successfully');
+            setShowManualEntry(false);
+            fetchWearableData();
+            fetchInsights();
+            fetchHealthMetrics();
+        } catch (error) {
+            showError(error.message);
+        }
+    };
+    
+    const isConnected = (providerId) => {
+        return connections.some(c => c.provider === providerId && c.connected);
+    };
+    
+    const safeGet = (obj, path, defaultValue = 0) => {
+        try {
+            const value = path.split('.').reduce((acc, part) => acc && acc[part], obj);
+            return value !== undefined && value !== null ? value : defaultValue;
+        } catch {
+            return defaultValue;
+        }
+    };
+    
+    const RecoveryRing = ({ score, label }) => {
+        const percentage = Math.min(score, 100);
+        const strokeDasharray = 2 * Math.PI * 45;
+        const strokeDashoffset = strokeDasharray - (strokeDasharray * percentage) / 100;
+        
+        return (
+            <div className="relative w-32 h-32">
+                <svg className="transform -rotate-90 w-32 h-32">
+                    <circle cx="64" cy="64" r="45" stroke="#374151" strokeWidth="8" fill="none" />
+                    <circle 
+                        cx="64" cy="64" r="45" 
+                        stroke={percentage >= 70 ? '#10b981' : percentage >= 40 ? '#f59e0b' : '#ef4444'}
+                        strokeWidth="8" 
+                        fill="none"
+                        strokeDasharray={strokeDasharray}
+                        strokeDashoffset={strokeDashoffset}
+                        className="transition-all duration-1000"
+                    />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-2xl font-bold text-white">{Math.round(score)}</span>
+                    <span className="text-xs text-gray-400">{label}</span>
+                </div>
+            </div>
+        );
+    };
+    
+    return (
+        <div className="space-y-6">
+            {/* ULTIMATE HEALTH METRICS DASHBOARD */}
+            <div className="dark-card p-6">
+                <h2 className="text-2xl font-bold mb-6 text-white">Health Metrics Dashboard</h2>
+                
+                {/* Recovery & Sleep Rings */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <div className="bg-gray-800 rounded-lg p-6 flex flex-col items-center">
+                        <RecoveryRing score={healthMetrics.recovery.score} label="Recovery" />
+                        <div className="mt-4 text-center">
+                            <p className="text-sm text-gray-400">HRV: {healthMetrics.recovery.hrv} ms</p>
+                            <p className="text-sm text-gray-400">Resting HR: {healthMetrics.recovery.restingHR} bpm</p>
+                        </div>
+                    </div>
+                    
+                    <div className="bg-gray-800 rounded-lg p-6 flex flex-col items-center">
+                        <RecoveryRing score={healthMetrics.sleep.score} label="Sleep Score" />
+                        <div className="mt-4 text-center">
+                            <p className="text-sm text-gray-400">
+                                Duration: {Math.floor(healthMetrics.sleep.duration / 60)}h {healthMetrics.sleep.duration % 60}m
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div className="bg-gray-800 rounded-lg p-6">
+                        <h4 className="text-sm font-semibold text-gray-300 mb-3">Sleep Architecture</h4>
+                        <div className="space-y-2">
+                            <div>
+                                <div className="flex justify-between text-xs mb-1">
+                                    <span className="text-gray-400">Deep</span>
+                                    <span className="text-purple-400">{healthMetrics.sleep.deep} min</span>
+                                </div>
+                                <div className="h-2 bg-gray-700 rounded">
+                                    <div 
+                                        className="h-full bg-purple-500 rounded"
+                                        style={{width: `${(healthMetrics.sleep.deep / healthMetrics.sleep.duration * 100) || 0}%`}}
+                                    ></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div className="flex justify-between text-xs mb-1">
+                                    <span className="text-gray-400">REM</span>
+                                    <span className="text-blue-400">{healthMetrics.sleep.rem} min</span>
+                                </div>
+                                <div className="h-2 bg-gray-700 rounded">
+                                    <div 
+                                        className="h-full bg-blue-500 rounded"
+                                        style={{width: `${(healthMetrics.sleep.rem / healthMetrics.sleep.duration * 100) || 0}%`}}
+                                    ></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div className="flex justify-between text-xs mb-1">
+                                    <span className="text-gray-400">Light</span>
+                                    <span className="text-green-400">{healthMetrics.sleep.light} min</span>
+                                </div>
+                                <div className="h-2 bg-gray-700 rounded">
+                                    <div 
+                                        className="h-full bg-green-500 rounded"
+                                        style={{width: `${(healthMetrics.sleep.light / healthMetrics.sleep.duration * 100) || 0}%`}}
+                                    ></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                {/* Activity Metrics */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div className="bg-gradient-to-br from-blue-900 to-blue-800 rounded-lg p-4">
+                        <div className="text-3xl mb-2">👣</div>
+                        <div className="text-2xl font-bold text-white">{healthMetrics.activity.steps.toLocaleString()}</div>
+                        <div className="text-xs text-gray-300">Steps Today</div>
+                    </div>
+                    
+                    <div className="bg-gradient-to-br from-orange-900 to-orange-800 rounded-lg p-4">
+                        <div className="text-3xl mb-2">🔥</div>
+                        <div className="text-2xl font-bold text-white">{healthMetrics.activity.calories}</div>
+                        <div className="text-xs text-gray-300">Calories Burned</div>
+                    </div>
+                    
+                    <div className="bg-gradient-to-br from-green-900 to-green-800 rounded-lg p-4">
+                        <div className="text-3xl mb-2">⏱️</div>
+                        <div className="text-2xl font-bold text-white">{healthMetrics.activity.activeMinutes}</div>
+                        <div className="text-xs text-gray-300">Active Minutes</div>
+                    </div>
+                    
+                    <div className="bg-gradient-to-br from-purple-900 to-purple-800 rounded-lg p-4">
+                        <div className="text-3xl mb-2">📏</div>
+                        <div className="text-2xl font-bold text-white">{healthMetrics.activity.distance.toFixed(1)}</div>
+                        <div className="text-xs text-gray-300">Miles</div>
+                    </div>
+                </div>
+                
+                {/* Heart Rate Zones */}
+                {healthMetrics.heartRate.zones.length > 0 && (
+                    <div className="bg-gray-800 rounded-lg p-4 mb-6">
+                        <h4 className="text-sm font-semibold text-gray-300 mb-3">Heart Rate Zones Today</h4>
+                        <div className="space-y-2">
+                            {healthMetrics.heartRate.zones.map((zone, i) => (
+                                <div key={i}>
+                                    <div className="flex justify-between text-xs mb-1">
+                                        <span className="text-gray-400">{zone.name}</span>
+                                        <span className="text-gray-300">{zone.minutes} min</span>
+                                    </div>
+                                    <div className="h-2 bg-gray-700 rounded overflow-hidden">
+                                        <div 
+                                            className={`h-full ${
+                                                i === 0 ? 'bg-gray-500' :
+                                                i === 1 ? 'bg-blue-500' :
+                                                i === 2 ? 'bg-green-500' :
+                                                i === 3 ? 'bg-yellow-500' :
+                                                'bg-red-500'
+                                            }`}
+                                            style={{width: `${zone.percentage}%`}}
+                                        ></div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+            
+            {/* Device Connections */}
+            <div className="dark-card p-6">
+                <h2 className="text-2xl font-bold mb-4 text-white">Wearable Devices</h2>
+                
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+    {providers.map(provider => {
+        const connected = isConnected(provider.id);
+        const isAvailable = provider.id === 'fitbit' || provider.id === 'polar';
+        
+        return (
+            <div key={provider.id} className={`p-4 rounded-lg border-2 transition ${
+                connected ? 'border-green-500 bg-green-900 bg-opacity-20' : 'border-gray-600 hover:border-gray-500 bg-gray-800'
+            }`}>
+                <div className="text-center">
+                    <div className="text-4xl mb-2">{provider.icon}</div>
+                    <h3 className="font-semibold text-white">{provider.name}</h3>
+                    {isAvailable ? (
+                        <span className="text-xs text-green-400 block mt-1 font-semibold">
+                            <i className="fas fa-check-circle mr-1"></i>Active
+                        </span>
+                    ) : (
+                        <span className="text-xs text-yellow-400 block mt-1">Coming Soon</span>
+                    )}
+                    {isAvailable && (
+                        connected ? (
+                            <button
+                                onClick={() => handleDisconnect(provider.id)}
+                                className="mt-2 text-sm text-red-400 hover:text-red-300"
+                            >
+                                Disconnect
+                            </button>
+                        ) : (
+                            <button
+                                onClick={() => handleConnect(provider.id)}
+                                className="mt-2 coastal-button text-sm py-1 px-3"
+                            >
+                                Connect
+                            </button>
+                        )
+                    )}
+                </div>
+            </div>
+        );
+    })}
+</div>
+                
+                <button
+                    onClick={() => setShowManualEntry(true)}
+                    className="coastal-button bg-purple-600 hover:bg-purple-700"
+                >
+                    <i className="fas fa-keyboard mr-2"></i>
+                    Manual Entry
+                </button>
+            </div>
+            
+            {/* Insights */}
+            {insights && insights.averages && (
+                <div className="dark-card p-6">
+                    <h3 className="text-xl font-bold mb-4 text-white">7-Day Insights</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="metric-card">
+                            <div className="text-sm text-gray-400">Avg Steps</div>
+                            <div className="text-2xl font-bold text-white">
+                                {safeGet(insights, 'averages.steps', 0).toLocaleString()}
+                            </div>
+                            <div className={`text-sm ${
+                                safeGet(insights, 'trends.steps') === 'improving' ? 'text-green-400' :
+                                safeGet(insights, 'trends.steps') === 'declining' ? 'text-red-400' : 'text-gray-400'
+                            }`}>
+                                {safeGet(insights, 'trends.steps') === 'improving' && '↗️ Improving'}
+                                {safeGet(insights, 'trends.steps') === 'declining' && '↘️ Declining'}
+                                {safeGet(insights, 'trends.steps') === 'stable' && '→ Stable'}
+                                {!insights.trends?.steps && '—'}
+                            </div>
+                        </div>
+                        
+                        <div className="metric-card">
+                            <div className="text-sm text-gray-400">Avg Sleep</div>
+                            <div className="text-2xl font-bold text-white">
+                                {Math.floor(safeGet(insights, 'averages.sleep', 0) / 60)}h {safeGet(insights, 'averages.sleep', 0) % 60}m
+                            </div>
+                        </div>
+                        
+                        <div className="metric-card">
+                            <div className="text-sm text-gray-400">Active Minutes</div>
+                            <div className="text-2xl font-bold text-white">
+                                {safeGet(insights, 'averages.activeMinutes', 0)}
+                            </div>
+                        </div>
+                        
+                        <div className="metric-card">
+                            <div className="text-sm text-gray-400">Resting HR</div>
+                            <div className="text-2xl font-bold text-white">
+                                {safeGet(insights, 'averages.restingHR', 0) || '--'}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {insights.streaks && (
+                        <div className="mt-4 grid grid-cols-2 gap-4">
+                            <div className="bg-blue-900 bg-opacity-30 rounded-lg p-3">
+                                <div className="text-sm text-gray-400">10K Steps Streak</div>
+                                <div className="text-xl font-bold text-white">
+                                    {safeGet(insights, 'streaks.steps.current', 0)} days
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                    Best: {safeGet(insights, 'streaks.steps.max', 0)} days
+                                </div>
+                            </div>
+                            
+                            <div className="bg-purple-900 bg-opacity-30 rounded-lg p-3">
+                                <div className="text-sm text-gray-400">7+ Hour Sleep Streak</div>
+                                <div className="text-xl font-bold text-white">
+                                    {safeGet(insights, 'streaks.sleep.current', 0)} days
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                    Best: {safeGet(insights, 'streaks.sleep.max', 0)} days
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+            
+            {!insights && (
+                <div className="dark-card p-6 text-center">
+                    <p className="text-gray-400">
+                        No insights available yet. Connect a wearable device or log manual data to see insights.
+                    </p>
+                </div>
+            )}
+            
+            {/* Manual Entry Modal */}
+            {showManualEntry && (
+                <div className="modal-overlay" onClick={() => setShowManualEntry(false)}>
+                    <div className="modal-content max-w-2xl" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="text-xl font-bold mb-4 text-white">Manual Entry</h3>
+                        <form onSubmit={handleManualSubmit}>
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Date</label>
+                                    <input
+                                        type="date"
+                                        className="coastal-input"
+                                        value={manualData.date}
+                                        onChange={(e) => setManualData({...manualData, date: e.target.value})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Steps</label>
+                                    <input
+                                        type="number"
+                                        className="coastal-input"
+                                        value={manualData.steps}
+                                        onChange={(e) => setManualData({...manualData, steps: e.target.value})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Distance (miles)</label>
+                                    <input
+                                        type="number"
+                                        step="0.1"
+                                        className="coastal-input"
+                                        value={manualData.distance}
+                                        onChange={(e) => setManualData({...manualData, distance: e.target.value})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Active Minutes</label>
+                                    <input
+                                        type="number"
+                                        className="coastal-input"
+                                        value={manualData.activeMinutes}
+                                        onChange={(e) => setManualData({...manualData, activeMinutes: e.target.value})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Sleep (minutes)</label>
+                                    <input
+                                        type="number"
+                                        className="coastal-input"
+                                        value={manualData.sleepDuration}
+                                        onChange={(e) => setManualData({...manualData, sleepDuration: e.target.value})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Calories Burned</label>
+                                    <input
+                                        type="number"
+                                        className="coastal-input"
+                                        value={manualData.caloriesBurned}
+                                        onChange={(e) => setManualData({...manualData, caloriesBurned: e.target.value})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Resting HR</label>
+                                    <input
+                                        type="number"
+                                        className="coastal-input"
+                                        value={manualData.restingHeartRate}
+                                        onChange={(e) => setManualData({...manualData, restingHeartRate: e.target.value})}
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex gap-4">
+                                <button type="submit" className="coastal-button">Save Data</button>
+                                <button 
+                                    type="button" 
+                                    onClick={() => setShowManualEntry(false)}
+                                    className="coastal-button bg-gray-600 hover:bg-gray-700"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
         
 // Enhanced Reports Component - Replace entire Reports component with this
 const Reports = ({ user, isClient, showSuccess, showError }) => {
@@ -5003,13 +5940,9 @@ const Reports = ({ user, isClient, showSuccess, showError }) => {
     }, [isClient]);
     
     const fetchClients = async () => {
-        try {
-            const data = await API_CONFIG.request('/users?role=client');
-            setClients(data.data || []);
-        } catch (error) {
-            console.error('Error fetching clients:', error);
-        }
-    };
+    const clients = await ClientManager.loadClients();
+    setClients(clients);
+};
     
     const generateReport = async () => {
         if (!selectedClient) {
@@ -5766,12 +6699,23 @@ const Reports = ({ user, isClient, showSuccess, showError }) => {
     );
 };
         // === CALENDAR & SCHEDULING SYSTEM ===
+// === CALENDAR & SCHEDULING SYSTEM WITH BACKEND + SMS ===
 const Calendar = ({ user, showError, showSuccess }) => {
     const [view, setView] = useState('week');
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [classes, setClasses] = useState([]);
     const [showClassForm, setShowClassForm] = useState(false);
     const [selectedClass, setSelectedClass] = useState(null);
+    const [formData, setFormData] = useState({
+        name: '',
+        type: 'group',
+        date: DateHandler.getCurrentETDate(),
+        time: '09:00',
+        duration: 60,
+        capacity: 20,
+        pricing: { amount: 0, timing: 'pre-pay' },
+        description: ''
+    });
     
     const isClient = user.roles?.includes('client');
     const canManage = user.roles?.includes('specialist') || user.roles?.includes('admin') || user.roles?.includes('owner');
@@ -5782,30 +6726,118 @@ const Calendar = ({ user, showError, showSuccess }) => {
         }
     }, [user.gymId]);
     
-    const fetchClasses = async () => {
-        try {
-            const data = await API_CONFIG.getClasses(user.gymId);
-            setClasses(Array.isArray(data) ? data : (data.data || []));
-        } catch (error) {
-            console.error('Error fetching classes:', error);
-            setClasses([]);
-        }
-    };
+    // CONNECTED TO YOUR BACKEND
+   const fetchClasses = async () => {
+    try {
+        // DEMO FIX: Use fallback gymId if user doesn't have one
+        const gymId = user.gymId || 'demo-gym-123';
+        
+        const response = await API_CONFIG.request(`/classes/gym/${gymId}`);
+        setClasses(Array.isArray(response) ? response : (response.data || []));
+    } catch (error) {
+        console.error('Error fetching classes:', error);
+        setClasses([]); // Show empty calendar instead of crashing
+    }
+};
     
+    // CONNECTED TO YOUR BACKEND
+    const handleCreateClass = async (e) => {
+    e.preventDefault();
+    try {
+        const classDate = new Date(`${formData.date}T${formData.time}`);
+        
+        // DEMO FIX: Use fallback gymId if user doesn't have one
+        const gymId = user.gymId || 'demo-gym-123';
+        await API_CONFIG.request(`/classes/gym/${gymId}`, {
+            method: 'POST',
+            body: JSON.stringify({
+                ...formData,
+                date: classDate.toISOString(),
+                instructorId: user._id
+            })
+        });
+        
+        showSuccess('Class created successfully!');
+        showSMSNotification(`SMS sent to instructor: Your ${formData.name} class is scheduled for ${formData.date} at ${formData.time}`);
+        
+        setShowClassForm(false);
+        fetchClasses();
+    } catch (error) {
+        showError(error.message);
+    }
+};
+    
+    // CONNECTED TO YOUR BACKEND
     const handleBookClass = async (classId) => {
         try {
-            await API_CONFIG.bookClass(classId, user._id);
+            // Get class details for payment
+            const classToBook = classes.find(c => c._id === classId);
+            
+            // If payment required, process first
+            if (classToBook.pricing?.amount > 0 && classToBook.pricing?.timing === 'pre-pay') {
+                await API_CONFIG.request('/billing/pay/class', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        classId: classId,
+                        userId: user._id,
+                        amount: classToBook.pricing.amount
+                    })
+                });
+            }
+            
+            // Book the class
+            await API_CONFIG.request(`/classes/${classId}/book`, {
+                method: 'POST',
+                body: JSON.stringify({ userId: user._id })
+            });
+            
             showSuccess('Class booked successfully!');
+            
+            // DEMO SMS NOTIFICATION
+            showSMSNotification(`SMS sent to ${user.phone || '555-0123'}: You're booked for ${classToBook.name} on ${new Date(classToBook.date).toLocaleDateString()} at ${new Date(classToBook.date).toLocaleTimeString()}`);
+            
             fetchClasses();
         } catch (error) {
             showError(error.message);
         }
     };
     
+    // DEMO SMS SYSTEM
+    const showSMSNotification = (message) => {
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #10b981;
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            z-index: 9999;
+            max-width: 400px;
+            animation: slideIn 0.3s ease-out;
+        `;
+        notification.innerHTML = `
+            <div style="display: flex; align-items: start; gap: 12px;">
+                <i class="fas fa-sms" style="font-size: 24px;"></i>
+                <div>
+                    <div style="font-weight: bold; margin-bottom: 4px;">📱 SMS Notification (Demo)</div>
+                    <div style="font-size: 14px;">${message}</div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.style.animation = 'slideOut 0.3s ease-out';
+            setTimeout(() => notification.remove(), 300);
+        }, 5000);
+    };
+    
     const getWeekDays = () => {
         const start = new Date(selectedDate);
         start.setDate(start.getDate() - start.getDay());
-        
         return Array.from({length: 7}, (_, i) => {
             const day = new Date(start);
             day.setDate(start.getDate() + i);
@@ -5817,27 +6849,23 @@ const Calendar = ({ user, showError, showSuccess }) => {
     
     return (
         <div className="space-y-6">
+            <style>{`
+                @keyframes slideIn {
+                    from { transform: translateX(400px); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+                @keyframes slideOut {
+                    from { transform: translateX(0); opacity: 1; }
+                    to { transform: translateX(400px); opacity: 0; }
+                }
+            `}</style>
+            
             <div className="dark-card p-6">
                 <div className="flex justify-between items-center">
                     <h2 className="text-2xl font-bold text-white">
                         {isClient ? 'Browse Classes' : 'Class Schedule'}
                     </h2>
                     <div className="flex items-center gap-4">
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => setView('week')}
-                                className={`px-4 py-2 rounded ${view === 'week' ? 'bg-blue-500 text-white' : 'bg-gray-700 hover:bg-gray-600 text-gray-300'}`}
-                            >
-                                Week
-                            </button>
-                            <button
-                                onClick={() => setView('month')}
-                                className={`px-4 py-2 rounded ${view === 'month' ? 'bg-blue-500 text-white' : 'bg-gray-700 hover:bg-gray-600 text-gray-300'}`}
-                            >
-                                Month
-                            </button>
-                        </div>
-                        
                         {canManage && (
                             <button onClick={() => setShowClassForm(true)} className="coastal-button">
                                 <i className="fas fa-plus mr-2"></i>Create Class
@@ -5847,7 +6875,131 @@ const Calendar = ({ user, showError, showSuccess }) => {
                 </div>
             </div>
             
-            {/* Week Calendar Grid */}
+            {/* CLASS CREATION FORM */}
+            {showClassForm && (
+                <div className="modal-overlay" onClick={() => setShowClassForm(false)}>
+                    <div className="modal-content max-w-2xl" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="text-2xl font-bold text-white mb-6">Create Class</h3>
+                        <form onSubmit={handleCreateClass}>
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Class Name</label>
+                                    <input
+                                        type="text"
+                                        className="coastal-input"
+                                        value={formData.name}
+                                        onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                        placeholder="e.g., Morning HIIT"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Class Type</label>
+                                    <select
+                                        className="coastal-input"
+                                        value={formData.type}
+                                        onChange={(e) => setFormData({...formData, type: e.target.value})}
+                                    >
+                                        <option value="group">Group Class</option>
+                                        <option value="1on1">1-on-1 Session</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Date</label>
+                                    <input
+                                        type="date"
+                                        className="coastal-input"
+                                        value={formData.date}
+                                        onChange={(e) => setFormData({...formData, date: e.target.value})}
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Time</label>
+                                    <input
+                                        type="time"
+                                        className="coastal-input"
+                                        value={formData.time}
+                                        onChange={(e) => setFormData({...formData, time: e.target.value})}
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Duration (min)</label>
+                                    <input
+                                        type="number"
+                                        className="coastal-input"
+                                        value={formData.duration}
+                                        onChange={(e) => setFormData({...formData, duration: parseInt(e.target.value)})}
+                                        min="15"
+                                        step="15"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Capacity</label>
+                                    <input
+                                        type="number"
+                                        className="coastal-input"
+                                        value={formData.capacity}
+                                        onChange={(e) => setFormData({...formData, capacity: parseInt(e.target.value)})}
+                                        min="1"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Price ($)</label>
+                                    <input
+                                        type="number"
+                                        className="coastal-input"
+                                        value={formData.pricing.amount}
+                                        onChange={(e) => setFormData({
+                                            ...formData, 
+                                            pricing: {...formData.pricing, amount: parseFloat(e.target.value)}
+                                        })}
+                                        min="0"
+                                        step="0.01"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Payment Timing</label>
+                                    <select
+                                        className="coastal-input"
+                                        value={formData.pricing.timing}
+                                        onChange={(e) => setFormData({
+                                            ...formData,
+                                            pricing: {...formData.pricing, timing: e.target.value}
+                                        })}
+                                    >
+                                        <option value="pre-pay">Pre-Pay</option>
+                                        <option value="on-arrival">On Arrival</option>
+                                        <option value="post-service">Post-Service</option>
+                                        <option value="package">Package</option>
+                                    </select>
+                                </div>
+                                <div className="col-span-2">
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Description</label>
+                                    <textarea
+                                        className="coastal-input"
+                                        rows="3"
+                                        value={formData.description}
+                                        onChange={(e) => setFormData({...formData, description: e.target.value})}
+                                        placeholder="Class details..."
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex gap-4">
+                                <button type="submit" className="coastal-button flex-1">
+                                    Create Class
+                                </button>
+                                <button type="button" onClick={() => setShowClassForm(false)} className="coastal-button bg-gray-600">
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+            
+            {/* WEEK CALENDAR GRID */}
             <div className="dark-card p-6">
                 <div className="grid grid-cols-7 gap-2">
                     {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, i) => (
@@ -5867,28 +7019,35 @@ const Calendar = ({ user, showError, showSuccess }) => {
                                 {dayClasses.length === 0 ? (
                                     <div className="text-center text-gray-500 text-sm mt-8">No classes</div>
                                 ) : (
-                                    dayClasses.map(cls => (
-                                        <div
-                                            key={cls._id}
-                                            onClick={() => setSelectedClass(cls)}
-                                            className={`p-2 rounded cursor-pointer transition hover:opacity-80 ${
-                                                cls.type === 'group' ? 'bg-blue-900 bg-opacity-50' :
-                                                cls.type === '1on1' ? 'bg-green-900 bg-opacity-50' :
-                                                'bg-purple-900 bg-opacity-50'
-                                            }`}
-                                        >
-                                            <div className="text-xs font-bold truncate text-white">{cls.name}</div>
-                                            <div className="text-xs text-gray-400">
-                                                {new Date(cls.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                    dayClasses.map(cls => {
+                                        const isBooked = cls.booked?.includes(user._id);
+                                        const isFull = cls.booked?.length >= cls.capacity;
+                                        
+                                        return (
+                                            <div
+                                                key={cls._id}
+                                                onClick={() => setSelectedClass(cls)}
+                                                className={`p-2 rounded cursor-pointer transition hover:opacity-80 ${
+                                                    cls.type === 'group' ? 'bg-blue-900 bg-opacity-50' :
+                                                    'bg-green-900 bg-opacity-50'
+                                                }`}
+                                            >
+                                                <div className="text-xs font-bold truncate text-white">{cls.name}</div>
+                                                <div className="text-xs text-gray-400">
+                                                    {new Date(cls.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                                </div>
+                                                <div className="text-xs text-gray-400">
+                                                    {cls.booked?.length || 0}/{cls.capacity}
+                                                </div>
+                                                {cls.pricing?.amount > 0 && (
+                                                    <div className="text-xs text-green-400">${cls.pricing.amount}</div>
+                                                )}
+                                                {isBooked && (
+                                                    <div className="text-xs text-green-400 font-bold">✓ Booked</div>
+                                                )}
                                             </div>
-                                            <div className="text-xs text-gray-400">
-                                                {cls.booked?.length || 0}/{cls.capacity}
-                                            </div>
-                                            {cls.pricing?.amount > 0 && (
-                                                <div className="text-xs text-green-400">${cls.pricing.amount}</div>
-                                            )}
-                                        </div>
-                                    ))
+                                        );
+                                    })
                                 )}
                             </div>
                         );
@@ -5896,36 +7055,81 @@ const Calendar = ({ user, showError, showSuccess }) => {
                 </div>
             </div>
             
-            {/* Modals */}
-            {showClassForm && (
-                <ClassFormModal
-                    user={user}
-                    onClose={() => setShowClassForm(false)}
-                    onSuccess={() => {
-                        setShowClassForm(false);
-                        fetchClasses();
-                        showSuccess('Class created successfully!');
-                    }}
-                    showError={showError}
-                />
-            )}
-            
+            {/* CLASS DETAILS MODAL */}
             {selectedClass && (
-                <ClassDetailsModal
-                    classData={selectedClass}
-                    user={user}
-                    isClient={isClient}
-                    canManage={canManage}
-                    onClose={() => setSelectedClass(null)}
-                    onBook={handleBookClass}
-                    showError={showError}
-                    showSuccess={showSuccess}
-                />
+                <div className="modal-overlay" onClick={() => setSelectedClass(null)}>
+                    <div className="modal-content max-w-xl" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 className="text-2xl font-bold text-white">{selectedClass.name}</h3>
+                                <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold mt-2 ${
+                                    selectedClass.type === 'group' ? 'bg-blue-500' : 'bg-green-500'
+                                }`}>
+                                    {selectedClass.type === 'group' ? 'Group Class' : '1-on-1 Session'}
+                                </span>
+                            </div>
+                            <button onClick={() => setSelectedClass(null)} className="text-gray-400 hover:text-white">
+                                <i className="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+                        
+                        <div className="space-y-4 mb-6">
+                            <div className="flex items-center gap-3 text-gray-300">
+                                <i className="fas fa-calendar text-blue-400"></i>
+                                <span>{new Date(selectedClass.date).toLocaleDateString('en-US', {
+                                    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                                })}</span>
+                            </div>
+                            <div className="flex items-center gap-3 text-gray-300">
+                                <i className="fas fa-clock text-blue-400"></i>
+                                <span>{new Date(selectedClass.date).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</span>
+                                <span className="text-gray-500">({selectedClass.duration} min)</span>
+                            </div>
+                            <div className="flex items-center gap-3 text-gray-300">
+                                <i className="fas fa-users text-blue-400"></i>
+                                <span>{selectedClass.booked?.length || 0} / {selectedClass.capacity} enrolled</span>
+                            </div>
+                            {selectedClass.pricing?.amount > 0 && (
+                                <div className="flex items-center gap-3 text-gray-300">
+                                    <i className="fas fa-dollar-sign text-green-400"></i>
+                                    <span className="text-xl font-bold text-green-400">${selectedClass.pricing.amount}</span>
+                                    <span className="text-sm text-gray-500">
+                                        ({selectedClass.pricing.timing.replace('-', ' ')})
+                                    </span>
+                                </div>
+                            )}
+                            {selectedClass.description && (
+                                <div className="bg-gray-800 rounded-lg p-4">
+                                    <p className="text-gray-300">{selectedClass.description}</p>
+                                </div>
+                            )}
+                        </div>
+                        
+                        {isClient && !selectedClass.booked?.includes(user._id) && (
+                            <button 
+                                onClick={() => {
+                                    handleBookClass(selectedClass._id);
+                                    setSelectedClass(null);
+                                }} 
+                                className="coastal-button w-full"
+                                disabled={selectedClass.booked?.length >= selectedClass.capacity}
+                            >
+                                {selectedClass.booked?.length >= selectedClass.capacity ? 'Class Full' : 'Book This Class'}
+                            </button>
+                        )}
+                        
+                        {isClient && selectedClass.booked?.includes(user._id) && (
+                            <button className="coastal-button bg-green-600 w-full" disabled>
+                                <i className="fas fa-check-circle mr-2"></i>
+                                You're Booked!
+                            </button>
+                        )}
+                    </div>
+                </div>
             )}
         </div>
     );
 };
-
 // Class Form Modal
 const ClassFormModal = ({ user, onClose, onSuccess, showError }) => {
     const [formData, setFormData] = useState({
@@ -6502,13 +7706,9 @@ const Tests = ({ user, showError, showSuccess }) => {
     }, [selectedClient]);
     
     const fetchClients = async () => {
-        try {
-            const data = await API_CONFIG.request('/users?role=client');
-            setClients(data.data || []);
-        } catch (error) {
-            console.error('Error fetching clients:', error);
-        }
-    };
+    const clients = await ClientManager.loadClients();
+    setClients(clients);
+};
     
     const fetchTests = async () => {
         try {
@@ -6785,45 +7985,69 @@ const Tests = ({ user, showError, showSuccess }) => {
             useEffect(() => {
                 fetchUsers();
             }, []);
+   const fetchUsers = async () => {
+    try {
+        const response = await API_CONFIG.request('/users');
+        console.log('Users response:', response);
+        
+        // Handle multiple possible response formats
+        let usersData = [];
+        if (Array.isArray(response)) {
+            usersData = response;
+        } else if (response.users && Array.isArray(response.users)) {
+            usersData = response.users;
+        } else if (response.data && Array.isArray(response.data)) {
+            usersData = response.data;
+        }
+        
+        setUsers(usersData);
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        showError('Failed to load users');
+        setUsers([]);
+    }
+};
             
-            const fetchUsers = async () => {
-                try {
-                    const data = await API_CONFIG.request('/users');
-                    setUsers(data.data || []);
-                } catch (error) {
-                    console.error('Error fetching users:', error);
-                }
-            };
+           const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+        let newUser;
+        if (editingUser) {
+            const response = await API_CONFIG.request(`/users/${editingUser._id}`, {
+                method: 'PUT',
+                body: JSON.stringify(formData)
+            });
+            showSuccess('User updated successfully');
+            newUser = response.user || response.data || response;
+        } else {
+            const response = await API_CONFIG.request('/auth/register', {
+                method: 'POST',
+                body: JSON.stringify(formData)
+            });
+            showSuccess('User created successfully');
+            newUser = response.user || response.data || response;
             
-            const handleSubmit = async (e) => {
-                e.preventDefault();
-                try {
-                    if (editingUser) {
-                        await API_CONFIG.request(`/users/${editingUser._id}`, {
-                            method: 'PUT',
-                            body: JSON.stringify(formData)
-                        });
-                        showSuccess('User updated successfully');
-                    } else {
-                        await API_CONFIG.request('/auth/register', {
-                            method: 'POST',
-                            body: JSON.stringify(formData)
-                        });
-                        showSuccess('User created successfully');
-                    }
-                    setShowForm(false);
-                    setEditingUser(null);
-                    fetchUsers();
-                    setFormData({
-                        name: '',
-                        email: '',
-                        password: '',
-                        roles: []
-                    });
-                } catch (error) {
-                    showError(error.message);
-                }
-            };
+            // Immediately add the new user to the list
+            if (newUser && newUser._id) {
+                setUsers(prevUsers => [...prevUsers, newUser]);
+            }
+        }
+        
+        // Still fetch to ensure sync with backend
+        await fetchUsers();
+        
+        setShowForm(false);
+        setEditingUser(null);
+        setFormData({
+            name: '',
+            email: '',
+            password: '',
+            roles: []
+        });
+    } catch (error) {
+        showError(error.message);
+    }
+};
             
             const handleEdit = (user) => {
                 setEditingUser(user);
