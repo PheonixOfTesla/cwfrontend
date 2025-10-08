@@ -6492,12 +6492,23 @@ const Reports = ({ user, isClient, showSuccess, showError }) => {
     );
 };
         // === CALENDAR & SCHEDULING SYSTEM ===
+// === CALENDAR & SCHEDULING SYSTEM WITH BACKEND + SMS ===
 const Calendar = ({ user, showError, showSuccess }) => {
     const [view, setView] = useState('week');
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [classes, setClasses] = useState([]);
     const [showClassForm, setShowClassForm] = useState(false);
     const [selectedClass, setSelectedClass] = useState(null);
+    const [formData, setFormData] = useState({
+        name: '',
+        type: 'group',
+        date: DateHandler.getCurrentETDate(),
+        time: '09:00',
+        duration: 60,
+        capacity: 20,
+        pricing: { amount: 0, timing: 'pre-pay' },
+        description: ''
+    });
     
     const isClient = user.roles?.includes('client');
     const canManage = user.roles?.includes('specialist') || user.roles?.includes('admin') || user.roles?.includes('owner');
@@ -6508,61 +6519,114 @@ const Calendar = ({ user, showError, showSuccess }) => {
         }
     }, [user.gymId]);
     
-   const fetchClasses = async () => {
-    try {
-        // Check if user has a gymId
-        if (!user.gymId) {
-            console.log('No gymId found for user - using user._id as fallback');
-            // Try fetching with user ID instead
-            const response = await API_CONFIG.request(`/classes/user/${user._id}`);
-            console.log('Classes response (by user):', response);
-            
-            let classesData = [];
-            if (Array.isArray(response)) {
-                classesData = response;
-            } else if (response.classes && Array.isArray(response.classes)) {
-                classesData = response.classes;
-            } else if (response.data && Array.isArray(response.data)) {
-                classesData = response.data;
-            }
-            
-            setClasses(classesData);
-            return;
-        }
-        
-        const response = await API_CONFIG.request(`/classes/gym/${user.gymId}`);
-        console.log('Classes response (by gym):', response);
-        
-        let classesData = [];
-        if (Array.isArray(response)) {
-            classesData = response;
-        } else if (response.classes && Array.isArray(response.classes)) {
-            classesData = response.classes;
-        } else if (response.data && Array.isArray(response.data)) {
-            classesData = response.data;
-        }
-        
-        setClasses(classesData);
-    } catch (error) {
-        console.error('Error fetching classes:', error);
-        setClasses([]);
-    }
-};
-    
-    const handleBookClass = async (classId) => {
+    // CONNECTED TO YOUR BACKEND
+    const fetchClasses = async () => {
         try {
-            await API_CONFIG.bookClass(classId, user._id);
-            showSuccess('Class booked successfully!');
+            const response = await API_CONFIG.request(`/classes/gym/${user.gymId}`);
+            setClasses(Array.isArray(response) ? response : (response.data || []));
+        } catch (error) {
+            console.error('Error fetching classes:', error);
+            setClasses([]);
+        }
+    };
+    
+    // CONNECTED TO YOUR BACKEND
+    const handleCreateClass = async (e) => {
+        e.preventDefault();
+        try {
+            const classDate = new Date(`${formData.date}T${formData.time}`);
+            
+            await API_CONFIG.request(`/classes/gym/${user.gymId}`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    ...formData,
+                    date: classDate.toISOString(),
+                    instructorId: user._id
+                })
+            });
+            
+            showSuccess('Class created successfully!');
+            // DEMO SMS NOTIFICATION
+            showSMSNotification(`SMS sent to instructor: Your ${formData.name} class is scheduled for ${formData.date} at ${formData.time}`);
+            
+            setShowClassForm(false);
             fetchClasses();
         } catch (error) {
             showError(error.message);
         }
     };
     
+    // CONNECTED TO YOUR BACKEND
+    const handleBookClass = async (classId) => {
+        try {
+            // Get class details for payment
+            const classToBook = classes.find(c => c._id === classId);
+            
+            // If payment required, process first
+            if (classToBook.pricing?.amount > 0 && classToBook.pricing?.timing === 'pre-pay') {
+                await API_CONFIG.request('/billing/pay/class', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        classId: classId,
+                        userId: user._id,
+                        amount: classToBook.pricing.amount
+                    })
+                });
+            }
+            
+            // Book the class
+            await API_CONFIG.request(`/classes/${classId}/book`, {
+                method: 'POST',
+                body: JSON.stringify({ userId: user._id })
+            });
+            
+            showSuccess('Class booked successfully!');
+            
+            // DEMO SMS NOTIFICATION
+            showSMSNotification(`SMS sent to ${user.phone || '555-0123'}: You're booked for ${classToBook.name} on ${new Date(classToBook.date).toLocaleDateString()} at ${new Date(classToBook.date).toLocaleTimeString()}`);
+            
+            fetchClasses();
+        } catch (error) {
+            showError(error.message);
+        }
+    };
+    
+    // DEMO SMS SYSTEM
+    const showSMSNotification = (message) => {
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #10b981;
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            z-index: 9999;
+            max-width: 400px;
+            animation: slideIn 0.3s ease-out;
+        `;
+        notification.innerHTML = `
+            <div style="display: flex; align-items: start; gap: 12px;">
+                <i class="fas fa-sms" style="font-size: 24px;"></i>
+                <div>
+                    <div style="font-weight: bold; margin-bottom: 4px;">📱 SMS Notification (Demo)</div>
+                    <div style="font-size: 14px;">${message}</div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.style.animation = 'slideOut 0.3s ease-out';
+            setTimeout(() => notification.remove(), 300);
+        }, 5000);
+    };
+    
     const getWeekDays = () => {
         const start = new Date(selectedDate);
         start.setDate(start.getDate() - start.getDay());
-        
         return Array.from({length: 7}, (_, i) => {
             const day = new Date(start);
             day.setDate(start.getDate() + i);
@@ -6574,27 +6638,23 @@ const Calendar = ({ user, showError, showSuccess }) => {
     
     return (
         <div className="space-y-6">
+            <style>{`
+                @keyframes slideIn {
+                    from { transform: translateX(400px); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+                @keyframes slideOut {
+                    from { transform: translateX(0); opacity: 1; }
+                    to { transform: translateX(400px); opacity: 0; }
+                }
+            `}</style>
+            
             <div className="dark-card p-6">
                 <div className="flex justify-between items-center">
                     <h2 className="text-2xl font-bold text-white">
                         {isClient ? 'Browse Classes' : 'Class Schedule'}
                     </h2>
                     <div className="flex items-center gap-4">
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => setView('week')}
-                                className={`px-4 py-2 rounded ${view === 'week' ? 'bg-blue-500 text-white' : 'bg-gray-700 hover:bg-gray-600 text-gray-300'}`}
-                            >
-                                Week
-                            </button>
-                            <button
-                                onClick={() => setView('month')}
-                                className={`px-4 py-2 rounded ${view === 'month' ? 'bg-blue-500 text-white' : 'bg-gray-700 hover:bg-gray-600 text-gray-300'}`}
-                            >
-                                Month
-                            </button>
-                        </div>
-                        
                         {canManage && (
                             <button onClick={() => setShowClassForm(true)} className="coastal-button">
                                 <i className="fas fa-plus mr-2"></i>Create Class
@@ -6604,7 +6664,131 @@ const Calendar = ({ user, showError, showSuccess }) => {
                 </div>
             </div>
             
-            {/* Week Calendar Grid */}
+            {/* CLASS CREATION FORM */}
+            {showClassForm && (
+                <div className="modal-overlay" onClick={() => setShowClassForm(false)}>
+                    <div className="modal-content max-w-2xl" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="text-2xl font-bold text-white mb-6">Create Class</h3>
+                        <form onSubmit={handleCreateClass}>
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Class Name</label>
+                                    <input
+                                        type="text"
+                                        className="coastal-input"
+                                        value={formData.name}
+                                        onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                        placeholder="e.g., Morning HIIT"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Class Type</label>
+                                    <select
+                                        className="coastal-input"
+                                        value={formData.type}
+                                        onChange={(e) => setFormData({...formData, type: e.target.value})}
+                                    >
+                                        <option value="group">Group Class</option>
+                                        <option value="1on1">1-on-1 Session</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Date</label>
+                                    <input
+                                        type="date"
+                                        className="coastal-input"
+                                        value={formData.date}
+                                        onChange={(e) => setFormData({...formData, date: e.target.value})}
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Time</label>
+                                    <input
+                                        type="time"
+                                        className="coastal-input"
+                                        value={formData.time}
+                                        onChange={(e) => setFormData({...formData, time: e.target.value})}
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Duration (min)</label>
+                                    <input
+                                        type="number"
+                                        className="coastal-input"
+                                        value={formData.duration}
+                                        onChange={(e) => setFormData({...formData, duration: parseInt(e.target.value)})}
+                                        min="15"
+                                        step="15"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Capacity</label>
+                                    <input
+                                        type="number"
+                                        className="coastal-input"
+                                        value={formData.capacity}
+                                        onChange={(e) => setFormData({...formData, capacity: parseInt(e.target.value)})}
+                                        min="1"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Price ($)</label>
+                                    <input
+                                        type="number"
+                                        className="coastal-input"
+                                        value={formData.pricing.amount}
+                                        onChange={(e) => setFormData({
+                                            ...formData, 
+                                            pricing: {...formData.pricing, amount: parseFloat(e.target.value)}
+                                        })}
+                                        min="0"
+                                        step="0.01"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Payment Timing</label>
+                                    <select
+                                        className="coastal-input"
+                                        value={formData.pricing.timing}
+                                        onChange={(e) => setFormData({
+                                            ...formData,
+                                            pricing: {...formData.pricing, timing: e.target.value}
+                                        })}
+                                    >
+                                        <option value="pre-pay">Pre-Pay</option>
+                                        <option value="on-arrival">On Arrival</option>
+                                        <option value="post-service">Post-Service</option>
+                                        <option value="package">Package</option>
+                                    </select>
+                                </div>
+                                <div className="col-span-2">
+                                    <label className="block text-sm font-medium mb-2 text-gray-300">Description</label>
+                                    <textarea
+                                        className="coastal-input"
+                                        rows="3"
+                                        value={formData.description}
+                                        onChange={(e) => setFormData({...formData, description: e.target.value})}
+                                        placeholder="Class details..."
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex gap-4">
+                                <button type="submit" className="coastal-button flex-1">
+                                    Create Class
+                                </button>
+                                <button type="button" onClick={() => setShowClassForm(false)} className="coastal-button bg-gray-600">
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+            
+            {/* WEEK CALENDAR GRID */}
             <div className="dark-card p-6">
                 <div className="grid grid-cols-7 gap-2">
                     {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, i) => (
@@ -6624,28 +6808,35 @@ const Calendar = ({ user, showError, showSuccess }) => {
                                 {dayClasses.length === 0 ? (
                                     <div className="text-center text-gray-500 text-sm mt-8">No classes</div>
                                 ) : (
-                                    dayClasses.map(cls => (
-                                        <div
-                                            key={cls._id}
-                                            onClick={() => setSelectedClass(cls)}
-                                            className={`p-2 rounded cursor-pointer transition hover:opacity-80 ${
-                                                cls.type === 'group' ? 'bg-blue-900 bg-opacity-50' :
-                                                cls.type === '1on1' ? 'bg-green-900 bg-opacity-50' :
-                                                'bg-purple-900 bg-opacity-50'
-                                            }`}
-                                        >
-                                            <div className="text-xs font-bold truncate text-white">{cls.name}</div>
-                                            <div className="text-xs text-gray-400">
-                                                {new Date(cls.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                    dayClasses.map(cls => {
+                                        const isBooked = cls.booked?.includes(user._id);
+                                        const isFull = cls.booked?.length >= cls.capacity;
+                                        
+                                        return (
+                                            <div
+                                                key={cls._id}
+                                                onClick={() => setSelectedClass(cls)}
+                                                className={`p-2 rounded cursor-pointer transition hover:opacity-80 ${
+                                                    cls.type === 'group' ? 'bg-blue-900 bg-opacity-50' :
+                                                    'bg-green-900 bg-opacity-50'
+                                                }`}
+                                            >
+                                                <div className="text-xs font-bold truncate text-white">{cls.name}</div>
+                                                <div className="text-xs text-gray-400">
+                                                    {new Date(cls.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                                </div>
+                                                <div className="text-xs text-gray-400">
+                                                    {cls.booked?.length || 0}/{cls.capacity}
+                                                </div>
+                                                {cls.pricing?.amount > 0 && (
+                                                    <div className="text-xs text-green-400">${cls.pricing.amount}</div>
+                                                )}
+                                                {isBooked && (
+                                                    <div className="text-xs text-green-400 font-bold">✓ Booked</div>
+                                                )}
                                             </div>
-                                            <div className="text-xs text-gray-400">
-                                                {cls.booked?.length || 0}/{cls.capacity}
-                                            </div>
-                                            {cls.pricing?.amount > 0 && (
-                                                <div className="text-xs text-green-400">${cls.pricing.amount}</div>
-                                            )}
-                                        </div>
-                                    ))
+                                        );
+                                    })
                                 )}
                             </div>
                         );
@@ -6653,36 +6844,81 @@ const Calendar = ({ user, showError, showSuccess }) => {
                 </div>
             </div>
             
-            {/* Modals */}
-            {showClassForm && (
-                <ClassFormModal
-                    user={user}
-                    onClose={() => setShowClassForm(false)}
-                    onSuccess={() => {
-                        setShowClassForm(false);
-                        fetchClasses();
-                        showSuccess('Class created successfully!');
-                    }}
-                    showError={showError}
-                />
-            )}
-            
+            {/* CLASS DETAILS MODAL */}
             {selectedClass && (
-                <ClassDetailsModal
-                    classData={selectedClass}
-                    user={user}
-                    isClient={isClient}
-                    canManage={canManage}
-                    onClose={() => setSelectedClass(null)}
-                    onBook={handleBookClass}
-                    showError={showError}
-                    showSuccess={showSuccess}
-                />
+                <div className="modal-overlay" onClick={() => setSelectedClass(null)}>
+                    <div className="modal-content max-w-xl" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 className="text-2xl font-bold text-white">{selectedClass.name}</h3>
+                                <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold mt-2 ${
+                                    selectedClass.type === 'group' ? 'bg-blue-500' : 'bg-green-500'
+                                }`}>
+                                    {selectedClass.type === 'group' ? 'Group Class' : '1-on-1 Session'}
+                                </span>
+                            </div>
+                            <button onClick={() => setSelectedClass(null)} className="text-gray-400 hover:text-white">
+                                <i className="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+                        
+                        <div className="space-y-4 mb-6">
+                            <div className="flex items-center gap-3 text-gray-300">
+                                <i className="fas fa-calendar text-blue-400"></i>
+                                <span>{new Date(selectedClass.date).toLocaleDateString('en-US', {
+                                    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                                })}</span>
+                            </div>
+                            <div className="flex items-center gap-3 text-gray-300">
+                                <i className="fas fa-clock text-blue-400"></i>
+                                <span>{new Date(selectedClass.date).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</span>
+                                <span className="text-gray-500">({selectedClass.duration} min)</span>
+                            </div>
+                            <div className="flex items-center gap-3 text-gray-300">
+                                <i className="fas fa-users text-blue-400"></i>
+                                <span>{selectedClass.booked?.length || 0} / {selectedClass.capacity} enrolled</span>
+                            </div>
+                            {selectedClass.pricing?.amount > 0 && (
+                                <div className="flex items-center gap-3 text-gray-300">
+                                    <i className="fas fa-dollar-sign text-green-400"></i>
+                                    <span className="text-xl font-bold text-green-400">${selectedClass.pricing.amount}</span>
+                                    <span className="text-sm text-gray-500">
+                                        ({selectedClass.pricing.timing.replace('-', ' ')})
+                                    </span>
+                                </div>
+                            )}
+                            {selectedClass.description && (
+                                <div className="bg-gray-800 rounded-lg p-4">
+                                    <p className="text-gray-300">{selectedClass.description}</p>
+                                </div>
+                            )}
+                        </div>
+                        
+                        {isClient && !selectedClass.booked?.includes(user._id) && (
+                            <button 
+                                onClick={() => {
+                                    handleBookClass(selectedClass._id);
+                                    setSelectedClass(null);
+                                }} 
+                                className="coastal-button w-full"
+                                disabled={selectedClass.booked?.length >= selectedClass.capacity}
+                            >
+                                {selectedClass.booked?.length >= selectedClass.capacity ? 'Class Full' : 'Book This Class'}
+                            </button>
+                        )}
+                        
+                        {isClient && selectedClass.booked?.includes(user._id) && (
+                            <button className="coastal-button bg-green-600 w-full" disabled>
+                                <i className="fas fa-check-circle mr-2"></i>
+                                You're Booked!
+                            </button>
+                        )}
+                    </div>
+                </div>
             )}
         </div>
     );
 };
-
 // Class Form Modal
 const ClassFormModal = ({ user, onClose, onSuccess, showError }) => {
     const [formData, setFormData] = useState({
