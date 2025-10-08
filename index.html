@@ -6520,41 +6520,45 @@ const Calendar = ({ user, showError, showSuccess }) => {
     }, [user.gymId]);
     
     // CONNECTED TO YOUR BACKEND
-    const fetchClasses = async () => {
-        try {
-            const response = await API_CONFIG.request(`/classes/gym/${user.gymId}`);
-            setClasses(Array.isArray(response) ? response : (response.data || []));
-        } catch (error) {
-            console.error('Error fetching classes:', error);
-            setClasses([]);
-        }
-    };
+   const fetchClasses = async () => {
+    try {
+        // DEMO FIX: Use fallback gymId if user doesn't have one
+        const gymId = user.gymId || 'demo-gym-123';
+        
+        const response = await API_CONFIG.request(`/classes/gym/${gymId}`);
+        setClasses(Array.isArray(response) ? response : (response.data || []));
+    } catch (error) {
+        console.error('Error fetching classes:', error);
+        setClasses([]); // Show empty calendar instead of crashing
+    }
+};
     
     // CONNECTED TO YOUR BACKEND
     const handleCreateClass = async (e) => {
-        e.preventDefault();
-        try {
-            const classDate = new Date(`${formData.date}T${formData.time}`);
-            
-            await API_CONFIG.request(`/classes/gym/${user.gymId}`, {
-                method: 'POST',
-                body: JSON.stringify({
-                    ...formData,
-                    date: classDate.toISOString(),
-                    instructorId: user._id
-                })
-            });
-            
-            showSuccess('Class created successfully!');
-            // DEMO SMS NOTIFICATION
-            showSMSNotification(`SMS sent to instructor: Your ${formData.name} class is scheduled for ${formData.date} at ${formData.time}`);
-            
-            setShowClassForm(false);
-            fetchClasses();
-        } catch (error) {
-            showError(error.message);
-        }
-    };
+    e.preventDefault();
+    try {
+        const classDate = new Date(`${formData.date}T${formData.time}`);
+        
+        // DEMO FIX: Use fallback gymId if user doesn't have one
+        const gymId = user.gymId || 'demo-gym-123';
+        await API_CONFIG.request(`/classes/gym/${gymId}`, {
+            method: 'POST',
+            body: JSON.stringify({
+                ...formData,
+                date: classDate.toISOString(),
+                instructorId: user._id
+            })
+        });
+        
+        showSuccess('Class created successfully!');
+        showSMSNotification(`SMS sent to instructor: Your ${formData.name} class is scheduled for ${formData.date} at ${formData.time}`);
+        
+        setShowClassForm(false);
+        fetchClasses();
+    } catch (error) {
+        showError(error.message);
+    }
+};
     
     // CONNECTED TO YOUR BACKEND
     const handleBookClass = async (classId) => {
