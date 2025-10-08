@@ -2866,12 +2866,14 @@ const response = await API_CONFIG.request(`/workouts/client/${selectedClient}`);
             weight: 0,
             notes: exercise.description || '',
             grouping: 'none',
+            youtubeLink: exercise.videoUrl || ''
         }]
     });
     setShowExerciseSearch(false);
     setExerciseSearchTerm('');
+    setFilteredLibraryExercises([]);
     showSuccess(`Added "${exercise.name}" to workout`);
-};      
+};
 const addExercise = () => {
     // Check if an exercise was selected from library
     if (window.selectedExerciseFromLibrary) {
@@ -3049,60 +3051,95 @@ const ungroupExercise = (index) => {
     </div>
 
     {/* Exercise Search Modal */}
-    {showExerciseSearch && (
-        <div className="modal-overlay" onClick={() => setShowExerciseSearch(false)}>
-            <div className="modal-content max-w-2xl" onClick={(e) => e.stopPropagation()}>
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-xl font-semibold">Search Exercises</h3>
-                    <button 
-                        onClick={() => setShowExerciseSearch(false)}
-                        className="text-gray-500 hover:text-gray-700"
-                    >
-                        <i className="fas fa-times text-xl"></i>
-                    </button>
-                </div>
-                
-                <div className="mb-4">
+{showExerciseSearch && (
+    <div className="modal-overlay" onClick={() => {
+        setShowExerciseSearch(false);
+        setExerciseSearchTerm('');
+    }}>
+        <div className="modal-content max-w-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-semibold text-white">Search Exercise Library</h3>
+                <button 
+                    onClick={() => {
+                        setShowExerciseSearch(false);
+                        setExerciseSearchTerm('');
+                    }}
+                    className="text-gray-400 hover:text-white"
+                >
+                    <i className="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div className="mb-4">
+                <div className="relative">
                     <input
                         type="text"
-                        placeholder="Search exercises by name or muscle group..."
-                        className="coastal-input"
+                        placeholder="Search by name, muscle group, or equipment..."
+                        className="coastal-input pl-10"
                         value={exerciseSearchTerm}
                         onChange={(e) => setExerciseSearchTerm(e.target.value)}
                         autoFocus
                     />
+                    <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                 </div>
-                
-                <div className="max-h-96 overflow-y-auto">
-                    {filteredLibraryExercises.length > 0 ? (
-                        <div className="grid grid-cols-1 gap-2">
-                            {filteredLibraryExercises.map(exercise => (
-                                <div key={exercise._id} className="flex justify-between items-center p-3 border rounded hover:bg-gray-800">
-                                    <div>
-                                        <h4 className="font-medium">{exercise.name}</h4>
-                                        <p className="text-sm text-gray-400">
-                                            {exercise.muscleCategory} • {exercise.difficulty}
-                                        </p>
+                <p className="text-xs text-gray-400 mt-2">
+                    {libraryExercises.length} exercises in library
+                </p>
+            </div>
+            
+            <div className="max-h-96 overflow-y-auto">
+                {exerciseSearchTerm.trim() === '' ? (
+                    <div className="text-center py-8 text-gray-400">
+                        <i className="fas fa-search text-4xl mb-3 opacity-50"></i>
+                        <p>Start typing to search exercises...</p>
+                        <p className="text-sm mt-2">Search by name, muscle group, difficulty, or equipment</p>
+                    </div>
+                ) : filteredLibraryExercises.length > 0 ? (
+                    <div className="space-y-2">
+                        {filteredLibraryExercises.map(exercise => (
+                            <div 
+                                key={exercise._id} 
+                                className="flex justify-between items-center p-3 bg-gray-800 rounded-lg hover:bg-gray-700 transition"
+                            >
+                                <div className="flex-1">
+                                    <h4 className="font-medium text-white">{exercise.name}</h4>
+                                    <div className="flex gap-2 mt-1">
+                                        <span className="text-xs bg-blue-900 bg-opacity-50 text-blue-300 px-2 py-1 rounded">
+                                            {exercise.muscleCategory}
+                                        </span>
+                                        <span className="text-xs bg-purple-900 bg-opacity-50 text-purple-300 px-2 py-1 rounded">
+                                            {exercise.difficulty}
+                                        </span>
+                                        <span className="text-xs bg-gray-700 text-gray-300 px-2 py-1 rounded">
+                                            {exercise.equipmentNeeded}
+                                        </span>
                                     </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => addExerciseFromLibrary(exercise)}
-                                        className="coastal-button text-sm py-1 px-3"
-                                    >
-                                        Add
-                                    </button>
                                 </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="text-center py-8 text-gray-500">
-                            {exerciseSearchTerm ? 'No exercises found matching your search.' : 'Start typing to search exercises...'}
-                        </div>
-                    )}
-                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        addExerciseFromLibrary(exercise);
+                                        setExerciseSearchTerm('');
+                                    }}
+                                    className="coastal-button text-sm py-2 px-4 ml-3"
+                                >
+                                    <i className="fas fa-plus mr-1"></i>
+                                    Add
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center py-8 text-gray-400">
+                        <i className="fas fa-exclamation-circle text-4xl mb-3 opacity-50"></i>
+                        <p>No exercises found matching "{exerciseSearchTerm}"</p>
+                        <p className="text-sm mt-2">Try different keywords or check the Exercise Library</p>
+                    </div>
+                )}
             </div>
         </div>
-    )}
+    </div>
+)}
                                     
                      {formData.exercises.map((exercise, index) => (
     <div key={index} className="bg-gray-800 p-4 rounded mb-3">
@@ -7234,8 +7271,7 @@ const Tests = ({ user, showError, showSuccess }) => {
             useEffect(() => {
                 fetchUsers();
             }, []);
-            
- const fetchUsers = async () => {
+   const fetchUsers = async () => {
     try {
         const response = await API_CONFIG.request('/users');
         console.log('Users response:', response);
@@ -7258,35 +7294,46 @@ const Tests = ({ user, showError, showSuccess }) => {
     }
 };
             
-            const handleSubmit = async (e) => {
-                e.preventDefault();
-                try {
-                    if (editingUser) {
-                        await API_CONFIG.request(`/users/${editingUser._id}`, {
-                            method: 'PUT',
-                            body: JSON.stringify(formData)
-                        });
-                        showSuccess('User updated successfully');
-                    } else {
-                        await API_CONFIG.request('/auth/register', {
-                            method: 'POST',
-                            body: JSON.stringify(formData)
-                        });
-                        showSuccess('User created successfully');
-                    }
-                    setShowForm(false);
-                    setEditingUser(null);
-                    fetchUsers();
-                    setFormData({
-                        name: '',
-                        email: '',
-                        password: '',
-                        roles: []
-                    });
-                } catch (error) {
-                    showError(error.message);
-                }
-            };
+           const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+        let newUser;
+        if (editingUser) {
+            const response = await API_CONFIG.request(`/users/${editingUser._id}`, {
+                method: 'PUT',
+                body: JSON.stringify(formData)
+            });
+            showSuccess('User updated successfully');
+            newUser = response.user || response.data || response;
+        } else {
+            const response = await API_CONFIG.request('/auth/register', {
+                method: 'POST',
+                body: JSON.stringify(formData)
+            });
+            showSuccess('User created successfully');
+            newUser = response.user || response.data || response;
+            
+            // Immediately add the new user to the list
+            if (newUser && newUser._id) {
+                setUsers(prevUsers => [...prevUsers, newUser]);
+            }
+        }
+        
+        // Still fetch to ensure sync with backend
+        await fetchUsers();
+        
+        setShowForm(false);
+        setEditingUser(null);
+        setFormData({
+            name: '',
+            email: '',
+            password: '',
+            roles: []
+        });
+    } catch (error) {
+        showError(error.message);
+    }
+};
             
             const handleEdit = (user) => {
                 setEditingUser(user);
