@@ -365,6 +365,29 @@
     
     <script type="text/babel">
         const { useState, useEffect, useRef, useCallback, useMemo } = React;
+        // Check for wearable connection success/error
+window.addEventListener('DOMContentLoaded', () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  
+  const connectedDevice = urlParams.get('wearable_connected');
+  const error = urlParams.get('wearable_error');
+  
+  if (connectedDevice) {
+    // Show success message
+    alert(`🎉 ${connectedDevice.charAt(0).toUpperCase() + connectedDevice.slice(1)} connected successfully!`);
+    
+    // Clean up URL
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+  
+  if (error) {
+    // Show error message
+    alert(`❌ Connection failed: ${error}`);
+    
+    // Clean up URL
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+});
         // INSERT AT LINE 203 - GLOBAL TIMEZONE CONFIGURATION
 const APP_TIMEZONE = 'America/New_York';
 const DateHandler = {
