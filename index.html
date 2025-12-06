@@ -628,7 +628,7 @@
                     case 'home': return <HomeTab user={user} />;
                     case 'calendar': return <CalendarTab user={user} />;
                     case 'forge': return <ForgeTab user={user} />;
-                    case 'nutrition': return <NutritionTab user={user} />;
+                    case 'exercises': return <ExercisesTab user={user} />;
                     case 'profile': return <ProfileTab user={user} setUser={setUser} onLogout={onLogout} />;
                     default: return <HomeTab user={user} />;
                 }
@@ -643,7 +643,7 @@
                                 { id: 'home', icon: 'fa-home', label: 'Home' },
                                 { id: 'calendar', icon: 'fa-calendar-alt', label: 'Calendar' },
                                 { id: 'forge', icon: 'fa-bolt', label: 'FORGE' },
-                                { id: 'nutrition', icon: 'fa-utensils', label: 'Nutrition' },
+                                { id: 'exercises', icon: 'fa-dumbbell', label: 'Exercises' },
                                 { id: 'profile', icon: 'fa-user', label: 'Profile' }
                             ].map(tab => (
                                 <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all ${activeTab === tab.id ? 'text-orange-500 bg-orange-500/10' : 'text-gray-500 hover:text-gray-300'}`}>
@@ -962,6 +962,167 @@
                         <input type="text" value={input} onChange={(e) => setInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && sendMessage()} placeholder="Ask FORGE anything..." className="flex-1 bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" />
                         <button onClick={sendMessage} disabled={!input.trim() || loading} className="bg-orange-500 hover:bg-orange-600 text-white px-4 rounded-xl transition-all disabled:opacity-50"><i className="fas fa-paper-plane"></i></button>
                     </div>
+                </div>
+            );
+        };
+
+        // Exercises Tab - MuscleWiki Video Library
+        const ExercisesTab = ({ user }) => {
+            const [exercises, setExercises] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [search, setSearch] = useState('');
+            const [selectedMuscle, setSelectedMuscle] = useState('');
+            const [muscles, setMuscles] = useState([]);
+            const [selectedExercise, setSelectedExercise] = useState(null);
+            const [stats, setStats] = useState(null);
+
+            useEffect(() => {
+                loadExercises();
+                loadMuscles();
+                loadStats();
+            }, []);
+
+            useEffect(() => {
+                if (search || selectedMuscle) {
+                    searchExercises();
+                } else {
+                    loadExercises();
+                }
+            }, [search, selectedMuscle]);
+
+            const loadExercises = async () => {
+                setLoading(true);
+                try {
+                    const data = await api.get('/exercises/videos?limit=30&hasVideo=true');
+                    setExercises(data.exercises || []);
+                } catch (err) { console.error('Load exercises error:', err); }
+                setLoading(false);
+            };
+
+            const loadMuscles = async () => {
+                try {
+                    const data = await api.get('/exercises/videos/muscles');
+                    setMuscles(data.muscleGroups || []);
+                } catch (err) { console.error('Load muscles error:', err); }
+            };
+
+            const loadStats = async () => {
+                try {
+                    const data = await api.get('/exercises/videos/stats');
+                    setStats(data.stats);
+                } catch (err) { console.error('Load stats error:', err); }
+            };
+
+            const searchExercises = async () => {
+                setLoading(true);
+                try {
+                    let url = '/exercises/videos?limit=50&hasVideo=true';
+                    if (selectedMuscle) url = `/exercises/videos/muscle/${selectedMuscle}`;
+                    else if (search) url = `/exercises/videos/search?q=${encodeURIComponent(search)}`;
+                    const data = await api.get(url);
+                    setExercises(data.exercises || []);
+                } catch (err) { console.error('Search error:', err); }
+                setLoading(false);
+            };
+
+            const ExerciseCard = ({ exercise }) => (
+                <button onClick={() => setSelectedExercise(exercise)} className="w-full glass rounded-xl p-3 flex items-center gap-3 hover:bg-white/10 transition-all text-left">
+                    <div className="w-14 h-14 rounded-lg bg-orange-500/20 flex items-center justify-center flex-shrink-0">
+                        {exercise.hasVideo ? <i className="fas fa-play text-orange-500"></i> : <i className="fas fa-dumbbell text-orange-500/50"></i>}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <h3 className="text-white font-medium truncate">{exercise.name}</h3>
+                        <div className="flex items-center gap-2 text-xs text-gray-400">
+                            <span className="capitalize">{exercise.primaryMuscles?.[0] || 'General'}</span>
+                            <span className="text-gray-600">|</span>
+                            <span className="capitalize">{exercise.equipment || 'Bodyweight'}</span>
+                        </div>
+                    </div>
+                    {exercise.hasVideo && <i className="fas fa-video text-green-500 text-xs"></i>}
+                </button>
+            );
+
+            const ExerciseModal = ({ exercise, onClose }) => (
+                <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={onClose}>
+                    <div className="glass rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                        <div className="p-4 border-b border-white/10 flex items-center justify-between">
+                            <h2 className="text-lg font-bold text-white">{exercise.name}</h2>
+                            <button onClick={onClose} className="text-gray-400 hover:text-white"><i className="fas fa-times"></i></button>
+                        </div>
+                        {exercise.videos && exercise.videos.length > 0 && (
+                            <div className="aspect-video bg-black">
+                                <video src={exercise.videos[0]} controls autoPlay loop muted playsInline className="w-full h-full object-contain" />
+                            </div>
+                        )}
+                        <div className="p-4 space-y-4">
+                            <div className="flex flex-wrap gap-2">
+                                {exercise.primaryMuscles?.map(m => (
+                                    <span key={m} className="px-2 py-1 bg-orange-500/20 text-orange-400 text-xs rounded-full capitalize">{m}</span>
+                                ))}
+                                {exercise.secondaryMuscles?.map(m => (
+                                    <span key={m} className="px-2 py-1 bg-white/10 text-gray-400 text-xs rounded-full capitalize">{m}</span>
+                                ))}
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="glass rounded-lg p-3 text-center">
+                                    <i className="fas fa-dumbbell text-orange-500 mb-1"></i>
+                                    <p className="text-white text-sm capitalize">{exercise.equipment || 'Bodyweight'}</p>
+                                    <p className="text-gray-500 text-xs">Equipment</p>
+                                </div>
+                                <div className="glass rounded-lg p-3 text-center">
+                                    <i className="fas fa-signal text-orange-500 mb-1"></i>
+                                    <p className="text-white text-sm">{['Beginner', 'Intermediate', 'Advanced'][exercise.difficulty - 1] || 'All Levels'}</p>
+                                    <p className="text-gray-500 text-xs">Difficulty</p>
+                                </div>
+                            </div>
+                            {exercise.instructions && exercise.instructions.length > 0 && (
+                                <div>
+                                    <h3 className="text-white font-medium mb-2">Instructions</h3>
+                                    <ol className="text-gray-400 text-sm space-y-2">
+                                        {exercise.instructions.map((step, i) => (
+                                            <li key={i} className="flex gap-2"><span className="text-orange-500">{i + 1}.</span>{step}</li>
+                                        ))}
+                                    </ol>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+
+            return (
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <h1 className="text-2xl font-bold text-white">Exercises</h1>
+                        {stats && <span className="text-orange-500 text-sm">{stats.withVideos} videos</span>}
+                    </div>
+
+                    {/* Search */}
+                    <div className="relative">
+                        <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"></i>
+                        <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search exercises..." className="w-full pl-11 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" />
+                    </div>
+
+                    {/* Muscle Filter */}
+                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                        <button onClick={() => setSelectedMuscle('')} className={`px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-all ${!selectedMuscle ? 'bg-orange-500 text-white' : 'bg-white/10 text-gray-400 hover:bg-white/20'}`}>All</button>
+                        {['chest', 'back', 'shoulders', 'biceps', 'triceps', 'quads', 'hamstrings', 'glutes', 'abs'].map(muscle => (
+                            <button key={muscle} onClick={() => setSelectedMuscle(muscle)} className={`px-3 py-1.5 rounded-full text-sm whitespace-nowrap capitalize transition-all ${selectedMuscle === muscle ? 'bg-orange-500 text-white' : 'bg-white/10 text-gray-400 hover:bg-white/20'}`}>{muscle}</button>
+                        ))}
+                    </div>
+
+                    {/* Exercise List */}
+                    {loading ? (
+                        <div className="text-center py-12"><i className="fas fa-spinner fa-spin text-orange-500 text-2xl"></i></div>
+                    ) : exercises.length === 0 ? (
+                        <div className="text-center py-12 text-gray-400">No exercises found</div>
+                    ) : (
+                        <div className="space-y-2">
+                            {exercises.map(ex => <ExerciseCard key={ex.id} exercise={ex} />)}
+                        </div>
+                    )}
+
+                    {selectedExercise && <ExerciseModal exercise={selectedExercise} onClose={() => setSelectedExercise(null)} />}
                 </div>
             );
         };
