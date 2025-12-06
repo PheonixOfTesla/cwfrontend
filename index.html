@@ -167,6 +167,17 @@
             clear: () => localStorage.removeItem('forge_chat')
         };
 
+        // Onboarding storage helper
+        const onboardingStorage = {
+            get: () => {
+                try {
+                    return JSON.parse(localStorage.getItem('clockwork_onboarding') || 'null');
+                } catch { return null; }
+            },
+            set: (data) => localStorage.setItem('clockwork_onboarding', JSON.stringify(data)),
+            clear: () => localStorage.removeItem('clockwork_onboarding')
+        };
+
         const App = () => {
             const [user, setUser] = useState(null);
             const [loading, setLoading] = useState(true);
@@ -309,13 +320,20 @@
         };
 
         const OnboardingFlow = ({ user, onComplete }) => {
-            const [step, setStep] = useState(1);
-            const [data, setData] = useState({
+            // Load saved onboarding state from localStorage
+            const savedOnboarding = onboardingStorage.get();
+            const [step, setStep] = useState(savedOnboarding?.step || 1);
+            const [data, setData] = useState(savedOnboarding?.data || {
                 firstName: user?.name?.split(' ')[0] || '', age: '', gender: '', weight: '', weightUnit: 'lb',
                 goal: '', experience: '', daysPerWeek: 4, sessionDuration: '45-60', equipment: [], injuries: [],
                 squat: '', bench: '', deadlift: '', ohp: '', competitionLevel: ''
             });
             const [generating, setGenerating] = useState(false);
+
+            // Persist onboarding state to localStorage
+            useEffect(() => {
+                onboardingStorage.set({ step, data });
+            }, [step, data]);
 
             const totalSteps = 10;
             const progress = (step / totalSteps) * 100;
@@ -327,6 +345,10 @@
             const completeOnboarding = async () => {
                 setGenerating(true);
                 try {
+                    // Update user name if changed during onboarding
+                    if (data.firstName && data.firstName !== user?.name?.split(' ')[0]) {
+                        await api.put('/users/profile', { name: data.firstName });
+                    }
                     await api.post('/onboarding/step/1', { data: { gender: data.gender || 'prefer-not-to-say', currentWeight: parseFloat(data.weight) || 0, unitPreference: data.weightUnit === 'kg' ? 'metric' : 'imperial' } });
                     await api.post('/onboarding/step/2', { data: { level: data.experience, primaryDiscipline: data.goal === 'competition-prep' ? 'powerlifting' : 'general-fitness' } });
                     await api.post('/onboarding/step/3', { data: { type: data.goal } });
@@ -336,10 +358,12 @@
                         await api.post('/onboarding/step/6', { data: { injuries: data.injuries.map(injury => ({ bodyPart: injury, severity: 'moderate' })) } });
                     }
                     await api.post('/onboarding/complete', {});
+                    onboardingStorage.clear(); // Clear localStorage on completion
                     const userData = await api.get('/users/profile');
                     onComplete(userData.user || userData.data || userData);
                 } catch (err) {
                     console.error('Onboarding error:', err);
+                    onboardingStorage.clear();
                     const userData = await api.get('/users/profile');
                     onComplete(userData.user || userData.data || userData);
                 }
@@ -783,6 +807,8 @@
             const [events, setEvents] = useState([]);
             const [selectedDate, setSelectedDate] = useState(null);
             const [expandedEvent, setExpandedEvent] = useState(null);
+            const [generating, setGenerating] = useState(false);
+            const [generateMessage, setGenerateMessage] = useState(null);
 
             useEffect(() => { loadEvents(); }, [currentDate]);
 
@@ -807,14 +833,37 @@
             const sortedEvents = [...selectedDayEvents].sort((a, b) => { const priority = { workout: 1, nutrition: 2, 'rest-day': 3 }; return (priority[a.type] || 4) - (priority[b.type] || 4); });
 
             const generateWeek = async () => {
-                try { await api.post('/calendar/generate-week', { startDate: new Date().toISOString().split('T')[0] }); loadEvents(); } catch (err) { console.error('Generate week error:', err); }
+                if (generating) return;
+                setGenerating(true);
+                setGenerateMessage({ type: 'info', text: 'AI is generating your training week...' });
+                try {
+                    const result = await api.post('/calendar/generate-week', { startDate: new Date().toISOString().split('T')[0] });
+                    setGenerateMessage({ type: 'success', text: result.message || 'Training week generated!' });
+                    await loadEvents();
+                    setTimeout(() => setGenerateMessage(null), 3000);
+                } catch (err) {
+                    console.error('Generate week error:', err);
+                    setGenerateMessage({ type: 'error', text: err.message || 'Failed to generate. Please try again.' });
+                    setTimeout(() => setGenerateMessage(null), 5000);
+                } finally {
+                    setGenerating(false);
+                }
             };
 
             return (
                 <div className="space-y-6">
+                    {generateMessage && (
+                        <div className={`p-4 rounded-xl flex items-center gap-3 ${generateMessage.type === 'success' ? 'bg-green-500/20 border border-green-500/30 text-green-400' : generateMessage.type === 'error' ? 'bg-red-500/20 border border-red-500/30 text-red-400' : 'bg-orange-500/20 border border-orange-500/30 text-orange-400'}`}>
+                            <i className={`fas ${generateMessage.type === 'success' ? 'fa-check-circle' : generateMessage.type === 'error' ? 'fa-exclamation-circle' : 'fa-spinner fa-spin'}`}></i>
+                            <span>{generateMessage.text}</span>
+                        </div>
+                    )}
                     <div className="flex items-center justify-between">
                         <h1 className="text-2xl font-bold text-white">Calendar</h1>
-                        <button onClick={generateWeek} className="text-sm bg-orange-500/20 text-orange-500 px-3 py-1.5 rounded-lg hover:bg-orange-500/30"><i className="fas fa-wand-magic-sparkles mr-1"></i>Generate</button>
+                        <button onClick={generateWeek} disabled={generating} className={`text-sm px-3 py-1.5 rounded-lg flex items-center gap-2 ${generating ? 'bg-gray-500/20 text-gray-400 cursor-not-allowed' : 'bg-orange-500/20 text-orange-500 hover:bg-orange-500/30'}`}>
+                            <i className={`fas ${generating ? 'fa-spinner fa-spin' : 'fa-wand-magic-sparkles'}`}></i>
+                            {generating ? 'Generating...' : 'Generate'}
+                        </button>
                     </div>
 
                     <div className="glass rounded-2xl p-4">
