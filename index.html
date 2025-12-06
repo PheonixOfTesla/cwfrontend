@@ -988,12 +988,27 @@
                 if (globalGenerating) return;
                 setGlobalGenerating(true);
                 try {
-                    const result = await api.post('/calendar/generate-month', { startDate: new Date().toISOString().split('T')[0] });
-                    setGlobalGenerateMessage({ type: 'success', text: result.message || 'Program generated!' });
+                    // Generate workout calendar AND nutrition in parallel
+                    const [calendarResult, nutritionResult, mealPlanResult] = await Promise.all([
+                        api.post('/calendar/generate-month', { startDate: new Date().toISOString().split('T')[0] }),
+                        api.post('/nutrition/calculate').catch(e => ({ error: e.message })),
+                        api.post('/nutrition/generate-meal-plan').catch(e => ({ error: e.message }))
+                    ]);
+
+                    // Build success message
+                    let message = calendarResult.message || 'Program generated!';
+                    if (!nutritionResult.error && nutritionResult.targets) {
+                        message += ' + Nutrition targets set!';
+                    }
+                    if (!mealPlanResult.error && mealPlanResult.mealPlan?.length > 0) {
+                        message += ` + ${mealPlanResult.mealPlan.length} meals planned!`;
+                    }
+
+                    setGlobalGenerateMessage({ type: 'success', text: message });
 
                     // Navigate to the month where events were created
-                    if (result.data?.events?.length > 0) {
-                        const firstEventDate = new Date(result.data.events[0].date);
+                    if (calendarResult.data?.events?.length > 0) {
+                        const firstEventDate = new Date(calendarResult.data.events[0].date);
                         setCurrentDate(new Date(firstEventDate.getFullYear(), firstEventDate.getMonth(), 1));
                     }
 
@@ -1002,7 +1017,7 @@
                         await loadEvents();
                     }, 100);
 
-                    setTimeout(() => setGlobalGenerateMessage(null), 4000);
+                    setTimeout(() => setGlobalGenerateMessage(null), 5000);
                 } catch (err) {
                     console.error('Generate month error:', err);
                     setGlobalGenerateMessage({ type: 'error', text: err.message || 'Failed to generate. Please try again.' });
