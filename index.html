@@ -170,11 +170,13 @@
         const API_URL = 'https://cwbackend-production-314e.up.railway.app/api';
 
         const API_TIMEOUT = 30000; // 30 second timeout
+        const AI_TIMEOUT = 120000; // 2 minute timeout for AI generation
 
         const api = {
-            async fetch(endpoint, options = {}) {
+            async fetch(endpoint, options = {}, customTimeout = null) {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
+                const timeout = customTimeout || API_TIMEOUT;
+                const timeoutId = setTimeout(() => controller.abort(), timeout);
 
                 try {
                     const token = localStorage.getItem('token');
@@ -199,9 +201,9 @@
                     throw err;
                 }
             },
-            get: (endpoint) => api.fetch(endpoint),
-            post: (endpoint, body) => api.fetch(endpoint, { method: 'POST', body: JSON.stringify(body) }),
-            put: (endpoint, body) => api.fetch(endpoint, { method: 'PUT', body: JSON.stringify(body) }),
+            get: (endpoint, customTimeout) => api.fetch(endpoint, {}, customTimeout),
+            post: (endpoint, body, customTimeout) => api.fetch(endpoint, { method: 'POST', body: JSON.stringify(body) }, customTimeout),
+            put: (endpoint, body, customTimeout) => api.fetch(endpoint, { method: 'PUT', body: JSON.stringify(body) }, customTimeout),
             delete: (endpoint) => api.fetch(endpoint, { method: 'DELETE' })
         };
 
@@ -394,6 +396,23 @@
             // Check if user has existing profile data (has done onboarding before)
             const hasExistingData = user?.trainingPreferences?.daysPerWeek || user?.primaryGoal?.type || user?.physicalProfile?.currentWeight;
 
+            // Map frontend equipment values to valid backend enum values
+            const mapEquipment = (equipmentArray) => {
+                const mapping = {
+                    'full-gym': ['barbell', 'squat-rack', 'bench-press', 'dumbbells', 'cable-machine', 'leg-press', 'lat-pulldown', 'pull-up-bar'],
+                    'bodyweight-only': ['pull-up-bar', 'dip-station']
+                };
+                const result = [];
+                equipmentArray.forEach(eq => {
+                    if (mapping[eq]) {
+                        result.push(...mapping[eq]);
+                    } else if (!['full-gym', 'bodyweight-only'].includes(eq)) {
+                        result.push(eq);
+                    }
+                });
+                return [...new Set(result)];
+            };
+
             // Skip onboarding for returning users
             const skipOnboarding = async () => {
                 setGenerating(true);
@@ -422,7 +441,7 @@
                     await api.post('/onboarding/step/4', { data: { daysPerWeek: data.daysPerWeek, sessionDuration: parseInt(data.sessionDuration.split('-')[0]) || 60 } });
                     // Mark onboarding as completed
                     await api.put('/users/profile', { onboarding: { completed: true, currentStep: 10, completedAt: new Date().toISOString() } });
-                    await api.post('/onboarding/step/5', { data: { trainingLocation: data.equipment.includes('full-gym') ? 'commercial-gym' : 'home-gym', availableEquipment: data.equipment } });
+                    await api.post('/onboarding/step/5', { data: { trainingLocation: data.equipment.includes('full-gym') ? 'commercial-gym' : 'home-gym', availableEquipment: mapEquipment(data.equipment) } });
                     if (data.injuries.length > 0 && !data.injuries.includes('none')) {
                         await api.post('/onboarding/step/6', { data: { injuries: data.injuries.map(injury => ({ bodyPart: injury, severity: 'moderate' })) } });
                     }
@@ -1719,11 +1738,11 @@
                 if (globalGenerating) return;
                 setGlobalGenerating(true);
                 try {
-                    // Generate workout calendar AND nutrition in parallel
+                    // Generate workout calendar AND nutrition in parallel (using longer AI timeout)
                     const [calendarResult, nutritionResult, mealPlanResult] = await Promise.all([
-                        api.post('/calendar/generate-month', { startDate: new Date().toISOString().split('T')[0] }),
-                        api.post('/nutrition/calculate').catch(e => ({ error: e.message })),
-                        api.post('/nutrition/generate-meal-plan').catch(e => ({ error: e.message }))
+                        api.post('/calendar/generate-month', { startDate: new Date().toISOString().split('T')[0] }, AI_TIMEOUT),
+                        api.post('/nutrition/calculate', {}, AI_TIMEOUT).catch(e => ({ error: e.message })),
+                        api.post('/nutrition/generate-meal-plan', {}, AI_TIMEOUT).catch(e => ({ error: e.message }))
                     ]);
 
                     // Build success message
