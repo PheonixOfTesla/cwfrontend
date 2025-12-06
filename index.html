@@ -2044,11 +2044,31 @@
                 </button>
             );
 
-            const ExerciseModal = ({ exercise, onClose }) => {
+            const ExerciseModal = ({ exercise, onClose, user, onSelectVariation }) => {
                 const [videoError, setVideoError] = useState(false);
+                const [variations, setVariations] = useState([]);
+                const [whyRecommended, setWhyRecommended] = useState(null);
+                const [loadingVariations, setLoadingVariations] = useState(true);
                 const videoUrl = exercise.videos?.[0];
                 const youtubeUrl = exercise.youtubeUrl;
                 const posterImage = exercise.images?.[0];
+
+                // Fetch variations and recommendation on mount
+                useEffect(() => {
+                    const fetchVariations = async () => {
+                        try {
+                            const data = await api.get(`/exercises/videos/${exercise.id}/variations`);
+                            if (data.success) {
+                                setVariations(data.variations || []);
+                                setWhyRecommended(data.whyRecommended);
+                            }
+                        } catch (err) {
+                            console.error('Failed to load variations:', err);
+                        }
+                        setLoadingVariations(false);
+                    };
+                    if (exercise.id) fetchVariations();
+                }, [exercise.id]);
 
                 return (
                 <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={onClose}>
@@ -2118,6 +2138,54 @@
                                     </ol>
                                 </div>
                             )}
+
+                            {/* Why It's Recommended */}
+                            {whyRecommended && (
+                                <div className="glass rounded-xl p-4 border border-orange-500/30">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <i className="fas fa-lightbulb text-orange-500"></i>
+                                        <h3 className="text-white font-medium">Why It's Recommended</h3>
+                                    </div>
+                                    <p className="text-gray-300 text-sm mb-2">{whyRecommended.reason}</p>
+                                    <p className="text-orange-400 text-xs"><i className="fas fa-bolt mr-1"></i>{whyRecommended.tip}</p>
+                                </div>
+                            )}
+
+                            {/* Variations */}
+                            {!loadingVariations && variations.length > 0 && (
+                                <div>
+                                    <h3 className="text-white font-medium mb-3">Try These Variations</h3>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {variations.map((v, i) => (
+                                            <button
+                                                key={v.id || i}
+                                                onClick={() => onSelectVariation && onSelectVariation(v)}
+                                                className="glass rounded-lg p-3 text-left hover:bg-white/10 transition-all"
+                                            >
+                                                <p className="text-white text-sm font-medium truncate">{v.name}</p>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <span className={`text-xs px-1.5 py-0.5 rounded ${
+                                                        v.difficultyLabel === 'easier' ? 'bg-green-500/20 text-green-400' :
+                                                        v.difficultyLabel === 'harder' ? 'bg-red-500/20 text-red-400' :
+                                                        'bg-white/10 text-gray-400'
+                                                    }`}>
+                                                        {v.difficultyLabel === 'easier' ? '↓ Easier' :
+                                                         v.difficultyLabel === 'harder' ? '↑ Harder' : '= Similar'}
+                                                    </span>
+                                                    {v.hasVideo && <i className="fas fa-video text-green-500 text-xs"></i>}
+                                                </div>
+                                                <p className="text-gray-500 text-xs mt-1 capitalize">{v.equipment || 'bodyweight'}</p>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            {loadingVariations && (
+                                <div className="text-center py-4">
+                                    <i className="fas fa-spinner fa-spin text-orange-500"></i>
+                                    <p className="text-gray-500 text-sm mt-1">Loading variations...</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -2176,7 +2244,19 @@
                         </div>
                     )}
 
-                    {selectedExercise && <ExerciseModal exercise={selectedExercise} onClose={() => setSelectedExercise(null)} />}
+                    {selectedExercise && <ExerciseModal
+                        exercise={selectedExercise}
+                        onClose={() => setSelectedExercise(null)}
+                        user={user}
+                        onSelectVariation={(variation) => {
+                            // Fetch full exercise data for the variation
+                            api.get(`/exercises/videos/${variation.id}`).then(data => {
+                                if (data.success && data.exercise) {
+                                    setSelectedExercise(data.exercise);
+                                }
+                            }).catch(err => console.error('Failed to load variation:', err));
+                        }}
+                    />}
                 </div>
             );
         };
