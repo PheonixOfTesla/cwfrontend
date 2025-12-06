@@ -770,10 +770,10 @@
                             </div>
                         </div>
                     )}
-                    {globalGenerateMessage && !globalGenerating && (
-                        <div className={`fixed top-0 left-0 right-0 p-3 z-50 ${globalGenerateMessage.type === 'success' ? 'bg-green-600' : globalGenerateMessage.type === 'error' ? 'bg-red-600' : 'bg-blue-600'}`}>
+                    {globalGenerateMessage && (
+                        <div className={`fixed top-0 left-0 right-0 p-3 z-50 ${globalGenerateMessage.type === 'success' ? 'bg-green-600' : globalGenerateMessage.type === 'error' ? 'bg-red-600' : 'bg-orange-500'}`}>
                             <div className="flex items-center justify-center gap-2">
-                                <i className={`fas ${globalGenerateMessage.type === 'success' ? 'fa-check-circle' : globalGenerateMessage.type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'} text-white`}></i>
+                                <i className={`fas ${globalGenerateMessage.type === 'success' ? 'fa-check-circle' : globalGenerateMessage.type === 'error' ? 'fa-exclamation-circle' : 'fa-hammer fa-bounce'} text-white`}></i>
                                 <span className="text-white font-medium">{globalGenerateMessage.text}</span>
                             </div>
                         </div>
@@ -1737,44 +1737,51 @@
             const generateMonth = async () => {
                 if (globalGenerating) return;
                 setGlobalGenerating(true);
-                try {
-                    // Generate workout calendar AND nutrition in parallel (using longer AI timeout)
-                    const [calendarResult, nutritionResult, mealPlanResult] = await Promise.all([
-                        api.post('/calendar/generate-month', { startDate: new Date().toISOString().split('T')[0] }, AI_TIMEOUT),
-                        api.post('/nutrition/calculate', {}, AI_TIMEOUT).catch(e => ({ error: e.message })),
-                        api.post('/nutrition/generate-meal-plan', {}, AI_TIMEOUT).catch(e => ({ error: e.message }))
-                    ]);
 
-                    // Build success message
-                    let message = calendarResult.message || 'Program generated!';
-                    if (!nutritionResult.error && nutritionResult.targets) {
-                        message += ' + Nutrition targets set!';
-                    }
-                    if (!mealPlanResult.error && mealPlanResult.data?.calendarEventsCreated) {
-                        message += ` + ${mealPlanResult.data.calendarEventsCreated} meals added to calendar!`;
-                    }
+                // Show immediate feedback - generating in background
+                setGlobalGenerateMessage({ type: 'info', text: '🔨 Forging your program... You can navigate around, we\'ll notify you when ready!' });
 
-                    setGlobalGenerateMessage({ type: 'success', text: message });
+                // Run generation in background (don't block UI)
+                const runGeneration = async () => {
+                    try {
+                        // Generate workout calendar AND nutrition in parallel (using longer AI timeout)
+                        const [calendarResult, nutritionResult, mealPlanResult] = await Promise.all([
+                            api.post('/calendar/generate-month', { startDate: new Date().toISOString().split('T')[0] }, AI_TIMEOUT),
+                            api.post('/nutrition/calculate', {}, AI_TIMEOUT).catch(e => ({ error: e.message })),
+                            api.post('/nutrition/generate-meal-plan', {}, AI_TIMEOUT).catch(e => ({ error: e.message }))
+                        ]);
 
-                    // Navigate to the month where events were created
-                    if (calendarResult.data?.events?.length > 0) {
-                        const firstEventDate = new Date(calendarResult.data.events[0].date);
-                        setCurrentDate(new Date(firstEventDate.getFullYear(), firstEventDate.getMonth(), 1));
-                    }
+                        // Build success message
+                        let message = '✅ Program ready! ';
+                        const workoutCount = calendarResult.data?.events?.filter(e => e.type === 'workout')?.length || 0;
+                        if (workoutCount > 0) message += `${workoutCount} workouts`;
+                        if (!nutritionResult.error && nutritionResult.targets) {
+                            message += ' + Nutrition set';
+                        }
+                        if (!mealPlanResult.error && mealPlanResult.data?.calendarEventsCreated) {
+                            message += ` + ${mealPlanResult.data.calendarEventsCreated} meals`;
+                        }
 
-                    // Reload events for the new month view
-                    setTimeout(async () => {
+                        setGlobalGenerateMessage({ type: 'success', text: message });
+
+                        // Play notification sound (if available)
+                        try { new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleQNHm9f/ubFvECRvq+H/2aJhDBp3uc7/7rdhDB52tMT/98VhDhZ0sLz//9dhChBwq7P//+1lCgxqqaz//+9sCwdlpaX//+9yCgRhoZ7//+93CQFdnZf//+98CQBZmZD//+9/CP9VlYn//+6BCP5RkYL//+2DCP1NjXv//+yFCP1Jinb//+uHCPxGhm///+qJCPtCgmn//+mLCPo+fmP//+iNCPk6emD//+ePCPg2dl3//+aRCPcydFn//+WTCPYucVb//+SUCPU=').play(); } catch(e) {}
+
+                        // Reload events to show new content
                         await loadEvents();
-                    }, 100);
 
-                    setTimeout(() => setGlobalGenerateMessage(null), 5000);
-                } catch (err) {
-                    console.error('Generate month error:', err);
-                    setGlobalGenerateMessage({ type: 'error', text: err.message || 'Failed to generate. Please try again.' });
-                    setTimeout(() => setGlobalGenerateMessage(null), 5000);
-                } finally {
-                    setGlobalGenerating(false);
-                }
+                        setTimeout(() => setGlobalGenerateMessage(null), 8000);
+                    } catch (err) {
+                        console.error('Generate month error:', err);
+                        setGlobalGenerateMessage({ type: 'error', text: '❌ ' + (err.message || 'Generation failed. Please try again.') });
+                        setTimeout(() => setGlobalGenerateMessage(null), 8000);
+                    } finally {
+                        setGlobalGenerating(false);
+                    }
+                };
+
+                // Start generation without blocking
+                runGeneration();
             };
 
             return (
