@@ -1091,18 +1091,49 @@
                 </button>
             );
 
-            const ExerciseModal = ({ exercise, onClose }) => (
+            const ExerciseModal = ({ exercise, onClose }) => {
+                const [videoError, setVideoError] = useState(false);
+                const videoUrl = exercise.videos?.[0];
+                const youtubeUrl = exercise.youtubeUrl;
+                const posterImage = exercise.images?.[0];
+
+                return (
                 <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={onClose}>
                     <div className="glass rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                         <div className="p-4 border-b border-white/10 flex items-center justify-between">
                             <h2 className="text-lg font-bold text-white">{exercise.name}</h2>
                             <button onClick={onClose} className="text-gray-400 hover:text-white"><i className="fas fa-times"></i></button>
                         </div>
-                        {exercise.videos && exercise.videos.length > 0 && (
-                            <div className="aspect-video bg-black">
-                                <video src={exercise.videos[0]} controls autoPlay loop muted playsInline className="w-full h-full object-contain" />
+                        {/* Try video first, fallback to YouTube, then image */}
+                        {videoUrl && !videoError ? (
+                            <div className="aspect-video bg-black relative">
+                                <video
+                                    src={videoUrl}
+                                    controls
+                                    autoPlay
+                                    loop
+                                    muted
+                                    playsInline
+                                    crossOrigin="anonymous"
+                                    poster={posterImage}
+                                    className="w-full h-full object-contain"
+                                    onError={() => setVideoError(true)}
+                                />
                             </div>
-                        )}
+                        ) : youtubeUrl ? (
+                            <div className="aspect-video bg-black">
+                                <iframe
+                                    src={youtubeUrl}
+                                    className="w-full h-full"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    allowFullScreen
+                                />
+                            </div>
+                        ) : posterImage ? (
+                            <div className="aspect-video bg-black flex items-center justify-center">
+                                <img src={posterImage} alt={exercise.name} className="max-w-full max-h-full object-contain" />
+                            </div>
+                        ) : null}
                         <div className="p-4 space-y-4">
                             <div className="flex flex-wrap gap-2">
                                 {exercise.primaryMuscles?.map(m => (
@@ -1138,6 +1169,7 @@
                     </div>
                 </div>
             );
+            };
 
             return (
                 <div className="space-y-4">
