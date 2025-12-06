@@ -406,7 +406,7 @@
                 setLoading(true);
                 setError('');
                 try {
-                    await api.put(`/auth/reset-password/${resetCode}`, { password: newPassword });
+                    await api.put(`/auth/reset-password/${resetCode}`, { password: newPassword, email: formData.email });
                     setSuccess('Password reset successful! You can now login.');
                     setForgotPasswordMode(false);
                     setResetCodeMode(false);
@@ -485,9 +485,9 @@
                                 </form>
                             ) : (
                                 <form onSubmit={handleResetPassword} className="space-y-4">
-                                    <input type="text" placeholder="Enter 3-digit code" value={resetCode} onChange={(e) => setResetCode(e.target.value.replace(/\D/g, '').slice(0, 3))} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-4 text-white text-center text-2xl tracking-widest placeholder-gray-500 focus:border-orange-500 focus:outline-none" maxLength={3} required />
+                                    <input type="text" placeholder="Enter 6-digit code" value={resetCode} onChange={(e) => setResetCode(e.target.value.replace(/\D/g, '').slice(0, 6))} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-4 text-white text-center text-2xl tracking-widest placeholder-gray-500 focus:border-orange-500 focus:outline-none" maxLength={6} required />
                                     <input type="password" placeholder="New Password (min 6 chars)" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" minLength={6} required />
-                                    <button type="submit" disabled={loading || resetCode.length !== 3} className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl transition-all disabled:opacity-50 glow">
+                                    <button type="submit" disabled={loading || resetCode.length !== 6} className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl transition-all disabled:opacity-50 glow">
                                         {loading ? 'Resetting...' : 'Reset Password'}
                                     </button>
                                 </form>
