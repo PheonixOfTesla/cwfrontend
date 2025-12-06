@@ -688,6 +688,7 @@
                     case 'home': return <HomeTab user={user} />;
                     case 'calendar': return <CalendarTab user={user} globalGenerating={globalGenerating} setGlobalGenerating={setGlobalGenerating} setGlobalGenerateMessage={setGlobalGenerateMessage} />;
                     case 'forge': return <ForgeTab user={user} />;
+                    case 'kitchen': return <KitchenTab user={user} />;
                     case 'exercises': return <ExercisesTab user={user} />;
                     case 'profile': return <ProfileTab user={user} setUser={setUser} onLogout={onLogout} />;
                     default: return <HomeTab user={user} />;
@@ -725,7 +726,7 @@
                                 { id: 'home', icon: 'fa-home', label: 'Home' },
                                 { id: 'calendar', icon: 'fa-calendar-alt', label: 'Calendar' },
                                 { id: 'forge', icon: 'fa-bolt', label: 'FORGE' },
-                                { id: 'exercises', icon: 'fa-dumbbell', label: 'Exercises' },
+                                { id: 'kitchen', icon: 'fa-utensils', label: 'Kitchen' },
                                 { id: 'profile', icon: 'fa-user', label: 'Profile' }
                             ].map(tab => (
                                 <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all ${activeTab === tab.id ? 'text-orange-500 bg-orange-500/10' : 'text-gray-500 hover:text-gray-300'}`}>
@@ -1394,95 +1395,324 @@
             );
         };
 
-        // Nutrition Tab
-        const NutritionTab = ({ user }) => {
-            const [todayMacros, setTodayMacros] = useState({ calories: 0, protein: 0, carbs: 0, fat: 0 });
-            const [meals, setMeals] = useState([]);
-            const [showAddMeal, setShowAddMeal] = useState(false);
-            const [newMeal, setNewMeal] = useState({ name: '', calories: '', protein: '', carbs: '', fat: '' });
+        // Kitchen Tab - FORGE Nutrition System
+        const KitchenTab = ({ user }) => {
+            const [loading, setLoading] = useState(true);
+            const [generating, setGenerating] = useState(false);
+            const [targets, setTargets] = useState(null);
+            const [mealPlan, setMealPlan] = useState([]);
+            const [todayLog, setTodayLog] = useState([]);
+            const [showLogModal, setShowLogModal] = useState(false);
+            const [newLog, setNewLog] = useState({ name: '', calories: '', protein: '', carbs: '', fat: '' });
+            const [selectedMeal, setSelectedMeal] = useState(null);
+            const [error, setError] = useState(null);
 
-            const targets = { calories: 2500, protein: 180, carbs: 250, fat: 80 };
+            useEffect(() => { loadNutrition(); }, []);
 
-            const addMeal = () => {
-                if (!newMeal.name) return;
-                const meal = { ...newMeal, id: Date.now(), time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) };
-                setMeals([...meals, meal]);
-                setTodayMacros({
-                    calories: todayMacros.calories + (parseInt(newMeal.calories) || 0),
-                    protein: todayMacros.protein + (parseInt(newMeal.protein) || 0),
-                    carbs: todayMacros.carbs + (parseInt(newMeal.carbs) || 0),
-                    fat: todayMacros.fat + (parseInt(newMeal.fat) || 0)
-                });
-                setNewMeal({ name: '', calories: '', protein: '', carbs: '', fat: '' });
-                setShowAddMeal(false);
+            const loadNutrition = async () => {
+                setLoading(true);
+                try {
+                    const data = await api.get('/nutrition/me');
+                    if (data.targets) setTargets(data.targets);
+                    if (data.mealPlan?.meals) setMealPlan(data.mealPlan.meals);
+                    if (data.todayLog) setTodayLog(data.todayLog);
+                } catch (err) {
+                    console.error('Load nutrition error:', err);
+                    // If no targets, that's ok - user needs to generate them
+                }
+                setLoading(false);
             };
 
-            const MacroBar = ({ label, current, target, color }) => (
-                <div>
-                    <div className="flex justify-between text-sm mb-1"><span className="text-gray-400">{label}</span><span className="text-white">{current} / {target}g</span></div>
-                    <div className="h-2 bg-white/10 rounded-full overflow-hidden"><div className={`h-full ${color} rounded-full transition-all`} style={{ width: `${Math.min((current / target) * 100, 100)}%` }} /></div>
-                </div>
-            );
+            const calculateTargets = async () => {
+                setGenerating(true);
+                setError(null);
+                try {
+                    const data = await api.post('/nutrition/calculate');
+                    setTargets(data.targets);
+                } catch (err) {
+                    setError(err.message || 'Failed to calculate targets');
+                }
+                setGenerating(false);
+            };
+
+            const generateMealPlan = async () => {
+                setGenerating(true);
+                setError(null);
+                try {
+                    const data = await api.post('/nutrition/generate-meal-plan');
+                    setMealPlan(data.mealPlan || []);
+                } catch (err) {
+                    setError(err.message || 'Failed to generate meal plan');
+                }
+                setGenerating(false);
+            };
+
+            const logFood = async () => {
+                if (!newLog.name) return;
+                try {
+                    await api.post('/nutrition/log', {
+                        name: newLog.name,
+                        calories: parseInt(newLog.calories) || 0,
+                        protein: parseInt(newLog.protein) || 0,
+                        carbs: parseInt(newLog.carbs) || 0,
+                        fat: parseInt(newLog.fat) || 0
+                    });
+                    await loadNutrition();
+                    setNewLog({ name: '', calories: '', protein: '', carbs: '', fat: '' });
+                    setShowLogModal(false);
+                } catch (err) {
+                    alert('Failed to log food: ' + err.message);
+                }
+            };
+
+            const logMealFromPlan = async (meal) => {
+                try {
+                    await api.post('/nutrition/log', {
+                        name: meal.name,
+                        calories: meal.macros?.calories || 0,
+                        protein: meal.macros?.protein || 0,
+                        carbs: meal.macros?.carbs || 0,
+                        fat: meal.macros?.fat || 0
+                    });
+                    await loadNutrition();
+                    setSelectedMeal(null);
+                } catch (err) {
+                    alert('Failed to log meal: ' + err.message);
+                }
+            };
+
+            // Calculate today's totals
+            const todayTotals = todayLog.reduce((acc, log) => ({
+                calories: acc.calories + (log.calories || 0),
+                protein: acc.protein + (log.protein || 0),
+                carbs: acc.carbs + (log.carbs || 0),
+                fat: acc.fat + (log.fat || 0)
+            }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+
+            const MacroRing = ({ current, target, color, label, unit = 'g' }) => {
+                const percentage = target ? Math.min((current / target) * 100, 100) : 0;
+                const circumference = 2 * Math.PI * 40;
+                const offset = circumference - (percentage / 100) * circumference;
+                return (
+                    <div className="text-center">
+                        <svg className="w-20 h-20 mx-auto -rotate-90" viewBox="0 0 100 100">
+                            <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="8" />
+                            <circle cx="50" cy="50" r="40" fill="none" stroke={color} strokeWidth="8" strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round" className="transition-all duration-500" />
+                        </svg>
+                        <div className="mt-2">
+                            <div className="text-white font-bold">{Math.round(current)}{unit}</div>
+                            <div className="text-gray-500 text-xs">{label}</div>
+                            <div className="text-gray-600 text-xs">{target ? `/ ${target}${unit}` : ''}</div>
+                        </div>
+                    </div>
+                );
+            };
+
+            if (loading) {
+                return (
+                    <div className="flex items-center justify-center py-20">
+                        <div className="text-center">
+                            <i className="fas fa-spinner fa-spin text-orange-500 text-3xl mb-4"></i>
+                            <p className="text-gray-400">Loading kitchen...</p>
+                        </div>
+                    </div>
+                );
+            }
 
             return (
-                <div className="space-y-6">
+                <div className="space-y-6 pb-20">
+                    {/* Header */}
                     <div className="flex items-center justify-between">
-                        <h1 className="text-2xl font-bold text-white">Nutrition</h1>
-                        <button onClick={() => setShowAddMeal(true)} className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl text-sm"><i className="fas fa-plus mr-1"></i>Add Meal</button>
+                        <div>
+                            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                                <i className="fas fa-utensils text-orange-500"></i>
+                                Kitchen
+                            </h1>
+                            <p className="text-gray-400 text-sm">FORGE Nutrition</p>
+                        </div>
+                        <button onClick={() => setShowLogModal(true)} className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl text-sm">
+                            <i className="fas fa-plus mr-1"></i>Log Food
+                        </button>
                     </div>
 
-                    {/* Daily Summary */}
-                    <div className="glass rounded-2xl p-5">
-                        <div className="text-center mb-4">
-                            <div className="text-4xl font-bold text-white">{todayMacros.calories}</div>
-                            <div className="text-gray-400">of {targets.calories} cal</div>
+                    {error && (
+                        <div className="bg-red-500/20 border border-red-500/30 rounded-xl p-3 text-red-400 text-sm">
+                            {error}
                         </div>
-                        <div className="space-y-3">
-                            <MacroBar label="Protein" current={todayMacros.protein} target={targets.protein} color="bg-red-500" />
-                            <MacroBar label="Carbs" current={todayMacros.carbs} target={targets.carbs} color="bg-blue-500" />
-                            <MacroBar label="Fat" current={todayMacros.fat} target={targets.fat} color="bg-yellow-500" />
-                        </div>
-                    </div>
+                    )}
 
-                    {/* Meals */}
-                    <div className="glass rounded-2xl p-5">
-                        <h3 className="text-white font-semibold mb-4">Today's Meals</h3>
-                        {meals.length > 0 ? (
-                            <div className="space-y-3">
-                                {meals.map(meal => (
-                                    <div key={meal.id} className="bg-white/5 rounded-xl p-4 border border-white/10">
-                                        <div className="flex justify-between items-start">
-                                            <div><h4 className="text-white font-medium">{meal.name}</h4><p className="text-gray-500 text-xs">{meal.time}</p></div>
-                                            <span className="text-orange-500 font-bold">{meal.calories} cal</span>
-                                        </div>
-                                        <div className="flex gap-4 mt-2 text-xs text-gray-400">
-                                            <span>P: {meal.protein}g</span><span>C: {meal.carbs}g</span><span>F: {meal.fat}g</span>
-                                        </div>
+                    {/* Targets Card - Show if no targets yet */}
+                    {!targets ? (
+                        <div className="glass rounded-2xl p-6 text-center">
+                            <i className="fas fa-calculator text-orange-500 text-4xl mb-4"></i>
+                            <h2 className="text-xl font-bold text-white mb-2">Set Your Nutrition Targets</h2>
+                            <p className="text-gray-400 mb-6">FORGE will calculate your TDEE and macros based on your profile and goals.</p>
+                            <button onClick={calculateTargets} disabled={generating} className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-xl font-semibold disabled:opacity-50">
+                                {generating ? <><i className="fas fa-spinner fa-spin mr-2"></i>Calculating...</> : <><i className="fas fa-fire mr-2"></i>Calculate My Targets</>}
+                            </button>
+                        </div>
+                    ) : (
+                        <>
+                            {/* Daily Progress */}
+                            <div className="glass rounded-2xl p-5">
+                                <div className="text-center mb-6">
+                                    <div className="text-5xl font-bold text-white">{Math.round(todayTotals.calories)}</div>
+                                    <div className="text-gray-400">of {targets.calories} calories</div>
+                                    <div className="w-full h-2 bg-white/10 rounded-full mt-3 overflow-hidden">
+                                        <div className="h-full bg-gradient-to-r from-orange-500 to-red-500 rounded-full transition-all" style={{ width: `${Math.min((todayTotals.calories / targets.calories) * 100, 100)}%` }} />
                                     </div>
-                                ))}
+                                </div>
+                                <div className="grid grid-cols-3 gap-4">
+                                    <MacroRing current={todayTotals.protein} target={targets.protein} color="#ef4444" label="Protein" />
+                                    <MacroRing current={todayTotals.carbs} target={targets.carbs} color="#3b82f6" label="Carbs" />
+                                    <MacroRing current={todayTotals.fat} target={targets.fat} color="#eab308" label="Fat" />
+                                </div>
                             </div>
-                        ) : (
-                            <p className="text-gray-400 text-center py-4">No meals logged today</p>
-                        )}
-                    </div>
 
-                    {/* Add Meal Modal */}
-                    {showAddMeal && (
+                            {/* Meal Plan */}
+                            <div className="glass rounded-2xl p-5">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-white font-semibold flex items-center gap-2">
+                                        <i className="fas fa-bolt text-orange-500"></i>
+                                        FORGE Meal Plan
+                                    </h3>
+                                    <button onClick={generateMealPlan} disabled={generating} className="text-orange-500 hover:text-orange-400 text-sm disabled:opacity-50">
+                                        {generating ? <i className="fas fa-spinner fa-spin"></i> : <><i className="fas fa-sync-alt mr-1"></i>Generate</>}
+                                    </button>
+                                </div>
+
+                                {mealPlan.length > 0 ? (
+                                    <div className="space-y-3">
+                                        {mealPlan.map((meal, idx) => (
+                                            <button key={idx} onClick={() => setSelectedMeal(meal)} className="w-full text-left bg-white/5 hover:bg-white/10 rounded-xl overflow-hidden border border-white/10 transition-all">
+                                                {meal.imageUrl && (
+                                                    <div className="h-32 bg-gray-800 overflow-hidden">
+                                                        <img src={meal.imageUrl} alt={meal.name} className="w-full h-full object-cover" onError={(e) => e.target.style.display = 'none'} />
+                                                    </div>
+                                                )}
+                                                <div className="p-4">
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <div>
+                                                            <span className="text-orange-500 text-xs uppercase font-semibold">{meal.type}</span>
+                                                            <h4 className="text-white font-medium">{meal.name}</h4>
+                                                        </div>
+                                                        <span className="text-orange-500 font-bold">{meal.macros?.calories || 0} cal</span>
+                                                    </div>
+                                                    <div className="flex gap-3 text-xs text-gray-400">
+                                                        <span>P: {meal.macros?.protein || 0}g</span>
+                                                        <span>C: {meal.macros?.carbs || 0}g</span>
+                                                        <span>F: {meal.macros?.fat || 0}g</span>
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-8">
+                                        <i className="fas fa-utensils text-gray-600 text-3xl mb-3"></i>
+                                        <p className="text-gray-400 mb-4">No meal plan yet</p>
+                                        <button onClick={generateMealPlan} disabled={generating} className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl text-sm disabled:opacity-50">
+                                            {generating ? 'Generating...' : 'Generate AI Meal Plan'}
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Today's Log */}
+                            <div className="glass rounded-2xl p-5">
+                                <h3 className="text-white font-semibold mb-4">Today's Food Log</h3>
+                                {todayLog.length > 0 ? (
+                                    <div className="space-y-2">
+                                        {todayLog.map((log, idx) => (
+                                            <div key={idx} className="bg-white/5 rounded-lg p-3 flex justify-between items-center">
+                                                <div>
+                                                    <h4 className="text-white font-medium">{log.name}</h4>
+                                                    <div className="text-xs text-gray-500">{new Date(log.time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <div className="text-orange-500 font-bold">{log.calories} cal</div>
+                                                    <div className="text-xs text-gray-500">P:{log.protein} C:{log.carbs} F:{log.fat}</div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-gray-400 text-center py-4">No food logged today</p>
+                                )}
+                            </div>
+                        </>
+                    )}
+
+                    {/* Log Food Modal */}
+                    {showLogModal && (
                         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
                             <div className="glass rounded-2xl p-6 w-full max-w-md">
-                                <h3 className="text-xl font-bold text-white mb-4">Add Meal</h3>
+                                <h3 className="text-xl font-bold text-white mb-4">Log Food</h3>
                                 <div className="space-y-4">
-                                    <input type="text" placeholder="Meal name" value={newMeal.name} onChange={(e) => setNewMeal({...newMeal, name: e.target.value})} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" />
+                                    <input type="text" placeholder="Food name" value={newLog.name} onChange={e => setNewLog({...newLog, name: e.target.value})} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" />
                                     <div className="grid grid-cols-2 gap-3">
-                                        <input type="number" placeholder="Calories" value={newMeal.calories} onChange={(e) => setNewMeal({...newMeal, calories: e.target.value})} className="bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" />
-                                        <input type="number" placeholder="Protein (g)" value={newMeal.protein} onChange={(e) => setNewMeal({...newMeal, protein: e.target.value})} className="bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" />
-                                        <input type="number" placeholder="Carbs (g)" value={newMeal.carbs} onChange={(e) => setNewMeal({...newMeal, carbs: e.target.value})} className="bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" />
-                                        <input type="number" placeholder="Fat (g)" value={newMeal.fat} onChange={(e) => setNewMeal({...newMeal, fat: e.target.value})} className="bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" />
+                                        <input type="number" placeholder="Calories" value={newLog.calories} onChange={e => setNewLog({...newLog, calories: e.target.value})} className="bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" />
+                                        <input type="number" placeholder="Protein (g)" value={newLog.protein} onChange={e => setNewLog({...newLog, protein: e.target.value})} className="bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" />
+                                        <input type="number" placeholder="Carbs (g)" value={newLog.carbs} onChange={e => setNewLog({...newLog, carbs: e.target.value})} className="bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" />
+                                        <input type="number" placeholder="Fat (g)" value={newLog.fat} onChange={e => setNewLog({...newLog, fat: e.target.value})} className="bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" />
                                     </div>
                                 </div>
                                 <div className="flex gap-3 mt-6">
-                                    <button onClick={() => setShowAddMeal(false)} className="flex-1 border border-white/20 text-white py-3 rounded-xl hover:bg-white/10">Cancel</button>
-                                    <button onClick={addMeal} className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl">Add</button>
+                                    <button onClick={() => setShowLogModal(false)} className="flex-1 border border-white/20 text-white py-3 rounded-xl hover:bg-white/10">Cancel</button>
+                                    <button onClick={logFood} className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl">Log</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Meal Detail Modal */}
+                    {selectedMeal && (
+                        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50" onClick={() => setSelectedMeal(null)}>
+                            <div className="glass rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                                {selectedMeal.imageUrl && (
+                                    <div className="h-48 bg-gray-800 overflow-hidden">
+                                        <img src={selectedMeal.imageUrl} alt={selectedMeal.name} className="w-full h-full object-cover" />
+                                    </div>
+                                )}
+                                <div className="p-5">
+                                    <span className="text-orange-500 text-xs uppercase font-semibold">{selectedMeal.type}</span>
+                                    <h2 className="text-xl font-bold text-white mb-2">{selectedMeal.name}</h2>
+                                    {selectedMeal.description && <p className="text-gray-400 text-sm mb-4">{selectedMeal.description}</p>}
+
+                                    <div className="grid grid-cols-4 gap-2 mb-4">
+                                        <div className="text-center p-2 bg-white/10 rounded-lg">
+                                            <div className="text-orange-500 font-bold">{selectedMeal.macros?.calories || 0}</div>
+                                            <div className="text-gray-500 text-xs">cal</div>
+                                        </div>
+                                        <div className="text-center p-2 bg-white/10 rounded-lg">
+                                            <div className="text-red-400 font-bold">{selectedMeal.macros?.protein || 0}g</div>
+                                            <div className="text-gray-500 text-xs">protein</div>
+                                        </div>
+                                        <div className="text-center p-2 bg-white/10 rounded-lg">
+                                            <div className="text-blue-400 font-bold">{selectedMeal.macros?.carbs || 0}g</div>
+                                            <div className="text-gray-500 text-xs">carbs</div>
+                                        </div>
+                                        <div className="text-center p-2 bg-white/10 rounded-lg">
+                                            <div className="text-yellow-400 font-bold">{selectedMeal.macros?.fat || 0}g</div>
+                                            <div className="text-gray-500 text-xs">fat</div>
+                                        </div>
+                                    </div>
+
+                                    {selectedMeal.ingredients && selectedMeal.ingredients.length > 0 && (
+                                        <div className="mb-4">
+                                            <h3 className="text-white font-semibold mb-2">Ingredients</h3>
+                                            <ul className="text-gray-400 text-sm space-y-1">
+                                                {selectedMeal.ingredients.map((ing, i) => <li key={i} className="flex items-center gap-2"><i className="fas fa-check text-orange-500 text-xs"></i>{ing}</li>)}
+                                            </ul>
+                                        </div>
+                                    )}
+
+                                    <div className="flex gap-3">
+                                        <button onClick={() => setSelectedMeal(null)} className="flex-1 border border-white/20 text-white py-3 rounded-xl hover:bg-white/10">Close</button>
+                                        <button onClick={() => logMealFromPlan(selectedMeal)} className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl">
+                                            <i className="fas fa-plus mr-2"></i>Log This Meal
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
