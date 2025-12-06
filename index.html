@@ -755,6 +755,654 @@
             );
         };
 
+        // Workout Session Modal - Full workout logging experience
+        const WorkoutSessionModal = ({ workout, onClose, onComplete }) => {
+            const [exercises, setExercises] = useState(workout?.exercises || []);
+            const [currentExercise, setCurrentExercise] = useState(0);
+            const [currentSet, setCurrentSet] = useState(0);
+            const [setData, setSetData] = useState({ weight: '', reps: '', rpe: 7 });
+            const [restTimer, setRestTimer] = useState(null);
+            const [restSeconds, setRestSeconds] = useState(90);
+            const [showComplete, setShowComplete] = useState(false);
+            const [mood, setMood] = useState(3);
+            const [notes, setNotes] = useState('');
+            const [completing, setCompleting] = useState(false);
+            const [startTime] = useState(Date.now());
+            // PR Tracking
+            const [personalRecords, setPersonalRecords] = useState({});
+            const [newPRs, setNewPRs] = useState([]);
+            const [showPRCelebration, setShowPRCelebration] = useState(null);
+            // Exercise swap
+            const [showSwapModal, setShowSwapModal] = useState(false);
+            const [swapAlternatives, setSwapAlternatives] = useState([]);
+            const [loadingAlternatives, setLoadingAlternatives] = useState(false);
+
+            const loadAlternatives = async (exerciseName) => {
+                setLoadingAlternatives(true);
+                try {
+                    const data = await api.get(`/exercises/alternatives?exercise=${encodeURIComponent(exerciseName)}`);
+                    setSwapAlternatives(data.data || data.alternatives || [
+                        { name: 'Dumbbell ' + exerciseName, muscle: 'Same target muscle' },
+                        { name: 'Machine ' + exerciseName, muscle: 'Same target muscle' },
+                        { name: 'Cable ' + exerciseName, muscle: 'Same target muscle' }
+                    ]);
+                } catch (err) {
+                    // Fallback alternatives
+                    setSwapAlternatives([
+                        { name: 'Dumbbell Variation', muscle: 'Same target' },
+                        { name: 'Machine Variation', muscle: 'Same target' },
+                        { name: 'Bodyweight Variation', muscle: 'Same target' }
+                    ]);
+                }
+                setLoadingAlternatives(false);
+                setShowSwapModal(true);
+            };
+
+            const swapExercise = (newExerciseName) => {
+                const updated = [...exercises];
+                updated[currentExercise] = {
+                    ...updated[currentExercise],
+                    name: newExerciseName,
+                    swappedFrom: exercises[currentExercise].name
+                };
+                setExercises(updated);
+                setShowSwapModal(false);
+            };
+
+            // Calculate estimated 1RM using Brzycki formula
+            const calculate1RM = (weight, reps) => {
+                if (reps <= 0 || weight <= 0) return 0;
+                if (reps === 1) return weight;
+                return Math.round(weight / (1.0278 - 0.0278 * reps));
+            };
+
+            // Fetch existing PRs on mount
+            useEffect(() => {
+                const fetchPRs = async () => {
+                    try {
+                        const data = await api.get('/users/prs');
+                        if (data.data?.personalRecords) {
+                            const prMap = {};
+                            data.data.personalRecords.forEach(pr => {
+                                prMap[pr.exerciseName.toLowerCase()] = pr;
+                            });
+                            setPersonalRecords(prMap);
+                        }
+                    } catch (err) { console.error('Failed to fetch PRs:', err); }
+                };
+                fetchPRs();
+            }, []);
+
+            // Parse exercises from workout description if not structured
+            useEffect(() => {
+                if (!workout?.exercises?.length && workout?.description) {
+                    const parsed = workout.description.split('\n')
+                        .filter(line => line.trim())
+                        .map((line, i) => ({
+                            name: line.replace(/^[-•]\s*/, '').trim(),
+                            sets: 3,
+                            reps: 10,
+                            weight: 0,
+                            actualSets: []
+                        }));
+                    if (parsed.length) setExercises(parsed);
+                }
+            }, [workout]);
+
+            // Rest timer countdown
+            useEffect(() => {
+                if (restTimer !== null && restSeconds > 0) {
+                    const t = setTimeout(() => setRestSeconds(s => s - 1), 1000);
+                    return () => clearTimeout(t);
+                } else if (restTimer !== null && restSeconds === 0) {
+                    setRestTimer(null);
+                    setRestSeconds(90);
+                }
+            }, [restTimer, restSeconds]);
+
+            const logSet = () => {
+                const weight = parseFloat(setData.weight) || 0;
+                const reps = parseInt(setData.reps) || 0;
+                const exerciseName = exercises[currentExercise]?.name || '';
+
+                const updated = [...exercises];
+                if (!updated[currentExercise].actualSets) updated[currentExercise].actualSets = [];
+                updated[currentExercise].actualSets.push({
+                    weight,
+                    reps,
+                    rpe: setData.rpe
+                });
+                setExercises(updated);
+
+                // Check for PR
+                if (weight > 0 && reps > 0 && exerciseName) {
+                    const new1RM = calculate1RM(weight, reps);
+                    const existingPR = personalRecords[exerciseName.toLowerCase()];
+                    const existing1RM = existingPR?.oneRepMax || 0;
+
+                    if (new1RM > existing1RM) {
+                        // New PR!
+                        const prData = { exerciseName, weight, reps, oneRepMax: new1RM };
+                        setShowPRCelebration(prData);
+                        setNewPRs(prev => [...prev.filter(p => p.exerciseName.toLowerCase() !== exerciseName.toLowerCase()), prData]);
+                        setPersonalRecords(prev => ({ ...prev, [exerciseName.toLowerCase()]: prData }));
+                        setTimeout(() => setShowPRCelebration(null), 3000);
+                    }
+                }
+
+                setSetData({ weight: setData.weight, reps: '', rpe: 7 });
+
+                if (currentSet + 1 >= (exercises[currentExercise]?.sets || 3)) {
+                    if (currentExercise + 1 >= exercises.length) {
+                        setShowComplete(true);
+                    } else {
+                        setCurrentExercise(currentExercise + 1);
+                        setCurrentSet(0);
+                        setRestTimer(Date.now());
+                    }
+                } else {
+                    setCurrentSet(currentSet + 1);
+                    setRestTimer(Date.now());
+                }
+            };
+
+            const completeWorkout = async () => {
+                setCompleting(true);
+                try {
+                    const duration = Math.round((Date.now() - startTime) / 60000);
+                    await api.post(`/calendar/${workout._id}/complete`, { duration, mood, notes });
+
+                    // Save new PRs to backend
+                    if (newPRs.length > 0) {
+                        await api.post('/users/prs', { newPRs }).catch(err => console.error('Save PRs error:', err));
+                    }
+
+                    onComplete?.();
+                    onClose();
+                } catch (err) {
+                    console.error('Complete workout error:', err);
+                }
+                setCompleting(false);
+            };
+
+            const exercise = exercises[currentExercise];
+            const progress = exercises.length ? Math.round((currentExercise / exercises.length) * 100) : 0;
+
+            // Calculate workout stats
+            const getWorkoutStats = () => {
+                let totalSets = 0, totalReps = 0, totalVolume = 0;
+                exercises.forEach(ex => {
+                    if (ex.actualSets) {
+                        ex.actualSets.forEach(set => {
+                            totalSets++;
+                            totalReps += set.reps || 0;
+                            totalVolume += (set.weight || 0) * (set.reps || 0);
+                        });
+                    }
+                });
+                const duration = Math.round((Date.now() - startTime) / 60000);
+                return { totalSets, totalReps, totalVolume, duration };
+            };
+
+            if (showComplete) {
+                const stats = getWorkoutStats();
+                return (
+                    <div className="fixed inset-0 bg-black z-50 flex flex-col">
+                        <div className="flex-1 flex flex-col items-center justify-center p-6 overflow-y-auto">
+                            <i className="fas fa-trophy text-6xl text-orange-500 mb-4"></i>
+                            <h2 className="text-2xl font-bold text-white mb-2">Workout Complete!</h2>
+
+                            {/* Workout Stats Summary */}
+                            <div className="w-full grid grid-cols-4 gap-2 mb-4">
+                                <div className="bg-white/10 rounded-xl p-3 text-center">
+                                    <div className="text-xl font-bold text-orange-500">{stats.duration}</div>
+                                    <div className="text-xs text-gray-400">min</div>
+                                </div>
+                                <div className="bg-white/10 rounded-xl p-3 text-center">
+                                    <div className="text-xl font-bold text-blue-400">{stats.totalSets}</div>
+                                    <div className="text-xs text-gray-400">sets</div>
+                                </div>
+                                <div className="bg-white/10 rounded-xl p-3 text-center">
+                                    <div className="text-xl font-bold text-green-400">{stats.totalReps}</div>
+                                    <div className="text-xs text-gray-400">reps</div>
+                                </div>
+                                <div className="bg-white/10 rounded-xl p-3 text-center">
+                                    <div className="text-xl font-bold text-purple-400">{stats.totalVolume >= 1000 ? `${(stats.totalVolume/1000).toFixed(1)}k` : stats.totalVolume}</div>
+                                    <div className="text-xs text-gray-400">lbs</div>
+                                </div>
+                            </div>
+
+                            {/* Show PRs hit during session */}
+                            {newPRs.length > 0 && (
+                                <div className="w-full bg-yellow-500/20 border border-yellow-500/30 rounded-xl p-4 mb-4">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <i className="fas fa-crown text-yellow-500"></i>
+                                        <span className="text-yellow-500 font-bold">{newPRs.length} New PR{newPRs.length > 1 ? 's' : ''}!</span>
+                                    </div>
+                                    {newPRs.map((pr, i) => (
+                                        <div key={i} className="text-sm text-yellow-400/80">
+                                            {pr.exerciseName}: {pr.weight}lbs × {pr.reps} (Est. 1RM: {pr.oneRepMax}lbs)
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            <p className="text-gray-400 mb-4">How did it feel?</p>
+                            <div className="flex gap-3 mb-6">
+                                {[1,2,3,4,5].map(n => (
+                                    <button key={n} onClick={() => setMood(n)} className={`w-12 h-12 rounded-full flex items-center justify-center text-xl transition-all ${mood === n ? 'bg-orange-500 scale-110' : 'bg-white/10'}`}>
+                                        {n === 1 ? '😫' : n === 2 ? '😕' : n === 3 ? '😐' : n === 4 ? '😊' : '🔥'}
+                                    </button>
+                                ))}
+                            </div>
+                            <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Notes (optional)" className="w-full bg-white/10 border border-white/20 rounded-xl p-3 text-white mb-6 h-24" />
+                            <button onClick={completeWorkout} disabled={completing} className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl">
+                                {completing ? 'Saving...' : 'Save Workout'}
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="fixed inset-0 bg-black z-50 flex flex-col">
+                    {/* Header */}
+                    <div className="glass p-4 flex items-center justify-between">
+                        <button onClick={onClose} className="text-gray-400 hover:text-white"><i className="fas fa-times text-xl"></i></button>
+                        <div className="text-center">
+                            <h2 className="text-white font-bold">{workout?.title || 'Workout'}</h2>
+                            <p className="text-xs text-gray-400">{progress}% complete</p>
+                        </div>
+                        <button onClick={() => setShowComplete(true)} className="text-orange-500 text-sm">Finish</button>
+                    </div>
+
+                    {/* Progress bar */}
+                    <div className="h-1 bg-white/10"><div className="h-full bg-orange-500 transition-all" style={{width: `${progress}%`}}></div></div>
+
+                    {/* PR Celebration Overlay */}
+                    {showPRCelebration && (
+                        <div className="absolute inset-0 bg-yellow-500/20 flex flex-col items-center justify-center z-20 animate-pulse">
+                            <i className="fas fa-crown text-8xl text-yellow-500 mb-4 animate-bounce"></i>
+                            <h2 className="text-3xl font-bold text-yellow-500 mb-2">NEW PR!</h2>
+                            <p className="text-xl text-white mb-2">{showPRCelebration.exerciseName}</p>
+                            <p className="text-2xl font-bold text-yellow-400">{showPRCelebration.weight}lbs × {showPRCelebration.reps}</p>
+                            <p className="text-gray-400 mt-2">Est. 1RM: {showPRCelebration.oneRepMax}lbs</p>
+                        </div>
+                    )}
+
+                    {/* Exercise Swap Modal */}
+                    {showSwapModal && (
+                        <div className="absolute inset-0 bg-black/95 flex flex-col z-30 p-4">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-white font-bold text-lg">Swap Exercise</h3>
+                                <button onClick={() => setShowSwapModal(false)} className="text-gray-400 hover:text-white">
+                                    <i className="fas fa-times text-xl"></i>
+                                </button>
+                            </div>
+                            <p className="text-gray-400 text-sm mb-4">Choose an alternative for <span className="text-orange-500">{exercise?.name}</span></p>
+                            <div className="flex-1 overflow-y-auto space-y-2">
+                                {swapAlternatives.map((alt, i) => (
+                                    <button key={i} onClick={() => swapExercise(alt.name)} className="w-full bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl p-4 text-left transition-all">
+                                        <div className="text-white font-medium">{alt.name}</div>
+                                        {alt.muscle && <div className="text-gray-400 text-sm">{alt.muscle}</div>}
+                                    </button>
+                                ))}
+                            </div>
+                            <button onClick={() => setShowSwapModal(false)} className="mt-4 w-full bg-white/10 text-gray-400 py-3 rounded-xl">Cancel</button>
+                        </div>
+                    )}
+
+                    {/* Rest Timer Overlay */}
+                    {restTimer && !showPRCelebration && (
+                        <div className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center z-10">
+                            <p className="text-gray-400 mb-2">Rest</p>
+                            <div className="text-6xl font-bold text-orange-500 mb-4">{restSeconds}s</div>
+                            <button onClick={() => { setRestTimer(null); setRestSeconds(90); }} className="text-gray-400 hover:text-white">Skip Rest</button>
+                        </div>
+                    )}
+
+                    {/* Current Exercise */}
+                    <div className="flex-1 overflow-y-auto p-4">
+                        {exercise ? (
+                            <div className="space-y-4">
+                                <div className="text-center mb-6">
+                                    <div className="flex items-center justify-center gap-2 mb-1">
+                                        <h3 className="text-xl font-bold text-white">{exercise.name}</h3>
+                                        <button onClick={() => loadAlternatives(exercise.name)} disabled={loadingAlternatives} className="text-gray-400 hover:text-orange-500 p-1">
+                                            <i className={`fas ${loadingAlternatives ? 'fa-spinner fa-spin' : 'fa-exchange-alt'}`}></i>
+                                        </button>
+                                    </div>
+                                    <p className="text-gray-400">Set {currentSet + 1} of {exercise.sets || 3}</p>
+                                    {exercise.swappedFrom && <p className="text-xs text-orange-400">Swapped from {exercise.swappedFrom}</p>}
+                                </div>
+
+                                <div className="glass rounded-2xl p-4 space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-gray-400 text-sm mb-1 block">Weight (lbs)</label>
+                                            <input type="number" value={setData.weight} onChange={e => setSetData({...setData, weight: e.target.value})} placeholder={exercise.weight || '135'} className="w-full bg-white/10 border border-white/20 rounded-xl p-3 text-white text-center text-xl" />
+                                        </div>
+                                        <div>
+                                            <label className="text-gray-400 text-sm mb-1 block">Reps</label>
+                                            <input type="number" value={setData.reps} onChange={e => setSetData({...setData, reps: e.target.value})} placeholder={exercise.reps || '10'} className="w-full bg-white/10 border border-white/20 rounded-xl p-3 text-white text-center text-xl" />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="text-gray-400 text-sm mb-2 block">RPE (1-10): {setData.rpe}</label>
+                                        <input type="range" min="1" max="10" value={setData.rpe} onChange={e => setSetData({...setData, rpe: parseInt(e.target.value)})} className="w-full accent-orange-500" />
+                                        <div className="flex justify-between text-xs text-gray-500 mt-1"><span>Easy</span><span>Max effort</span></div>
+                                    </div>
+                                </div>
+
+                                <button onClick={logSet} className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-xl text-lg">
+                                    Log Set <i className="fas fa-check ml-2"></i>
+                                </button>
+
+                                {/* Logged sets */}
+                                {exercise.actualSets?.length > 0 && (
+                                    <div className="glass rounded-xl p-3">
+                                        <p className="text-gray-400 text-sm mb-2">Logged Sets</p>
+                                        <div className="space-y-1">
+                                            {exercise.actualSets.map((s, i) => (
+                                                <div key={i} className="flex justify-between text-sm">
+                                                    <span className="text-gray-400">Set {i+1}</span>
+                                                    <span className="text-white">{s.weight}lbs × {s.reps} @ RPE {s.rpe}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="text-center py-12 text-gray-400">No exercises found</div>
+                        )}
+                    </div>
+
+                    {/* Exercise list */}
+                    <div className="glass p-3 border-t border-white/10">
+                        <div className="flex gap-2 overflow-x-auto pb-2">
+                            {exercises.map((ex, i) => (
+                                <button key={i} onClick={() => { setCurrentExercise(i); setCurrentSet(0); }} className={`flex-shrink-0 px-3 py-2 rounded-lg text-xs ${i === currentExercise ? 'bg-orange-500 text-white' : i < currentExercise ? 'bg-green-500/20 text-green-400' : 'bg-white/10 text-gray-400'}`}>
+                                    {i < currentExercise && <i className="fas fa-check mr-1"></i>}
+                                    {ex.name?.substring(0, 15)}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Check-In Modal - Daily readiness assessment
+        const CheckInModal = ({ user, onClose, onComplete }) => {
+            const [sleep, setSleep] = useState(3);
+            const [energy, setEnergy] = useState(3);
+            const [soreness, setSoreness] = useState(3);
+            const [stress, setStress] = useState(3);
+            const [weight, setWeight] = useState('');
+            const [notes, setNotes] = useState('');
+            const [submitting, setSubmitting] = useState(false);
+            const [result, setResult] = useState(null);
+            // Habit tracking
+            const [waterCups, setWaterCups] = useState(0);
+            const [sleepHours, setSleepHours] = useState('');
+            const [supplements, setSupplements] = useState({ protein: false, creatine: false, vitamins: false, preworkout: false });
+            // Progress photo
+            const [progressPhoto, setProgressPhoto] = useState(null);
+            const photoInputRef = useRef(null);
+
+            const handlePhotoCapture = (e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => setProgressPhoto(reader.result);
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            const sliders = [
+                { label: 'Sleep Quality', value: sleep, setValue: setSleep, low: 'Poor', high: 'Great', icon: 'fa-moon' },
+                { label: 'Energy Level', value: energy, setValue: setEnergy, low: 'Low', high: 'High', icon: 'fa-bolt' },
+                { label: 'Muscle Soreness', value: soreness, setValue: setSoreness, low: 'Very Sore', high: 'Fresh', icon: 'fa-dumbbell' },
+                { label: 'Stress Level', value: stress, setValue: setStress, low: 'High', high: 'Low', icon: 'fa-brain' }
+            ];
+
+            const submit = async () => {
+                setSubmitting(true);
+                try {
+                    const res = await api.post('/check-ins', {
+                        userId: user._id || user.id,
+                        sleep, energy, soreness, stress,
+                        weight: weight ? parseFloat(weight) : undefined,
+                        notes,
+                        date: new Date().toISOString().split('T')[0],
+                        // Habit tracking data
+                        habits: {
+                            waterCups,
+                            sleepHours: sleepHours ? parseFloat(sleepHours) : undefined,
+                            supplements: Object.entries(supplements).filter(([k, v]) => v).map(([k]) => k)
+                        },
+                        // Progress photo (base64)
+                        progressPhoto: progressPhoto || undefined
+                    });
+                    setResult(res);
+                } catch (err) {
+                    console.error('Check-in error:', err);
+                    setResult({ readinessScore: Math.round((sleep + energy + soreness + stress) / 4 * 20), recommendation: 'Data saved locally.' });
+                }
+                setSubmitting(false);
+            };
+
+            if (result) {
+                const score = result.readinessScore || result.data?.readinessScore || 50;
+                const getScoreColor = () => score >= 70 ? 'text-green-400' : score >= 40 ? 'text-orange-400' : 'text-red-400';
+                return (
+                    <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
+                        <div className="glass rounded-2xl p-6 w-full max-w-md text-center">
+                            <div className={`text-6xl font-bold ${getScoreColor()} mb-2`}>{score}</div>
+                            <p className="text-gray-400 mb-4">Readiness Score</p>
+                            <div className="glass rounded-xl p-4 mb-6 text-left">
+                                <p className="text-white text-sm">
+                                    {score >= 70 ? "You're ready to train hard today. Go get it." :
+                                     score >= 40 ? "Moderate readiness. Consider adjusting intensity based on how you feel during warmup." :
+                                     "Low readiness detected. Consider a lighter session or active recovery."}
+                                </p>
+                            </div>
+                            <button onClick={() => { onComplete?.(); onClose(); }} className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl">Done</button>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
+                    <div className="glass rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-bold text-white">Daily Check-In</h2>
+                            <button onClick={onClose} className="text-gray-400 hover:text-white"><i className="fas fa-times"></i></button>
+                        </div>
+
+                        <div className="space-y-5">
+                            {sliders.map(({ label, value, setValue, low, high, icon }) => (
+                                <div key={label}>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <label className="text-white text-sm flex items-center gap-2">
+                                            <i className={`fas ${icon} text-orange-500`}></i>{label}
+                                        </label>
+                                        <span className="text-orange-500 font-bold">{value}/5</span>
+                                    </div>
+                                    <input type="range" min="1" max="5" value={value} onChange={e => setValue(parseInt(e.target.value))} className="w-full accent-orange-500" />
+                                    <div className="flex justify-between text-xs text-gray-500 mt-1">
+                                        <span>{low}</span><span>{high}</span>
+                                    </div>
+                                </div>
+                            ))}
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-white text-sm mb-2 block">Weight (lbs)</label>
+                                    <input type="number" value={weight} onChange={e => setWeight(e.target.value)} placeholder="175" className="w-full bg-white/10 border border-white/20 rounded-xl p-3 text-white" />
+                                </div>
+                                <div>
+                                    <label className="text-white text-sm mb-2 block">Sleep (hrs)</label>
+                                    <input type="number" step="0.5" value={sleepHours} onChange={e => setSleepHours(e.target.value)} placeholder="7.5" className="w-full bg-white/10 border border-white/20 rounded-xl p-3 text-white" />
+                                </div>
+                            </div>
+
+                            {/* Water Intake */}
+                            <div>
+                                <label className="text-white text-sm mb-2 flex items-center gap-2">
+                                    <i className="fas fa-tint text-blue-400"></i>Water Intake
+                                </label>
+                                <div className="flex items-center gap-2">
+                                    {[1,2,3,4,5,6,7,8].map(n => (
+                                        <button key={n} onClick={() => setWaterCups(n)} className={`w-8 h-8 rounded-full flex items-center justify-center text-xs transition-all ${n <= waterCups ? 'bg-blue-500 text-white' : 'bg-white/10 text-gray-400'}`}>
+                                            <i className="fas fa-tint"></i>
+                                        </button>
+                                    ))}
+                                    <span className="text-gray-400 text-sm ml-2">{waterCups}/8 cups</span>
+                                </div>
+                            </div>
+
+                            {/* Supplements */}
+                            <div>
+                                <label className="text-white text-sm mb-2 flex items-center gap-2">
+                                    <i className="fas fa-pills text-purple-400"></i>Supplements Taken
+                                </label>
+                                <div className="flex flex-wrap gap-2">
+                                    {Object.entries({ protein: 'Protein', creatine: 'Creatine', vitamins: 'Vitamins', preworkout: 'Pre-Workout' }).map(([key, label]) => (
+                                        <button key={key} onClick={() => setSupplements(prev => ({ ...prev, [key]: !prev[key] }))} className={`px-3 py-2 rounded-lg text-sm transition-all ${supplements[key] ? 'bg-purple-500 text-white' : 'bg-white/10 text-gray-400'}`}>
+                                            {supplements[key] && <i className="fas fa-check mr-1"></i>}{label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Progress Photo */}
+                            <div>
+                                <label className="text-white text-sm mb-2 flex items-center gap-2">
+                                    <i className="fas fa-camera text-orange-400"></i>Progress Photo (optional)
+                                </label>
+                                <input type="file" accept="image/*" capture="environment" ref={photoInputRef} onChange={handlePhotoCapture} className="hidden" />
+                                {progressPhoto ? (
+                                    <div className="relative">
+                                        <img src={progressPhoto} alt="Progress" className="w-full h-48 object-cover rounded-xl" />
+                                        <button onClick={() => setProgressPhoto(null)} className="absolute top-2 right-2 w-8 h-8 bg-black/70 rounded-full flex items-center justify-center text-white hover:bg-red-500">
+                                            <i className="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button onClick={() => photoInputRef.current?.click()} className="w-full bg-white/10 border border-dashed border-white/30 rounded-xl p-6 flex flex-col items-center gap-2 hover:bg-white/15 transition-all">
+                                        <i className="fas fa-camera text-2xl text-gray-400"></i>
+                                        <span className="text-gray-400 text-sm">Tap to take photo</span>
+                                    </button>
+                                )}
+                            </div>
+
+                            <div>
+                                <label className="text-white text-sm mb-2 block">Notes (optional)</label>
+                                <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="How are you feeling today?" className="w-full bg-white/10 border border-white/20 rounded-xl p-3 text-white h-20" />
+                            </div>
+                        </div>
+
+                        <button onClick={submit} disabled={submitting} className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl mt-6">
+                            {submitting ? 'Submitting...' : 'Submit Check-In'}
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        // Subscription Modal - Stripe checkout
+        const SubscriptionModal = ({ user, onClose }) => {
+            const [loading, setLoading] = useState(false);
+            const isPro = user?.subscription?.plan === 'pro' && user?.subscription?.status === 'active';
+            const trialDaysLeft = user?.subscription?.trialEndsAt ? Math.max(0, Math.ceil((new Date(user.subscription.trialEndsAt) - new Date()) / (1000*60*60*24))) : 0;
+
+            const handleUpgrade = async () => {
+                setLoading(true);
+                try {
+                    const res = await api.post('/subscriptions/checkout', { priceType: 'monthly' });
+                    if (res.url || res.data?.url) {
+                        window.location.href = res.url || res.data.url;
+                    }
+                } catch (err) {
+                    console.error('Checkout error:', err);
+                    alert('Could not start checkout. Please try again.');
+                }
+                setLoading(false);
+            };
+
+            const handleManage = async () => {
+                setLoading(true);
+                try {
+                    const res = await api.post('/subscriptions/portal');
+                    if (res.url || res.data?.url) {
+                        window.location.href = res.url || res.data.url;
+                    }
+                } catch (err) {
+                    console.error('Portal error:', err);
+                    alert('Could not open portal. Please try again.');
+                }
+                setLoading(false);
+            };
+
+            const proFeatures = [
+                { icon: 'fa-brain', text: 'Unlimited AI coaching conversations' },
+                { icon: 'fa-calendar-alt', text: 'Full workout program generation' },
+                { icon: 'fa-utensils', text: 'Personalized meal plans' },
+                { icon: 'fa-chart-line', text: 'Advanced progress analytics' },
+                { icon: 'fa-watch', text: 'Wearable data integration' },
+                { icon: 'fa-dumbbell', text: 'Custom exercise library' }
+            ];
+
+            return (
+                <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
+                    <div className="glass rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-bold text-white">ClockWork Pro</h2>
+                            <button onClick={onClose} className="text-gray-400 hover:text-white"><i className="fas fa-times"></i></button>
+                        </div>
+
+                        {isPro ? (
+                            <div className="text-center">
+                                <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
+                                    <i className="fas fa-crown text-2xl text-green-400"></i>
+                                </div>
+                                <h3 className="text-white font-bold text-lg mb-2">You're on Pro!</h3>
+                                <p className="text-gray-400 text-sm mb-6">You have access to all premium features.</p>
+                                <button onClick={handleManage} disabled={loading} className="w-full bg-white/10 hover:bg-white/20 text-white py-3 rounded-xl transition-colors">
+                                    {loading ? 'Loading...' : 'Manage Subscription'}
+                                </button>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="text-center mb-6">
+                                    <div className="text-4xl font-bold text-white">$9.99<span className="text-lg text-gray-400">/mo</span></div>
+                                    {trialDaysLeft > 0 && <p className="text-orange-400 text-sm mt-2">{trialDaysLeft} days left in trial</p>}
+                                </div>
+
+                                <div className="space-y-3 mb-6">
+                                    {proFeatures.map(({ icon, text }) => (
+                                        <div key={text} className="flex items-center gap-3">
+                                            <i className={`fas ${icon} text-orange-500 w-5`}></i>
+                                            <span className="text-white text-sm">{text}</span>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <button onClick={handleUpgrade} disabled={loading} className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl transition-colors mb-3">
+                                    {loading ? 'Loading...' : 'Upgrade to Pro'}
+                                </button>
+                                <p className="text-center text-gray-500 text-xs">Cancel anytime. No commitment.</p>
+                            </>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
         // Home Tab
         const HomeTab = ({ user }) => {
             const [wearableData, setWearableData] = useState(null);
@@ -762,6 +1410,9 @@
             const [weeklyStats, setWeeklyStats] = useState({ workouts: 0, total: 4, streak: 0 });
             const [loading, setLoading] = useState(true);
             const [fitbitConnected, setFitbitConnected] = useState(false);
+            const [activeWorkout, setActiveWorkout] = useState(null);
+            const [showCheckIn, setShowCheckIn] = useState(false);
+            const [todayCheckIn, setTodayCheckIn] = useState(null);
             const [connecting, setConnecting] = useState(false);
             const [tipIndex, setTipIndex] = useState(0);
             const firstName = user?.name?.split(' ')[0] || 'Athlete';
@@ -794,16 +1445,18 @@
 
             const loadData = async () => {
                 try {
-                    const [calendarRes, wearableRes, connectionsRes, weekRes] = await Promise.all([
+                    const [calendarRes, wearableRes, connectionsRes, weekRes, checkInRes] = await Promise.all([
                         api.get(`/calendar/${user._id || user.id}/today`).catch(() => ({ data: [] })),
                         api.get(`/wearables/user/${user._id || user.id}?days=1`).catch(() => ({ data: [] })),
                         api.get('/wearables/connections').catch(() => ({ connections: [] })),
-                        api.get(`/calendar/${user._id || user.id}?start=${new Date(Date.now() - 7*24*60*60*1000).toISOString().split('T')[0]}&end=${new Date().toISOString().split('T')[0]}`).catch(() => ({ data: [] }))
+                        api.get(`/calendar/${user._id || user.id}?start=${new Date(Date.now() - 7*24*60*60*1000).toISOString().split('T')[0]}&end=${new Date().toISOString().split('T')[0]}`).catch(() => ({ data: [] })),
+                        api.get('/check-ins/today').catch(() => null)
                     ]);
                     const workouts = (calendarRes.data || []).filter(e => e.type === 'workout');
                     setTodayWorkout(workouts[0] || null);
                     setWearableData((wearableRes.data || [])[0] || null);
                     setFitbitConnected((connectionsRes.connections || []).some(c => c.provider === 'fitbit' && c.connected));
+                    setTodayCheckIn(checkInRes?.data || checkInRes || null);
 
                     // Calculate weekly stats
                     const weekWorkouts = (weekRes.data || []).filter(e => e.type === 'workout');
@@ -834,6 +1487,7 @@
             const getRecoveryColor = (score) => { if (!score) return '#6b7280'; if (score >= 67) return '#22c55e'; if (score >= 34) return '#f97316'; return '#ef4444'; };
 
             return (
+            <>
                 <div className="space-y-4">
                     <div className="flex items-center justify-between">
                         <div><p className="text-gray-400 text-sm">{getGreeting()}</p><h1 className="text-2xl font-bold text-white">{firstName}</h1></div>
@@ -860,6 +1514,30 @@
                                 <div className="text-xs text-gray-400">Today</div>
                             </div>
                         </div>
+                    </div>
+
+                    {/* Daily Check-In Card */}
+                    <div className="glass rounded-2xl p-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <i className={`fas ${todayCheckIn ? 'fa-check-circle text-green-500' : 'fa-clipboard-check text-orange-500'}`}></i>
+                                <h3 className="text-white font-semibold">Daily Check-In</h3>
+                            </div>
+                            {todayCheckIn && (
+                                <div className={`text-lg font-bold ${todayCheckIn.readinessScore >= 70 ? 'text-green-400' : todayCheckIn.readinessScore >= 40 ? 'text-orange-400' : 'text-red-400'}`}>
+                                    {todayCheckIn.readinessScore || '--'}
+                                </div>
+                            )}
+                        </div>
+                        {todayCheckIn ? (
+                            <p className="text-gray-400 text-sm mt-2">
+                                {todayCheckIn.readinessScore >= 70 ? "Ready to train hard" : todayCheckIn.readinessScore >= 40 ? "Moderate readiness" : "Consider recovery focus"}
+                            </p>
+                        ) : (
+                            <button onClick={() => setShowCheckIn(true)} className="w-full mt-3 bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 py-2 rounded-xl text-sm transition-colors">
+                                Complete Check-In
+                            </button>
+                        )}
                     </div>
 
                     {/* Card 2: Daily FORGE Tip */}
@@ -926,21 +1604,31 @@
 
                     {/* Recovery Ring - Show when wearable connected */}
                     {hasWearableData && (
-                        <div className="glass rounded-2xl p-5 text-center">
-                            <div className="relative w-32 h-32 mx-auto mb-3">
-                                <svg className="w-full h-full metric-ring" viewBox="0 0 100 100">
-                                    <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="8" />
-                                    <circle cx="50" cy="50" r="42" fill="none" stroke={getRecoveryColor(recoveryScore)} strokeWidth="8" strokeDasharray={`${(recoveryScore || 0) * 2.64} 264`} strokeLinecap="round" className="progress-ring ring-progress" />
-                                </svg>
-                                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                    <span className="text-3xl font-bold text-white">{recoveryScore || '--'}%</span>
-                                    <span className="text-gray-400 text-xs">Recovery</span>
+                        <div className="glass rounded-2xl p-5">
+                            <div className="flex items-start gap-4">
+                                <div className="relative w-24 h-24 flex-shrink-0">
+                                    <svg className="w-full h-full metric-ring" viewBox="0 0 100 100">
+                                        <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="8" />
+                                        <circle cx="50" cy="50" r="42" fill="none" stroke={getRecoveryColor(recoveryScore)} strokeWidth="8" strokeDasharray={`${(recoveryScore || 0) * 2.64} 264`} strokeLinecap="round" className="progress-ring ring-progress" />
+                                    </svg>
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                        <span className="text-2xl font-bold text-white">{recoveryScore || '--'}</span>
+                                        <span className="text-gray-400 text-[10px]">Recovery</span>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="grid grid-cols-3 gap-3 text-center">
-                                <div><div className="text-lg font-bold text-green-400">{sleepHours || '--'}h</div><div className="text-xs text-gray-400">Sleep</div></div>
-                                <div><div className="text-lg font-bold text-blue-400">{hrv || '--'}ms</div><div className="text-xs text-gray-400">HRV</div></div>
-                                <div><div className="text-lg font-bold text-purple-400">{restingHR || '--'}</div><div className="text-xs text-gray-400">RHR</div></div>
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <i className={`fas ${recoveryScore >= 67 ? 'fa-check-circle text-green-400' : recoveryScore >= 34 ? 'fa-exclamation-circle text-orange-400' : 'fa-times-circle text-red-400'}`}></i>
+                                        <span className="text-white font-medium text-sm">
+                                            {recoveryScore >= 67 ? 'Ready to train hard' : recoveryScore >= 34 ? 'Train with caution' : 'Prioritize recovery'}
+                                        </span>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2 text-center">
+                                        <div className="bg-white/5 rounded-lg p-2"><div className="text-sm font-bold text-green-400">{sleepHours || '--'}h</div><div className="text-[10px] text-gray-500">Sleep</div></div>
+                                        <div className="bg-white/5 rounded-lg p-2"><div className="text-sm font-bold text-blue-400">{hrv || '--'}</div><div className="text-[10px] text-gray-500">HRV</div></div>
+                                        <div className="bg-white/5 rounded-lg p-2"><div className="text-sm font-bold text-purple-400">{restingHR || '--'}</div><div className="text-[10px] text-gray-500">RHR</div></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -960,13 +1648,16 @@
                             <div>
                                 <h4 className="text-lg font-bold text-orange-500 mb-1">{todayWorkout.title}</h4>
                                 {todayWorkout.description && <p className="text-gray-400 text-sm mb-3">{todayWorkout.description.substring(0, 80)}...</p>}
-                                <button className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-2.5 rounded-xl transition-all">Start Workout</button>
+                                <button onClick={() => setActiveWorkout(todayWorkout)} className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-2.5 rounded-xl transition-all">Start Workout</button>
                             </div>
                         ) : (
                             <div className="text-center py-3"><i className="fas fa-bed text-2xl text-gray-600 mb-2"></i><h4 className="text-white font-medium text-sm">Rest Day</h4><p className="text-gray-400 text-xs">Recovery is part of the process</p></div>
                         )}
                     </div>
                 </div>
+                {activeWorkout && <WorkoutSessionModal workout={activeWorkout} onClose={() => setActiveWorkout(null)} onComplete={loadData} />}
+                {showCheckIn && <CheckInModal user={user} onClose={() => setShowCheckIn(false)} onComplete={loadData} />}
+            </>
             );
         };
 
@@ -1015,8 +1706,8 @@
                     if (!nutritionResult.error && nutritionResult.targets) {
                         message += ' + Nutrition targets set!';
                     }
-                    if (!mealPlanResult.error && mealPlanResult.mealPlan?.length > 0) {
-                        message += ` + ${mealPlanResult.mealPlan.length} meals planned!`;
+                    if (!mealPlanResult.error && mealPlanResult.data?.calendarEventsCreated) {
+                        message += ` + ${mealPlanResult.data.calendarEventsCreated} meals added to calendar!`;
                     }
 
                     setGlobalGenerateMessage({ type: 'success', text: message });
@@ -1073,7 +1764,7 @@
                                         {dayEvents.length > 0 && (
                                             <div className="flex gap-0.5 mt-0.5">
                                                 {hasWorkout && <div className={`w-1.5 h-1.5 rounded-full ${isCompleted ? 'bg-green-500' : 'bg-orange-500'}`} />}
-                                                {hasNutrition && <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
+                                                {hasNutrition && <div className="w-1.5 h-1.5 rounded-full bg-green-500" />}
                                             </div>
                                         )}
                                     </button>
@@ -1094,15 +1785,46 @@
                                                     <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${i === 0 ? 'bg-orange-500 text-white' : 'bg-white/10 text-gray-400'}`}>{i + 1}</span>
                                                     <div className="text-left">
                                                         <h4 className="text-white font-medium">{event.title}</h4>
-                                                        <span className={`text-xs ${event.type === 'workout' ? 'text-orange-400' : event.type === 'nutrition' ? 'text-blue-400' : 'text-gray-400'}`}>{event.type}</span>
+                                                        <span className={`text-xs ${event.type === 'workout' ? 'text-orange-400' : event.type === 'nutrition' ? 'text-green-400' : 'text-gray-400'}`}>{event.type === 'nutrition' && event.mealData ? event.mealData.mealType : event.type}</span>
                                                     </div>
                                                 </div>
                                                 <i className={`fas fa-chevron-${expandedEvent === i ? 'up' : 'down'} text-gray-500`}></i>
                                             </button>
-                                            {expandedEvent === i && event.description && (
+                                            {expandedEvent === i && (
                                                 <div className="px-4 pb-4 pt-0 border-t border-white/10">
-                                                    <p className="text-gray-400 text-sm mt-3">{event.description}</p>
-                                                    {event.duration && <p className="text-gray-500 text-xs mt-2"><i className="fas fa-clock mr-1"></i>{event.duration} min</p>}
+                                                    {event.type === 'nutrition' && event.mealData ? (
+                                                        <div className="mt-3">
+                                                            {event.mealData.imageUrl && (
+                                                                <img src={event.mealData.imageUrl} alt={event.title} className="w-full h-32 object-cover rounded-lg mb-3" />
+                                                            )}
+                                                            <div className="grid grid-cols-4 gap-2 text-center mb-3">
+                                                                <div className="bg-orange-500/20 rounded-lg p-2">
+                                                                    <div className="text-orange-400 font-bold text-sm">{event.mealData.calories}</div>
+                                                                    <div className="text-gray-500 text-xs">cal</div>
+                                                                </div>
+                                                                <div className="bg-blue-500/20 rounded-lg p-2">
+                                                                    <div className="text-blue-400 font-bold text-sm">{event.mealData.protein}g</div>
+                                                                    <div className="text-gray-500 text-xs">protein</div>
+                                                                </div>
+                                                                <div className="bg-green-500/20 rounded-lg p-2">
+                                                                    <div className="text-green-400 font-bold text-sm">{event.mealData.carbs}g</div>
+                                                                    <div className="text-gray-500 text-xs">carbs</div>
+                                                                </div>
+                                                                <div className="bg-purple-500/20 rounded-lg p-2">
+                                                                    <div className="text-purple-400 font-bold text-sm">{event.mealData.fat}g</div>
+                                                                    <div className="text-gray-500 text-xs">fat</div>
+                                                                </div>
+                                                            </div>
+                                                            {event.mealData.prepTime && (
+                                                                <p className="text-gray-500 text-xs"><i className="fas fa-clock mr-1"></i>{event.mealData.prepTime} min prep</p>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            {event.description && <p className="text-gray-400 text-sm mt-3">{event.description}</p>}
+                                                            {event.duration && <p className="text-gray-500 text-xs mt-2"><i className="fas fa-clock mr-1"></i>{event.duration} min</p>}
+                                                        </>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
@@ -1116,8 +1838,7 @@
 
                     <div className="flex justify-center gap-6 text-xs text-gray-400">
                         <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-orange-500" />Workout</div>
-                        <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-green-500" />Completed</div>
-                        <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500" />Nutrition</div>
+                        <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-green-500" />Meal</div>
                     </div>
                 </div>
             );
@@ -1796,6 +2517,7 @@
         // Profile Tab
         const ProfileTab = ({ user, setUser, onLogout }) => {
             const [showWearables, setShowWearables] = useState(false);
+            const [showSubscription, setShowSubscription] = useState(false);
             const [connections, setConnections] = useState([]);
             const [connecting, setConnecting] = useState(null);
 
@@ -1849,6 +2571,7 @@
             }
 
             return (
+            <>
                 <div className="space-y-6">
                     <div className="text-center">
                         <div className="w-24 h-24 rounded-full bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center mx-auto mb-4"><i className="fas fa-user text-4xl text-white"></i></div>
@@ -1877,7 +2600,7 @@
                             <div className="flex items-center gap-3"><i className="fas fa-heart-pulse text-gray-400 w-6"></i><span className="text-white">Connect Wearables</span></div>
                             <div className="flex items-center gap-2">{connections.filter(c => c.connected).length > 0 && <span className="text-green-400 text-sm">{connections.filter(c => c.connected).length} connected</span>}<i className="fas fa-chevron-right text-gray-500"></i></div>
                         </button>
-                        <button className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors"><div className="flex items-center gap-3"><i className="fas fa-credit-card text-gray-400 w-6"></i><span className="text-white">Subscription</span></div><span className="text-orange-500">{user?.subscription?.tier || 'Free'}</span></button>
+                        <button onClick={() => setShowSubscription(true)} className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors"><div className="flex items-center gap-3"><i className="fas fa-credit-card text-gray-400 w-6"></i><span className="text-white">Subscription</span></div><span className="text-orange-500">{user?.subscription?.tier || 'Free'}</span></button>
                         <button className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors"><div className="flex items-center gap-3"><i className="fas fa-bell text-gray-400 w-6"></i><span className="text-white">Notifications</span></div><i className="fas fa-chevron-right text-gray-500"></i></button>
                     </div>
 
@@ -1888,6 +2611,8 @@
                         <i className="fas fa-bolt text-orange-500/50"></i>
                     </div>
                 </div>
+                {showSubscription && <SubscriptionModal user={user} onClose={() => setShowSubscription(false)} />}
+            </>
             );
         };
 
