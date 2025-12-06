@@ -402,6 +402,8 @@
                     await api.post('/onboarding/step/2', { data: { level: data.experience, primaryDiscipline: data.goal === 'competition-prep' ? 'powerlifting' : 'general-fitness' } });
                     await api.post('/onboarding/step/3', { data: { type: data.goal } });
                     await api.post('/onboarding/step/4', { data: { daysPerWeek: data.daysPerWeek, sessionDuration: parseInt(data.sessionDuration.split('-')[0]) || 60 } });
+                    // Mark onboarding as completed
+                    await api.put('/users/profile', { onboarding: { completed: true, currentStep: 10, completedAt: new Date().toISOString() } });
                     await api.post('/onboarding/step/5', { data: { trainingLocation: data.equipment.includes('full-gym') ? 'commercial-gym' : 'home-gym', availableEquipment: data.equipment } });
                     if (data.injuries.length > 0 && !data.injuries.includes('none')) {
                         await api.post('/onboarding/step/6', { data: { injuries: data.injuries.map(injury => ({ bodyPart: injury, severity: 'moderate' })) } });
