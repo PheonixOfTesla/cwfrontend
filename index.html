@@ -330,6 +330,11 @@
             const [formData, setFormData] = useState({ name: '', email: '', password: '' });
             const [loading, setLoading] = useState(false);
             const [error, setError] = useState('');
+            // Verification state
+            const [verificationMode, setVerificationMode] = useState(false);
+            const [pendingToken, setPendingToken] = useState('');
+            const [verificationCode, setVerificationCode] = useState('');
+            const [resending, setResending] = useState(false);
 
             const handleSubmit = async (e) => {
                 e.preventDefault();
@@ -338,11 +343,75 @@
                 try {
                     const endpoint = isSignup ? '/auth/register' : '/auth/login';
                     const data = await api.post(endpoint, { ...formData, email: formData.email.toLowerCase().trim(), userType: 'individual' });
+
+                    // Check if verification is required
+                    if (data.requiresVerification) {
+                        setPendingToken(data.pendingToken);
+                        setVerificationMode(true);
+                        setLoading(false);
+                        return;
+                    }
+
                     localStorage.setItem('token', data.token);
                     onLogin(data.user);
                 } catch (err) { setError(err.message); }
                 setLoading(false);
             };
+
+            const handleVerify = async (e) => {
+                e.preventDefault();
+                setLoading(true);
+                setError('');
+                try {
+                    const data = await api.post('/auth/verify-login', { pendingToken, code: verificationCode });
+                    localStorage.setItem('token', data.token);
+                    onLogin(data.user);
+                } catch (err) { setError(err.message); setLoading(false); }
+            };
+
+            const handleResend = async () => {
+                setResending(true);
+                setError('');
+                try {
+                    const data = await api.post('/auth/resend-verification', { email: formData.email.toLowerCase().trim() });
+                    if (data.pendingToken) setPendingToken(data.pendingToken);
+                    alert('New code sent to your email!');
+                } catch (err) { setError(err.message); }
+                setResending(false);
+            };
+
+            // Verification Code Screen
+            if (verificationMode) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center p-4 lightning-container">
+                        <div className="glass rounded-3xl p-8 w-full max-w-md">
+                            <div className="text-center mb-8 flex flex-col items-center">
+                                <div className="w-16 h-16 bg-orange-500/20 rounded-full flex items-center justify-center mb-4">
+                                    <i className="fas fa-envelope text-orange-500 text-2xl"></i>
+                                </div>
+                                <h2 className="text-xl font-bold text-white">Check Your Email</h2>
+                                <p className="text-gray-400 text-sm mt-2">We sent a 6-digit code to<br/><span className="text-orange-400">{formData.email}</span></p>
+                            </div>
+                            {error && <div className="bg-red-500/20 border border-red-500/50 text-red-400 px-4 py-3 rounded-xl mb-4">{error}</div>}
+                            <form onSubmit={handleVerify} className="space-y-4">
+                                <input type="text" placeholder="Enter 6-digit code" value={verificationCode} onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-4 text-white text-center text-2xl tracking-widest placeholder-gray-500 focus:border-orange-500 focus:outline-none" maxLength={6} autoComplete="one-time-code" required />
+                                <button type="submit" disabled={loading || verificationCode.length !== 6} className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl transition-all disabled:opacity-50 glow">
+                                    {loading ? 'Verifying...' : 'Verify & Sign In'}
+                                </button>
+                            </form>
+                            <div className="mt-6 text-center space-y-3">
+                                <button onClick={handleResend} disabled={resending} className="text-orange-400 hover:text-orange-300 transition-colors disabled:opacity-50">
+                                    {resending ? 'Sending...' : "Didn't receive code? Resend"}
+                                </button>
+                                <br/>
+                                <button onClick={() => { setVerificationMode(false); setPendingToken(''); setVerificationCode(''); setError(''); }} className="text-gray-400 hover:text-white transition-colors text-sm">
+                                    <i className="fas fa-arrow-left mr-2"></i>Back to login
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
 
             return (
                 <div className="min-h-screen flex items-center justify-center p-4 lightning-container">
