@@ -1367,13 +1367,19 @@
             const handleUpgrade = async () => {
                 setLoading(true);
                 try {
-                    const res = await api.post('/subscriptions/checkout', { priceType: 'monthly' });
+                    const res = await api.post('/subscriptions/checkout', {
+                        priceKey: 'pro_monthly',
+                        successUrl: window.location.origin + '?success=true',
+                        cancelUrl: window.location.origin + '?canceled=true'
+                    });
                     if (res.url || res.data?.url) {
                         window.location.href = res.url || res.data.url;
+                    } else {
+                        throw new Error('No checkout URL returned');
                     }
                 } catch (err) {
                     console.error('Checkout error:', err);
-                    alert('Could not start checkout. Please try again.');
+                    alert(err.message || 'Could not start checkout. Please try again.');
                 }
                 setLoading(false);
             };
