@@ -125,6 +125,40 @@
             animation: tick 1s steps(1) infinite;
             transform-origin: bottom center;
         }
+
+        /* HEPHAESTUS FORGE ANIMATIONS */
+        @keyframes forge-hammer {
+            0%, 100% { transform: rotate(-20deg); }
+            50% { transform: rotate(20deg); }
+        }
+        @keyframes forge-sparks {
+            0% { opacity: 1; transform: scale(1) translateY(0); }
+            100% { opacity: 0; transform: scale(1.5) translateY(-15px); }
+        }
+        @keyframes forge-glow {
+            0%, 100% { filter: drop-shadow(0 0 5px #f97316) brightness(1); }
+            50% { filter: drop-shadow(0 0 15px #f97316) drop-shadow(0 0 25px #ff6600) brightness(1.3); }
+        }
+        @keyframes anvil-shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-2px); }
+            75% { transform: translateX(2px); }
+        }
+        .forge-hammering {
+            animation: forge-hammer 0.25s ease-in-out infinite;
+            display: inline-block;
+            transform-origin: 70% 70%;
+        }
+        .forge-spark {
+            animation: forge-sparks 0.6s ease-out forwards;
+            display: inline-block;
+        }
+        .forge-glowing {
+            animation: forge-glow 1s ease-in-out infinite;
+        }
+        .forge-anvil {
+            animation: anvil-shake 0.1s ease-in-out infinite;
+        }
     </style>
 </head>
 <body>
@@ -646,11 +680,13 @@
         // Main App
         const MainApp = ({ user, setUser, onLogout }) => {
             const [activeTab, setActiveTab] = useState('home');
+            const [globalGenerating, setGlobalGenerating] = useState(false);
+            const [globalGenerateMessage, setGlobalGenerateMessage] = useState(null);
 
             const renderContent = () => {
                 switch(activeTab) {
                     case 'home': return <HomeTab user={user} />;
-                    case 'calendar': return <CalendarTab user={user} />;
+                    case 'calendar': return <CalendarTab user={user} globalGenerating={globalGenerating} setGlobalGenerating={setGlobalGenerating} setGlobalGenerateMessage={setGlobalGenerateMessage} />;
                     case 'forge': return <ForgeTab user={user} />;
                     case 'exercises': return <ExercisesTab user={user} />;
                     case 'profile': return <ProfileTab user={user} setUser={setUser} onLogout={onLogout} />;
@@ -660,7 +696,29 @@
 
             return (
                 <div className="min-h-screen pb-20">
-                    <div className="max-w-lg mx-auto px-4 py-6">{renderContent()}</div>
+                    {/* Global FORGE Generation Banner */}
+                    {globalGenerating && (
+                        <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-orange-600 via-red-500 to-orange-600 p-3 z-50 shadow-lg">
+                            <div className="flex items-center justify-center gap-3">
+                                <span className="text-2xl forge-hammering">🔨</span>
+                                <span className="text-white font-bold forge-glowing">FORGE is crafting your program...</span>
+                                <div className="flex gap-1">
+                                    <span className="forge-spark text-yellow-300" style={{animationDelay: '0s'}}>✨</span>
+                                    <span className="forge-spark text-yellow-300" style={{animationDelay: '0.2s'}}>✨</span>
+                                    <span className="forge-spark text-yellow-300" style={{animationDelay: '0.4s'}}>✨</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    {globalGenerateMessage && !globalGenerating && (
+                        <div className={`fixed top-0 left-0 right-0 p-3 z-50 ${globalGenerateMessage.type === 'success' ? 'bg-green-600' : globalGenerateMessage.type === 'error' ? 'bg-red-600' : 'bg-blue-600'}`}>
+                            <div className="flex items-center justify-center gap-2">
+                                <i className={`fas ${globalGenerateMessage.type === 'success' ? 'fa-check-circle' : globalGenerateMessage.type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'} text-white`}></i>
+                                <span className="text-white font-medium">{globalGenerateMessage.text}</span>
+                            </div>
+                        </div>
+                    )}
+                    <div className={`max-w-lg mx-auto px-4 py-6 ${globalGenerating || globalGenerateMessage ? 'pt-16' : ''}`}>{renderContent()}</div>
                     <nav className="fixed bottom-0 left-0 right-0 glass-dark border-t border-white/10">
                         <div className="max-w-lg mx-auto flex justify-around py-2">
                             {[
@@ -685,24 +743,56 @@
         const HomeTab = ({ user }) => {
             const [wearableData, setWearableData] = useState(null);
             const [todayWorkout, setTodayWorkout] = useState(null);
+            const [weeklyStats, setWeeklyStats] = useState({ workouts: 0, total: 4, streak: 0 });
             const [loading, setLoading] = useState(true);
             const [fitbitConnected, setFitbitConnected] = useState(false);
             const [connecting, setConnecting] = useState(false);
+            const [tipIndex, setTipIndex] = useState(0);
             const firstName = user?.name?.split(' ')[0] || 'Athlete';
 
-            useEffect(() => { loadData(); }, []);
+            // FORGE Tips - rotating daily tips
+            const forgeTips = [
+                "Progressive overload doesn't mean adding weight every session. Adding a rep or improving form counts too.",
+                "Sleep is where gains are made. Aim for 7-9 hours. Your muscles recover and grow during deep sleep.",
+                "Deload weeks aren't weakness - they're strategy. Every 4-6 weeks, reduce volume to come back stronger.",
+                "The best program is the one you'll actually do consistently. Adherence beats optimization.",
+                "Track your lifts. What gets measured gets managed. You can't improve what you don't track.",
+                "Recovery isn't passive. Prioritize mobility work, hydration, and nutrition on rest days.",
+                "RPE 8 means 2 reps left in the tank. Learn to auto-regulate based on daily readiness.",
+                "Compound movements first, isolation work second. Build the foundation before the details."
+            ];
+
+            // Featured exercises with muscle groups
+            const featuredExercises = [
+                { name: 'Romanian Deadlift', muscles: 'Hamstrings, Glutes, Lower Back', icon: 'fa-dumbbell' },
+                { name: 'Incline Dumbbell Press', muscles: 'Upper Chest, Front Delts', icon: 'fa-dumbbell' },
+                { name: 'Bulgarian Split Squat', muscles: 'Quads, Glutes, Balance', icon: 'fa-person-walking' },
+                { name: 'Barbell Row', muscles: 'Lats, Rhomboids, Biceps', icon: 'fa-weight-hanging' },
+                { name: 'Face Pulls', muscles: 'Rear Delts, Rotator Cuff', icon: 'fa-hands' },
+                { name: 'Hip Thrust', muscles: 'Glutes, Hamstrings', icon: 'fa-fire' }
+            ];
+
+            const todayExercise = featuredExercises[new Date().getDay() % featuredExercises.length];
+
+            useEffect(() => { loadData(); setTipIndex(Math.floor(Math.random() * forgeTips.length)); }, []);
 
             const loadData = async () => {
                 try {
-                    const [calendarRes, wearableRes, connectionsRes] = await Promise.all([
+                    const [calendarRes, wearableRes, connectionsRes, weekRes] = await Promise.all([
                         api.get(`/calendar/${user._id || user.id}/today`).catch(() => ({ data: [] })),
                         api.get(`/wearables/user/${user._id || user.id}?days=1`).catch(() => ({ data: [] })),
-                        api.get('/wearables/connections').catch(() => ({ connections: [] }))
+                        api.get('/wearables/connections').catch(() => ({ connections: [] })),
+                        api.get(`/calendar/${user._id || user.id}?start=${new Date(Date.now() - 7*24*60*60*1000).toISOString().split('T')[0]}&end=${new Date().toISOString().split('T')[0]}`).catch(() => ({ data: [] }))
                     ]);
                     const workouts = (calendarRes.data || []).filter(e => e.type === 'workout');
                     setTodayWorkout(workouts[0] || null);
                     setWearableData((wearableRes.data || [])[0] || null);
                     setFitbitConnected((connectionsRes.connections || []).some(c => c.provider === 'fitbit' && c.connected));
+
+                    // Calculate weekly stats
+                    const weekWorkouts = (weekRes.data || []).filter(e => e.type === 'workout');
+                    const completedWorkouts = weekWorkouts.filter(e => e.status === 'completed').length;
+                    setWeeklyStats({ workouts: completedWorkouts, total: weekWorkouts.length || 4, streak: completedWorkouts });
                 } catch (err) { console.error('Load error:', err); }
                 setLoading(false);
             };
@@ -716,9 +806,10 @@
                 setConnecting(false);
             };
 
+            const refreshTip = () => setTipIndex((tipIndex + 1) % forgeTips.length);
+
             const hasWearableData = wearableData !== null;
             const recoveryScore = wearableData?.recoveryScore;
-            const strain = wearableData?.trainingLoad;
             const sleepHours = wearableData?.sleepDuration ? (wearableData.sleepDuration / 60).toFixed(1) : null;
             const hrv = wearableData?.hrv;
             const restingHR = wearableData?.restingHeartRate;
@@ -727,10 +818,85 @@
             const getRecoveryColor = (score) => { if (!score) return '#6b7280'; if (score >= 67) return '#22c55e'; if (score >= 34) return '#f97316'; return '#ef4444'; };
 
             return (
-                <div className="space-y-6">
+                <div className="space-y-4">
                     <div className="flex items-center justify-between">
                         <div><p className="text-gray-400 text-sm">{getGreeting()}</p><h1 className="text-2xl font-bold text-white">{firstName}</h1></div>
                         <div className="text-right text-sm text-gray-400">{new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
+                    </div>
+
+                    {/* Card 1: Quick Stats */}
+                    <div className="glass rounded-2xl p-4">
+                        <div className="flex items-center gap-2 mb-3">
+                            <i className="fas fa-chart-line text-orange-500"></i>
+                            <h3 className="text-white font-semibold">This Week</h3>
+                        </div>
+                        <div className="grid grid-cols-3 gap-3 text-center">
+                            <div className="bg-white/5 rounded-xl p-3">
+                                <div className="text-2xl font-bold text-orange-500">{weeklyStats.workouts}/{weeklyStats.total}</div>
+                                <div className="text-xs text-gray-400">Workouts</div>
+                            </div>
+                            <div className="bg-white/5 rounded-xl p-3">
+                                <div className="text-2xl font-bold text-green-400">{weeklyStats.streak}</div>
+                                <div className="text-xs text-gray-400">Day Streak</div>
+                            </div>
+                            <div className="bg-white/5 rounded-xl p-3">
+                                <div className="text-2xl font-bold text-blue-400">{todayWorkout ? '1' : '0'}</div>
+                                <div className="text-xs text-gray-400">Today</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Card 2: Daily FORGE Tip */}
+                    <div className="glass rounded-2xl p-4">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                                <i className="fas fa-lightbulb text-yellow-500"></i>
+                                <h3 className="text-white font-semibold">FORGE Tip</h3>
+                            </div>
+                            <button onClick={refreshTip} className="text-gray-400 hover:text-orange-500 transition-colors">
+                                <i className="fas fa-sync-alt text-sm"></i>
+                            </button>
+                        </div>
+                        <p className="text-gray-300 text-sm leading-relaxed">"{forgeTips[tipIndex]}"</p>
+                    </div>
+
+                    {/* Card 3: Featured Exercise */}
+                    <div className="glass rounded-2xl p-4">
+                        <div className="flex items-center gap-2 mb-3">
+                            <i className="fas fa-bullseye text-purple-500"></i>
+                            <h3 className="text-white font-semibold">Exercise Spotlight</h3>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                                <i className={`fas ${todayExercise.icon} text-white text-2xl`}></i>
+                            </div>
+                            <div className="flex-1">
+                                <h4 className="text-white font-bold">{todayExercise.name}</h4>
+                                <p className="text-gray-400 text-sm">{todayExercise.muscles}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Card 4: Nutrition Corner */}
+                    <div className="glass rounded-2xl p-4">
+                        <div className="flex items-center gap-2 mb-3">
+                            <i className="fas fa-utensils text-green-500"></i>
+                            <h3 className="text-white font-semibold">Fuel Up</h3>
+                        </div>
+                        <div className="space-y-2 text-sm">
+                            <div className="flex items-start gap-2">
+                                <span className="text-orange-500">Pre:</span>
+                                <span className="text-gray-300">Banana + coffee (30 min before)</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                                <span className="text-green-500">Post:</span>
+                                <span className="text-gray-300">Protein + carbs within 1 hour</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-blue-400">
+                                <i className="fas fa-tint"></i>
+                                <span>Aim for 3L water today</span>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Fitbit Connect Banner */}
@@ -742,59 +908,46 @@
                         </button>
                     )}
 
-                    {/* Recovery Ring */}
-                    <div className="glass rounded-3xl p-6 text-center">
-                        {hasWearableData ? (
-                            <>
-                                <div className="relative w-40 h-40 mx-auto mb-4">
-                                    <svg className="w-full h-full metric-ring" viewBox="0 0 100 100">
-                                        <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="8" />
-                                        <circle cx="50" cy="50" r="42" fill="none" stroke={getRecoveryColor(recoveryScore)} strokeWidth="8" strokeDasharray={`${(recoveryScore || 0) * 2.64} 264`} strokeLinecap="round" className="progress-ring ring-progress" />
-                                    </svg>
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                        <span className="text-4xl font-bold text-white">{recoveryScore || '--'}%</span>
-                                        <span className="text-gray-400 text-sm">Recovery</span>
-                                    </div>
+                    {/* Recovery Ring - Show when wearable connected */}
+                    {hasWearableData && (
+                        <div className="glass rounded-2xl p-5 text-center">
+                            <div className="relative w-32 h-32 mx-auto mb-3">
+                                <svg className="w-full h-full metric-ring" viewBox="0 0 100 100">
+                                    <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="8" />
+                                    <circle cx="50" cy="50" r="42" fill="none" stroke={getRecoveryColor(recoveryScore)} strokeWidth="8" strokeDasharray={`${(recoveryScore || 0) * 2.64} 264`} strokeLinecap="round" className="progress-ring ring-progress" />
+                                </svg>
+                                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                    <span className="text-3xl font-bold text-white">{recoveryScore || '--'}%</span>
+                                    <span className="text-gray-400 text-xs">Recovery</span>
                                 </div>
-                                <div className="grid grid-cols-3 gap-4 text-center">
-                                    <div><div className="text-lg font-bold text-green-400">{sleepHours || '--'}h</div><div className="text-xs text-gray-400">Sleep</div></div>
-                                    <div><div className="text-lg font-bold text-blue-400">{hrv || '--'}ms</div><div className="text-xs text-gray-400">HRV</div></div>
-                                    <div><div className="text-lg font-bold text-purple-400">{restingHR || '--'}</div><div className="text-xs text-gray-400">RHR</div></div>
-                                </div>
-                            </>
-                        ) : (
-                            <div className="py-8">
-                                <i className="fas fa-heart-pulse text-4xl text-gray-600 mb-4"></i>
-                                <p className="text-gray-400">Connect a wearable to see recovery data</p>
                             </div>
-                        )}
-                    </div>
-
-                    {/* Strain */}
-                    {hasWearableData && strain !== undefined && (
-                        <div className="glass rounded-2xl p-5">
-                            <div className="flex items-center justify-between mb-3"><h3 className="text-white font-semibold">Today's Strain</h3><span className="text-orange-500 font-bold text-xl">{strain?.toFixed(1) || '--'}</span></div>
-                            <div className="h-2 bg-white/10 rounded-full overflow-hidden"><div className="h-full bg-gradient-to-r from-blue-500 via-orange-500 to-red-500 rounded-full transition-all" style={{ width: `${((strain || 0) / 21) * 100}%` }} /></div>
-                            <div className="flex justify-between text-xs text-gray-500 mt-1"><span>0</span><span>Light</span><span>Moderate</span><span>High</span><span>21</span></div>
+                            <div className="grid grid-cols-3 gap-3 text-center">
+                                <div><div className="text-lg font-bold text-green-400">{sleepHours || '--'}h</div><div className="text-xs text-gray-400">Sleep</div></div>
+                                <div><div className="text-lg font-bold text-blue-400">{hrv || '--'}ms</div><div className="text-xs text-gray-400">HRV</div></div>
+                                <div><div className="text-lg font-bold text-purple-400">{restingHR || '--'}</div><div className="text-xs text-gray-400">RHR</div></div>
+                            </div>
                         </div>
                     )}
 
                     {/* Today's Workout */}
-                    <div className="glass rounded-2xl p-5">
-                        <div className="flex items-center justify-between mb-4"><h3 className="text-white font-semibold">Today's Workout</h3>{todayWorkout && <span className="text-xs text-orange-500 bg-orange-500/20 px-2 py-1 rounded-full">Scheduled</span>}</div>
+                    <div className="glass rounded-2xl p-4">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                                <i className="fas fa-dumbbell text-orange-500"></i>
+                                <h3 className="text-white font-semibold">Today's Workout</h3>
+                            </div>
+                            {todayWorkout && <span className="text-xs text-orange-500 bg-orange-500/20 px-2 py-1 rounded-full">Scheduled</span>}
+                        </div>
                         {loading ? (
-                            <div className="text-center py-4"><div className="animate-pulse text-gray-400">Loading...</div></div>
+                            <div className="text-center py-3"><div className="animate-pulse text-gray-400">Loading...</div></div>
                         ) : todayWorkout ? (
                             <div>
-                                <h4 className="text-xl font-bold text-orange-500 mb-2">{todayWorkout.title}</h4>
-                                {todayWorkout.description && <p className="text-gray-400 text-sm mb-4">{todayWorkout.description.substring(0, 100)}...</p>}
-                                <div className="flex items-center gap-4 text-sm text-gray-400 mb-4">
-                                    <span><i className="fas fa-clock mr-1"></i>{todayWorkout.duration || 60} min</span>
-                                </div>
-                                <button className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl transition-all">Start Workout</button>
+                                <h4 className="text-lg font-bold text-orange-500 mb-1">{todayWorkout.title}</h4>
+                                {todayWorkout.description && <p className="text-gray-400 text-sm mb-3">{todayWorkout.description.substring(0, 80)}...</p>}
+                                <button className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-2.5 rounded-xl transition-all">Start Workout</button>
                             </div>
                         ) : (
-                            <div className="text-center py-4"><i className="fas fa-bed text-3xl text-gray-600 mb-2"></i><h4 className="text-white font-medium">Rest Day</h4><p className="text-gray-400 text-sm">Recovery is part of the process</p></div>
+                            <div className="text-center py-3"><i className="fas fa-bed text-2xl text-gray-600 mb-2"></i><h4 className="text-white font-medium text-sm">Rest Day</h4><p className="text-gray-400 text-xs">Recovery is part of the process</p></div>
                         )}
                     </div>
                 </div>
@@ -802,13 +955,11 @@
         };
 
         // Calendar Tab
-        const CalendarTab = ({ user }) => {
+        const CalendarTab = ({ user, globalGenerating, setGlobalGenerating, setGlobalGenerateMessage }) => {
             const [currentDate, setCurrentDate] = useState(new Date());
             const [events, setEvents] = useState([]);
             const [selectedDate, setSelectedDate] = useState(null);
             const [expandedEvent, setExpandedEvent] = useState(null);
-            const [generating, setGenerating] = useState(false);
-            const [generateMessage, setGenerateMessage] = useState(null);
 
             useEffect(() => { loadEvents(); }, [currentDate]);
 
@@ -833,36 +984,29 @@
             const sortedEvents = [...selectedDayEvents].sort((a, b) => { const priority = { workout: 1, nutrition: 2, 'rest-day': 3 }; return (priority[a.type] || 4) - (priority[b.type] || 4); });
 
             const generateMonth = async () => {
-                if (generating) return;
-                setGenerating(true);
-                setGenerateMessage({ type: 'info', text: 'FORGE is generating your program...' });
+                if (globalGenerating) return;
+                setGlobalGenerating(true);
                 try {
                     const result = await api.post('/calendar/generate-month', { startDate: new Date().toISOString().split('T')[0] });
-                    setGenerateMessage({ type: 'success', text: result.message || 'Program generated!' });
+                    setGlobalGenerateMessage({ type: 'success', text: result.message || 'Program generated!' });
                     await loadEvents();
-                    setTimeout(() => setGenerateMessage(null), 3000);
+                    setTimeout(() => setGlobalGenerateMessage(null), 4000);
                 } catch (err) {
                     console.error('Generate month error:', err);
-                    setGenerateMessage({ type: 'error', text: err.message || 'Failed to generate. Please try again.' });
-                    setTimeout(() => setGenerateMessage(null), 5000);
+                    setGlobalGenerateMessage({ type: 'error', text: err.message || 'Failed to generate. Please try again.' });
+                    setTimeout(() => setGlobalGenerateMessage(null), 5000);
                 } finally {
-                    setGenerating(false);
+                    setGlobalGenerating(false);
                 }
             };
 
             return (
                 <div className="space-y-6">
-                    {generateMessage && (
-                        <div className={`p-4 rounded-xl flex items-center gap-3 ${generateMessage.type === 'success' ? 'bg-green-500/20 border border-green-500/30 text-green-400' : generateMessage.type === 'error' ? 'bg-red-500/20 border border-red-500/30 text-red-400' : 'bg-orange-500/20 border border-orange-500/30 text-orange-400'}`}>
-                            <i className={`fas ${generateMessage.type === 'success' ? 'fa-check-circle' : generateMessage.type === 'error' ? 'fa-exclamation-circle' : 'fa-spinner fa-spin'}`}></i>
-                            <span>{generateMessage.text}</span>
-                        </div>
-                    )}
                     <div className="flex items-center justify-between">
                         <h1 className="text-2xl font-bold text-white">Calendar</h1>
-                        <button onClick={generateMonth} disabled={generating} className={`text-sm px-3 py-1.5 rounded-lg flex items-center gap-2 ${generating ? 'bg-gray-500/20 text-gray-400 cursor-not-allowed' : 'bg-orange-500/20 text-orange-500 hover:bg-orange-500/30'}`}>
-                            <i className={`fas ${generating ? 'fa-spinner fa-spin' : 'fa-fire'}`}></i>
-                            {generating ? 'FORGE Working...' : 'FORGE Generate'}
+                        <button onClick={generateMonth} disabled={globalGenerating} className={`text-sm px-3 py-1.5 rounded-lg flex items-center gap-2 ${globalGenerating ? 'bg-gray-500/20 text-gray-400 cursor-not-allowed' : 'bg-orange-500/20 text-orange-500 hover:bg-orange-500/30'}`}>
+                            <i className={`fas ${globalGenerating ? 'fa-spinner fa-spin' : 'fa-hammer'}`}></i>
+                            {globalGenerating ? 'Forging...' : 'FORGE'}
                         </button>
                     </div>
 
