@@ -1087,7 +1087,7 @@
                 setLoading(true);
 
                 try {
-                    const data = await api.post('/ai-coach/ask', { message: userMessage });
+                    const data = await api.post('/ai-coach/ask', { question: userMessage });
                     setMessages(prev => [...prev, {
                         role: 'assistant',
                         content: data.answer || data.response || 'I had trouble processing that. Try rephrasing?'
