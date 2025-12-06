@@ -391,6 +391,24 @@
             const nextStep = () => setStep(s => Math.min(s + 1, totalSteps));
             const prevStep = () => setStep(s => Math.max(s - 1, 1));
 
+            // Check if user has existing profile data (has done onboarding before)
+            const hasExistingData = user?.trainingPreferences?.daysPerWeek || user?.primaryGoal?.type || user?.physicalProfile?.currentWeight;
+
+            // Skip onboarding for returning users
+            const skipOnboarding = async () => {
+                setGenerating(true);
+                try {
+                    await api.put('/users/profile', { onboarding: { completed: true, currentStep: 10, completedAt: new Date().toISOString() } });
+                    onboardingStorage.clear();
+                    const userData = await api.get('/users/profile');
+                    onComplete(userData.user || userData.data || userData);
+                } catch (err) {
+                    console.error('Skip onboarding error:', err);
+                    const userData = await api.get('/users/profile');
+                    onComplete(userData.user || userData.data || userData);
+                }
+            };
+
             const completeOnboarding = async () => {
                 setGenerating(true);
                 try {
@@ -440,7 +458,7 @@
 
             const renderStep = () => {
                 switch(step) {
-                    case 1: return <StepWelcome onNext={nextStep} />;
+                    case 1: return <StepWelcome onNext={nextStep} onSkip={skipOnboarding} hasExistingData={hasExistingData} />;
                     case 2: return <StepBasicInfo data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />;
                     case 3: return <StepCompetitionLevel data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />;
                     case 4: return <StepGoal data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />;
@@ -462,7 +480,7 @@
             );
         };
 
-        const StepWelcome = ({ onNext }) => (
+        const StepWelcome = ({ onNext, onSkip, hasExistingData }) => (
             <div className="text-center max-w-md lightning-container">
                 <div className="mb-6">
                     <i className="fas fa-bolt text-8xl text-orange-500 lightning-icon"></i>
@@ -473,6 +491,11 @@
                 </div>
                 <p className="text-gray-400 text-lg mb-8">Elite-level coaching that adapts to YOU</p>
                 <button onClick={onNext} className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 px-12 rounded-xl text-lg transition-all glow">Get Started</button>
+                {hasExistingData && (
+                    <button onClick={onSkip} className="block w-full mt-4 text-gray-400 hover:text-orange-500 transition-colors text-sm">
+                        Already set up? Skip to App →
+                    </button>
+                )}
             </div>
         );
 
