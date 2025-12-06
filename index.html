@@ -745,7 +745,7 @@
             const renderContent = () => {
                 switch(activeTab) {
                     case 'home': return <HomeTab user={user} />;
-                    case 'calendar': return <CalendarTab user={user} globalGenerating={globalGenerating} setGlobalGenerating={setGlobalGenerating} setGlobalGenerateMessage={setGlobalGenerateMessage} />;
+                    case 'calendar': return <CalendarTab user={user} globalGenerating={globalGenerating} setGlobalGenerating={setGlobalGenerating} setGlobalGenerateMessage={setGlobalGenerateMessage} setActiveTab={setActiveTab} />;
                     case 'forge': return <ForgeTab user={user} />;
                     case 'kitchen': return <KitchenTab user={user} />;
                     case 'exercises': return <ExercisesTab user={user} />;
@@ -1706,11 +1706,12 @@
         };
 
         // Calendar Tab
-        const CalendarTab = ({ user, globalGenerating, setGlobalGenerating, setGlobalGenerateMessage }) => {
+        const CalendarTab = ({ user, globalGenerating, setGlobalGenerating, setGlobalGenerateMessage, setActiveTab }) => {
             const [currentDate, setCurrentDate] = useState(new Date());
             const [events, setEvents] = useState([]);
             const [selectedDate, setSelectedDate] = useState(null);
             const [expandedEvent, setExpandedEvent] = useState(null);
+            const [activeWorkout, setActiveWorkout] = useState(null);
 
             useEffect(() => { loadEvents(); }, [currentDate]);
 
@@ -1784,7 +1785,7 @@
                 runGeneration();
             };
 
-            return (
+            return (<>
                 <div className="space-y-6">
                     <div className="flex items-center justify-between">
                         <h1 className="text-2xl font-bold text-white">Calendar</h1>
@@ -1870,6 +1871,51 @@
                                                                 <p className="text-gray-500 text-xs"><i className="fas fa-clock mr-1"></i>{event.mealData.prepTime} min prep</p>
                                                             )}
                                                         </div>
+                                                    ) : event.type === 'workout' ? (
+                                                        <div className="mt-3 space-y-3">
+                                                            {event.duration && <p className="text-gray-500 text-xs mb-2"><i className="fas fa-clock mr-1"></i>{event.duration} min</p>}
+                                                            {/* Show exercises if available */}
+                                                            {event.exercises?.length > 0 ? (
+                                                                <div className="space-y-2">
+                                                                    {event.exercises.map((ex, j) => (
+                                                                        <div key={j} className="bg-white/5 rounded-lg p-3 flex items-center justify-between">
+                                                                            <div className="flex-1">
+                                                                                <div className="text-white font-medium text-sm">{ex.name || ex.exercise}</div>
+                                                                                <div className="text-orange-400 text-xs mt-1">
+                                                                                    {ex.sets && <span>{ex.sets} sets</span>}
+                                                                                    {ex.reps && <span> × {ex.reps}</span>}
+                                                                                    {ex.rest && <span className="text-gray-500 ml-2">({ex.rest} rest)</span>}
+                                                                                </div>
+                                                                                {ex.notes && <div className="text-gray-500 text-xs mt-1 italic">{ex.notes}</div>}
+                                                                            </div>
+                                                                            <button onClick={() => { setActiveTab('exercises'); setExerciseSearch && setExerciseSearch(ex.name || ex.exercise); }} className="text-orange-500 hover:text-orange-400 p-2" title="View in Library">
+                                                                                <i className="fas fa-external-link-alt text-xs"></i>
+                                                                            </button>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            ) : event.description ? (
+                                                                <div className="space-y-2">
+                                                                    {event.description.split('\n').filter(l => l.trim()).map((line, j) => (
+                                                                        <div key={j} className="bg-white/5 rounded-lg p-3 flex items-center justify-between">
+                                                                            <span className="text-gray-300 text-sm">{line.replace(/^[-•]\s*/, '')}</span>
+                                                                            <button onClick={() => { setActiveTab('exercises'); }} className="text-orange-500 hover:text-orange-400 p-2" title="View in Library">
+                                                                                <i className="fas fa-external-link-alt text-xs"></i>
+                                                                            </button>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            ) : null}
+                                                            {/* Start Workout button */}
+                                                            {!event.completed && (
+                                                                <button onClick={() => setActiveWorkout(event)} className="w-full mt-3 bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2">
+                                                                    <i className="fas fa-play"></i> Start Workout
+                                                                </button>
+                                                            )}
+                                                            {event.completed && (
+                                                                <div className="text-green-500 text-sm text-center mt-2"><i className="fas fa-check-circle mr-1"></i>Completed</div>
+                                                            )}
+                                                        </div>
                                                     ) : (
                                                         <>
                                                             {event.description && <p className="text-gray-400 text-sm mt-3">{event.description}</p>}
@@ -1892,6 +1938,8 @@
                         <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-green-500" />Meal</div>
                     </div>
                 </div>
+                {activeWorkout && <WorkoutSessionModal workout={activeWorkout} onClose={() => setActiveWorkout(null)} onComplete={loadEvents} />}
+            </>
             );
         };
 
