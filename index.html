@@ -169,20 +169,35 @@
 
         const API_URL = 'https://cwbackend-production-314e.up.railway.app/api';
 
+        const API_TIMEOUT = 30000; // 30 second timeout
+
         const api = {
             async fetch(endpoint, options = {}) {
-                const token = localStorage.getItem('token');
-                const response = await fetch(`${API_URL}${endpoint}`, {
-                    ...options,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...(token && { 'Authorization': `Bearer ${token}` }),
-                        ...options.headers
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
+
+                try {
+                    const token = localStorage.getItem('token');
+                    const response = await fetch(`${API_URL}${endpoint}`, {
+                        ...options,
+                        signal: controller.signal,
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(token && { 'Authorization': `Bearer ${token}` }),
+                            ...options.headers
+                        }
+                    });
+                    clearTimeout(timeoutId);
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.message || 'Request failed');
+                    return data;
+                } catch (err) {
+                    clearTimeout(timeoutId);
+                    if (err.name === 'AbortError') {
+                        throw new Error('Request timed out. Please check your connection and try again.');
                     }
-                });
-                const data = await response.json();
-                if (!response.ok) throw new Error(data.message || 'Request failed');
-                return data;
+                    throw err;
+                }
             },
             get: (endpoint) => api.fetch(endpoint),
             post: (endpoint, body) => api.fetch(endpoint, { method: 'POST', body: JSON.stringify(body) }),
@@ -1120,7 +1135,8 @@
             const messagesEndRef = useRef(null);
 
             useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
-            useEffect(() => { chatStorage.set(messages); }, [messages]);
+            // Limit chat history to 50 messages to prevent localStorage overflow
+            useEffect(() => { chatStorage.set(messages.slice(-50)); }, [messages]);
 
             const sendMessage = async () => {
                 if (!input.trim() || loading) return;
@@ -1221,6 +1237,7 @@
         const ExercisesTab = ({ user }) => {
             const [exercises, setExercises] = useState([]);
             const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(null);
             const [search, setSearch] = useState('');
             const [selectedMuscle, setSelectedMuscle] = useState('');
             const [muscles, setMuscles] = useState([]);
@@ -1233,20 +1250,29 @@
                 loadStats();
             }, []);
 
+            // Debounced search to prevent API spam on every keystroke
             useEffect(() => {
-                if (search || selectedMuscle) {
-                    searchExercises();
-                } else {
-                    loadExercises();
-                }
+                const debounceTimer = setTimeout(() => {
+                    if (search || selectedMuscle) {
+                        searchExercises();
+                    } else {
+                        loadExercises();
+                    }
+                }, 300); // 300ms debounce
+
+                return () => clearTimeout(debounceTimer);
             }, [search, selectedMuscle]);
 
             const loadExercises = async () => {
                 setLoading(true);
+                setError(null);
                 try {
                     const data = await api.get('/exercises/videos?limit=30&hasVideo=true');
                     setExercises(data.exercises || []);
-                } catch (err) { console.error('Load exercises error:', err); }
+                } catch (err) {
+                    console.error('Load exercises error:', err);
+                    setError(err.message || 'Failed to load exercises');
+                }
                 setLoading(false);
             };
 
@@ -1266,13 +1292,17 @@
 
             const searchExercises = async () => {
                 setLoading(true);
+                setError(null);
                 try {
                     let url = '/exercises/videos?limit=50&hasVideo=true';
                     if (selectedMuscle) url = `/exercises/videos/muscle/${selectedMuscle}`;
                     else if (search) url = `/exercises/videos/search?q=${encodeURIComponent(search)}`;
                     const data = await api.get(url);
                     setExercises(data.exercises || []);
-                } catch (err) { console.error('Search error:', err); }
+                } catch (err) {
+                    console.error('Search error:', err);
+                    setError(err.message || 'Failed to search exercises');
+                }
                 setLoading(false);
             };
 
@@ -1396,7 +1426,27 @@
 
                     {/* Exercise List */}
                     {loading ? (
-                        <div className="text-center py-12"><i className="fas fa-spinner fa-spin text-orange-500 text-2xl"></i></div>
+                        <div className="space-y-2">
+                            {[1,2,3,4,5].map(i => (
+                                <div key={i} className="glass rounded-xl p-4 animate-pulse">
+                                    <div className="flex gap-4">
+                                        <div className="w-16 h-16 rounded-lg bg-white/10"></div>
+                                        <div className="flex-1 space-y-2">
+                                            <div className="h-4 bg-white/10 rounded w-3/4"></div>
+                                            <div className="h-3 bg-white/10 rounded w-1/2"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : error ? (
+                        <div className="text-center py-12">
+                            <i className="fas fa-exclamation-triangle text-red-500 text-3xl mb-3"></i>
+                            <p className="text-red-400 mb-4">{error}</p>
+                            <button onClick={loadExercises} className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors">
+                                <i className="fas fa-redo mr-2"></i>Try Again
+                            </button>
+                        </div>
                     ) : exercises.length === 0 ? (
                         <div className="text-center py-12 text-gray-400">No exercises found</div>
                     ) : (
@@ -1426,6 +1476,7 @@
 
             const loadNutrition = async () => {
                 setLoading(true);
+                setError(null);
                 try {
                     const data = await api.get('/nutrition/me');
                     if (data.targets) setTargets(data.targets);
@@ -1433,7 +1484,10 @@
                     if (data.todayLog) setTodayLog(data.todayLog);
                 } catch (err) {
                     console.error('Load nutrition error:', err);
-                    // If no targets, that's ok - user needs to generate them
+                    // Only show error if it's a timeout or network issue, not a 404 (no data yet)
+                    if (err.message?.includes('timeout') || err.message?.includes('network')) {
+                        setError(err.message || 'Failed to load nutrition data');
+                    }
                 }
                 setLoading(false);
             };
@@ -1551,8 +1605,11 @@
                     </div>
 
                     {error && (
-                        <div className="bg-red-500/20 border border-red-500/30 rounded-xl p-3 text-red-400 text-sm">
-                            {error}
+                        <div className="bg-red-500/20 border border-red-500/30 rounded-xl p-4 flex items-center justify-between">
+                            <span className="text-red-400 text-sm">{error}</span>
+                            <button onClick={loadNutrition} className="px-3 py-1 bg-orange-500 text-white rounded-lg text-sm hover:bg-orange-600 transition-colors">
+                                <i className="fas fa-redo mr-1"></i>Retry
+                            </button>
                         </div>
                     )}
 
