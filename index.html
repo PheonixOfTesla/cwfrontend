@@ -391,44 +391,33 @@
                 setResending(false);
             };
 
-            // Forgot Password - Request Reset Code (Email or SMS)
+            // Forgot Password - Request Reset Code via SMS
             const handleForgotPassword = async (e) => {
                 e.preventDefault();
                 setLoading(true);
                 setError('');
                 try {
-                    if (resetMethod === 'sms') {
-                        await api.post('/auth/reset-password-sms', { phone: phoneForReset.replace(/\D/g, '') });
-                        setResetCodeMode(true);
-                        setSuccess('Reset code sent via SMS!');
-                    } else {
-                        await api.post('/auth/reset-password', { email: formData.email.toLowerCase().trim() });
-                        setResetCodeMode(true);
-                        setSuccess('Reset code sent to your email!');
-                    }
+                    await api.post('/auth/reset-password-sms', { phone: phoneForReset.replace(/\D/g, '') });
+                    setResetCodeMode(true);
+                    setSuccess('Reset code sent to your phone!');
                 } catch (err) { setError(err.message); }
                 setLoading(false);
             };
 
-            // Reset Password with Code (Email or SMS)
+            // Reset Password with SMS Code
             const handleResetPassword = async (e) => {
                 e.preventDefault();
                 if (newPassword.length < 6) { setError('Password must be at least 6 characters'); return; }
                 setLoading(true);
                 setError('');
                 try {
-                    if (resetMethod === 'sms') {
-                        await api.post('/auth/reset-password-sms/verify', { phone: phoneForReset.replace(/\D/g, ''), code: resetCode, newPassword });
-                    } else {
-                        await api.put(`/auth/reset-password/${resetCode}`, { password: newPassword, email: formData.email });
-                    }
+                    await api.post('/auth/reset-password-sms/verify', { phone: phoneForReset.replace(/\D/g, ''), code: resetCode, newPassword });
                     setSuccess('Password reset successful! You can now login.');
                     setForgotPasswordMode(false);
                     setResetCodeMode(false);
                     setResetCode('');
                     setNewPassword('');
                     setPhoneForReset('');
-                    setResetMethod('email');
                 } catch (err) { setError(err.message); }
                 setLoading(false);
             };
@@ -480,39 +469,26 @@
                 );
             }
 
-            // Forgot Password Screen
+            // Forgot Password Screen (Phone Only)
             if (forgotPasswordMode) {
                 return (
                     <div className="min-h-screen flex items-center justify-center p-4 lightning-container">
                         <div className="glass rounded-3xl p-8 w-full max-w-md">
                             <div className="text-center mb-8 flex flex-col items-center">
                                 <div className="w-16 h-16 bg-orange-500/20 rounded-full flex items-center justify-center mb-4">
-                                    <i className={`fas ${resetMethod === 'sms' ? 'fa-mobile-alt' : 'fa-envelope'} text-orange-500 text-2xl`}></i>
+                                    <i className="fas fa-mobile-alt text-orange-500 text-2xl"></i>
                                 </div>
                                 <h2 className="text-xl font-bold text-white">{resetCodeMode ? 'Reset Password' : 'Forgot Password'}</h2>
-                                <p className="text-gray-400 text-sm mt-2">{resetCodeMode ? `Enter the code from your ${resetMethod === 'sms' ? 'phone' : 'email'} and new password` : 'Choose how to receive your reset code'}</p>
+                                <p className="text-gray-400 text-sm mt-2">{resetCodeMode ? 'Enter the code sent to your phone' : 'Enter your phone number to receive a reset code'}</p>
                             </div>
                             {error && <div className="bg-red-500/20 border border-red-500/50 text-red-400 px-4 py-3 rounded-xl mb-4">{error}</div>}
                             {success && <div className="bg-green-500/20 border border-green-500/50 text-green-400 px-4 py-3 rounded-xl mb-4">{success}</div>}
 
                             {!resetCodeMode ? (
                                 <form onSubmit={handleForgotPassword} className="space-y-4">
-                                    {/* Email/SMS Toggle */}
-                                    <div className="flex gap-2 mb-4">
-                                        <button type="button" onClick={() => setResetMethod('email')} className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-all ${resetMethod === 'email' ? 'bg-orange-500 text-white' : 'bg-white/10 text-gray-400 hover:bg-white/20'}`}>
-                                            <i className="fas fa-envelope mr-2"></i>Email
-                                        </button>
-                                        <button type="button" onClick={() => setResetMethod('sms')} className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-all ${resetMethod === 'sms' ? 'bg-orange-500 text-white' : 'bg-white/10 text-gray-400 hover:bg-white/20'}`}>
-                                            <i className="fas fa-mobile-alt mr-2"></i>SMS
-                                        </button>
-                                    </div>
-                                    {resetMethod === 'email' ? (
-                                        <input type="email" placeholder="Email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" required />
-                                    ) : (
-                                        <input type="tel" placeholder="Phone Number" value={phoneForReset} onChange={(e) => setPhoneForReset(e.target.value.replace(/[^\d+\-() ]/g, ''))} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" required />
-                                    )}
+                                    <input type="tel" placeholder="Phone Number" value={phoneForReset} onChange={(e) => setPhoneForReset(e.target.value.replace(/[^\d+\-() ]/g, ''))} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" required />
                                     <button type="submit" disabled={loading} className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl transition-all disabled:opacity-50 glow">
-                                        {loading ? 'Sending...' : `Send Code via ${resetMethod === 'sms' ? 'SMS' : 'Email'}`}
+                                        {loading ? 'Sending...' : 'Send Reset Code'}
                                     </button>
                                 </form>
                             ) : (
