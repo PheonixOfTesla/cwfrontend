@@ -144,6 +144,19 @@
             25% { transform: translateX(-2px); }
             75% { transform: translateX(2px); }
         }
+        /* CONFETTI ANIMATION */
+        @keyframes confetti-fall {
+            0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+        .animate-confetti { animation: confetti-fall linear forwards; }
+        @keyframes bounce-in {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-bounce-in { animation: bounce-in 0.5s ease-out forwards; }
+
         .forge-hammering {
             animation: forge-hammer 0.25s ease-in-out infinite;
             display: inline-block;
@@ -916,6 +929,490 @@
                 <button onClick={onComplete} className="w-full mt-4 text-gray-400 hover:text-white transition-colors">Skip</button>
             </div>
         );
+
+        // ═══════════════════════════════════════════════════════════
+        // GOD TIER ONBOARDING - NEW PERSONALIZATION SCREENS
+        // ═══════════════════════════════════════════════════════════
+
+        const StepCompetitionPrep = ({ data, updateData, onNext, onBack }) => {
+            const federations = ['USAPL', 'USPA', 'IPF', 'WRPF', 'RPS', 'SPF', 'Other'];
+            const weightClasses = data.gender === 'male'
+                ? ['59kg', '66kg', '74kg', '83kg', '93kg', '105kg', '120kg', '120kg+']
+                : ['47kg', '52kg', '57kg', '63kg', '69kg', '76kg', '84kg', '84kg+'];
+
+            return (
+                <div className="w-full max-w-md">
+                    <div className="flex items-center gap-3 mb-4">
+                        <i className="fas fa-trophy text-3xl text-orange-500"></i>
+                        <div>
+                            <h2 className="text-2xl font-bold text-white">Competition Prep</h2>
+                            <p className="text-gray-400">Tell us about your upcoming meet</p>
+                        </div>
+                    </div>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="text-gray-400 text-sm">Meet Date</label>
+                            <input type="date" value={data.meetDate || ''} onChange={(e) => updateData('meetDate', e.target.value)} className="w-full mt-1 bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:outline-none" />
+                        </div>
+                        <div>
+                            <label className="text-gray-400 text-sm">Federation</label>
+                            <select value={data.federation || ''} onChange={(e) => updateData('federation', e.target.value)} className="w-full mt-1 bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:outline-none">
+                                <option value="">Select federation</option>
+                                {federations.map(f => <option key={f} value={f}>{f}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="text-gray-400 text-sm">Target Weight Class</label>
+                            <select value={data.targetWeightClass || ''} onChange={(e) => updateData('targetWeightClass', e.target.value)} className="w-full mt-1 bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:outline-none">
+                                <option value="">Select weight class</option>
+                                {weightClasses.map(w => <option key={w} value={w}>{w}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="text-gray-400 text-sm">Weigh-in Type</label>
+                            <div className="grid grid-cols-3 gap-2 mt-1">
+                                {['2-hour', '24-hour', 'same-day'].map(type => (
+                                    <button key={type} onClick={() => updateData('weighInType', type)} className={`p-3 rounded-xl text-sm transition-all ${data.weighInType === type ? 'bg-orange-500 text-white' : 'bg-white/10 text-gray-400 border border-white/20'}`}>
+                                        {type}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex gap-3 mt-8">
+                        <button onClick={onBack} className="flex-1 border border-white/20 text-white py-3 rounded-xl hover:bg-white/10">Back</button>
+                        <button onClick={onNext} className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl glow">Continue</button>
+                    </div>
+                    <button onClick={onNext} className="w-full mt-4 text-gray-400 hover:text-white transition-colors text-sm">Skip for now</button>
+                </div>
+            );
+        };
+
+        const StepBodyComposition = ({ data, updateData, onNext, onBack }) => {
+            const goals = [
+                { id: 'aggressive-cut', label: 'Aggressive Cut', desc: '1.5-2 lbs/week', icon: 'fa-fire' },
+                { id: 'moderate-cut', label: 'Moderate Cut', desc: '1 lb/week', icon: 'fa-arrow-down' },
+                { id: 'slow-cut', label: 'Slow Cut', desc: '0.5 lbs/week', icon: 'fa-minus' },
+                { id: 'maintain', label: 'Maintain', desc: 'Stay same weight', icon: 'fa-balance-scale' },
+                { id: 'lean-bulk', label: 'Lean Bulk', desc: '0.5-1 lb/week', icon: 'fa-arrow-up' },
+                { id: 'bulk', label: 'Bulk', desc: '1-2 lbs/week', icon: 'fa-plus' }
+            ];
+            const weightDiff = data.weight && data.targetWeight ? (parseFloat(data.weight) - parseFloat(data.targetWeight)).toFixed(1) : null;
+
+            return (
+                <div className="w-full max-w-md">
+                    <div className="flex items-center gap-3 mb-4">
+                        <i className="fas fa-weight text-3xl text-orange-500"></i>
+                        <div>
+                            <h2 className="text-2xl font-bold text-white">Body Composition</h2>
+                            <p className="text-gray-400">Your physique goals</p>
+                        </div>
+                    </div>
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-gray-400 text-sm">Current Weight</label>
+                                <input type="number" value={data.weight || ''} onChange={(e) => updateData('weight', e.target.value)} placeholder="195" className="w-full mt-1 bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:outline-none" />
+                            </div>
+                            <div>
+                                <label className="text-gray-400 text-sm">Target Weight</label>
+                                <input type="number" value={data.targetWeight || ''} onChange={(e) => updateData('targetWeight', e.target.value)} placeholder="183" className="w-full mt-1 bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:outline-none" />
+                            </div>
+                        </div>
+                        {weightDiff && weightDiff !== '0.0' && (
+                            <div className={`text-center py-2 rounded-xl ${parseFloat(weightDiff) > 0 ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}`}>
+                                {parseFloat(weightDiff) > 0 ? `Need to lose ${weightDiff} lbs` : `Need to gain ${Math.abs(parseFloat(weightDiff))} lbs`}
+                            </div>
+                        )}
+                        <div>
+                            <label className="text-gray-400 text-sm mb-2 block">Weight Goal Strategy</label>
+                            <div className="grid grid-cols-2 gap-2">
+                                {goals.map(goal => (
+                                    <button key={goal.id} onClick={() => updateData('bodyCompGoal', goal.id)} className={`flex items-center gap-2 p-3 rounded-xl text-sm transition-all ${data.bodyCompGoal === goal.id ? 'bg-orange-500 text-white' : 'bg-white/10 text-gray-400 border border-white/20'}`}>
+                                        <i className={`fas ${goal.icon}`}></i>
+                                        <div className="text-left">
+                                            <div className="font-medium">{goal.label}</div>
+                                            <div className="text-xs opacity-70">{goal.desc}</div>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex gap-3 mt-8">
+                        <button onClick={onBack} className="flex-1 border border-white/20 text-white py-3 rounded-xl hover:bg-white/10">Back</button>
+                        <button onClick={onNext} className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl glow">Continue</button>
+                    </div>
+                </div>
+            );
+        };
+
+        const StepExercisePreferences = ({ data, updateData, toggleArrayItem, onNext, onBack }) => {
+            const cardioOptions = [
+                { id: 'none', label: 'No Cardio', icon: 'fa-ban' },
+                { id: 'liss', label: 'LISS', desc: 'Walking, cycling', icon: 'fa-walking' },
+                { id: 'hiit', label: 'HIIT', desc: 'Intervals', icon: 'fa-bolt' },
+                { id: 'sports', label: 'Sports', desc: 'Basketball, etc.', icon: 'fa-basketball' },
+                { id: 'mixed', label: 'Mixed', desc: 'Variety', icon: 'fa-random' }
+            ];
+            const splitOptions = [
+                { id: 'full-body', label: 'Full Body' },
+                { id: 'upper-lower', label: 'Upper/Lower' },
+                { id: 'ppl', label: 'Push/Pull/Legs' },
+                { id: 'bro-split', label: 'Bro Split' },
+                { id: 'ai-decides', label: 'Let AI Decide' }
+            ];
+
+            return (
+                <div className="w-full max-w-md">
+                    <div className="flex items-center gap-3 mb-4">
+                        <i className="fas fa-dumbbell text-3xl text-orange-500"></i>
+                        <div>
+                            <h2 className="text-2xl font-bold text-white">Exercise Preferences</h2>
+                            <p className="text-gray-400">What do you love (or hate)?</p>
+                        </div>
+                    </div>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="text-gray-400 text-sm">Favorite Exercises (comma separated)</label>
+                            <input type="text" value={data.favoriteExercises || ''} onChange={(e) => updateData('favoriteExercises', e.target.value)} placeholder="Squat, Romanian Deadlift, Dips" className="w-full mt-1 bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:outline-none" />
+                        </div>
+                        <div>
+                            <label className="text-gray-400 text-sm">Exercises to Avoid (comma separated)</label>
+                            <input type="text" value={data.hatedExercises || ''} onChange={(e) => updateData('hatedExercises', e.target.value)} placeholder="Leg extensions, Burpees" className="w-full mt-1 bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:outline-none" />
+                        </div>
+                        <div>
+                            <label className="text-gray-400 text-sm mb-2 block">Cardio Preference</label>
+                            <div className="grid grid-cols-3 gap-2">
+                                {cardioOptions.map(opt => (
+                                    <button key={opt.id} onClick={() => updateData('cardioPreference', opt.id)} className={`flex flex-col items-center gap-1 p-3 rounded-xl text-sm transition-all ${data.cardioPreference === opt.id ? 'bg-orange-500 text-white' : 'bg-white/10 text-gray-400 border border-white/20'}`}>
+                                        <i className={`fas ${opt.icon}`}></i>
+                                        <span>{opt.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-gray-400 text-sm mb-2 block">Preferred Split</label>
+                            <div className="flex flex-wrap gap-2">
+                                {splitOptions.map(opt => (
+                                    <button key={opt.id} onClick={() => updateData('preferredSplit', opt.id)} className={`px-4 py-2 rounded-xl text-sm transition-all ${data.preferredSplit === opt.id ? 'bg-orange-500 text-white' : 'bg-white/10 text-gray-400 border border-white/20'}`}>
+                                        {opt.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex gap-3 mt-8">
+                        <button onClick={onBack} className="flex-1 border border-white/20 text-white py-3 rounded-xl hover:bg-white/10">Back</button>
+                        <button onClick={onNext} className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl glow">Continue</button>
+                    </div>
+                </div>
+            );
+        };
+
+        const StepDietaryPreferences = ({ data, updateData, onNext, onBack }) => {
+            const dietTypes = [
+                { id: 'flexible', label: 'Flexible', icon: 'fa-utensils' },
+                { id: 'omnivore', label: 'Omnivore', icon: 'fa-drumstick-bite' },
+                { id: 'vegetarian', label: 'Vegetarian', icon: 'fa-leaf' },
+                { id: 'vegan', label: 'Vegan', icon: 'fa-seedling' },
+                { id: 'keto', label: 'Keto', icon: 'fa-bacon' },
+                { id: 'mediterranean', label: 'Mediterranean', icon: 'fa-fish' },
+                { id: 'halal', label: 'Halal', icon: 'fa-moon' },
+                { id: 'kosher', label: 'Kosher', icon: 'fa-star-of-david' }
+            ];
+            const cookingSkills = [
+                { id: 'none', label: 'Takeout Only', icon: 'fa-truck' },
+                { id: 'basic', label: 'Basic', icon: 'fa-egg' },
+                { id: 'intermediate', label: 'Intermediate', icon: 'fa-blender' },
+                { id: 'advanced', label: 'Chef Mode', icon: 'fa-hat-chef' }
+            ];
+
+            return (
+                <div className="w-full max-w-md">
+                    <div className="flex items-center gap-3 mb-4">
+                        <i className="fas fa-utensils text-3xl text-orange-500"></i>
+                        <div>
+                            <h2 className="text-2xl font-bold text-white">Dietary Preferences</h2>
+                            <p className="text-gray-400">For personalized nutrition</p>
+                        </div>
+                    </div>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="text-gray-400 text-sm mb-2 block">Diet Type</label>
+                            <div className="grid grid-cols-4 gap-2">
+                                {dietTypes.map(diet => (
+                                    <button key={diet.id} onClick={() => updateData('dietType', diet.id)} className={`flex flex-col items-center gap-1 p-3 rounded-xl text-xs transition-all ${data.dietType === diet.id ? 'bg-orange-500 text-white' : 'bg-white/10 text-gray-400 border border-white/20'}`}>
+                                        <i className={`fas ${diet.icon} text-lg`}></i>
+                                        <span>{diet.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-gray-400 text-sm">Allergies (comma separated)</label>
+                            <input type="text" value={data.allergies || ''} onChange={(e) => updateData('allergies', e.target.value)} placeholder="Nuts, Dairy, Gluten" className="w-full mt-1 bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:outline-none" />
+                        </div>
+                        <div>
+                            <label className="text-gray-400 text-sm mb-2 block">Cooking Skill</label>
+                            <div className="grid grid-cols-4 gap-2">
+                                {cookingSkills.map(skill => (
+                                    <button key={skill.id} onClick={() => updateData('cookingSkill', skill.id)} className={`flex flex-col items-center gap-1 p-3 rounded-xl text-xs transition-all ${data.cookingSkill === skill.id ? 'bg-orange-500 text-white' : 'bg-white/10 text-gray-400 border border-white/20'}`}>
+                                        <i className={`fas ${skill.icon} text-lg`}></i>
+                                        <span>{skill.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-gray-400 text-sm">Meals Per Day</label>
+                            <div className="flex gap-2 mt-1">
+                                {[2, 3, 4, 5, 6].map(n => (
+                                    <button key={n} onClick={() => updateData('mealsPerDay', n)} className={`flex-1 py-3 rounded-xl text-center transition-all ${data.mealsPerDay === n ? 'bg-orange-500 text-white' : 'bg-white/10 text-gray-400 border border-white/20'}`}>
+                                        {n}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex gap-3 mt-8">
+                        <button onClick={onBack} className="flex-1 border border-white/20 text-white py-3 rounded-xl hover:bg-white/10">Back</button>
+                        <button onClick={onNext} className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl glow">Continue</button>
+                    </div>
+                </div>
+            );
+        };
+
+        const StepLifestyle = ({ data, updateData, onNext, onBack }) => {
+            const jobTypes = [
+                { id: 'sedentary', label: 'Desk Job', icon: 'fa-computer' },
+                { id: 'lightly-active', label: 'Light Active', icon: 'fa-person-walking' },
+                { id: 'moderately-active', label: 'Moderate', icon: 'fa-person-running' },
+                { id: 'very-active', label: 'Very Active', icon: 'fa-person-digging' }
+            ];
+            const stressLevels = [
+                { id: 'low', label: 'Low', color: 'green' },
+                { id: 'moderate', label: 'Moderate', color: 'yellow' },
+                { id: 'high', label: 'High', color: 'orange' },
+                { id: 'very-high', label: 'Very High', color: 'red' }
+            ];
+
+            return (
+                <div className="w-full max-w-md">
+                    <div className="flex items-center gap-3 mb-4">
+                        <i className="fas fa-heart-pulse text-3xl text-orange-500"></i>
+                        <div>
+                            <h2 className="text-2xl font-bold text-white">Lifestyle Factors</h2>
+                            <p className="text-gray-400">Affects your recovery capacity</p>
+                        </div>
+                    </div>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="text-gray-400 text-sm mb-2 block">Job Activity Level</label>
+                            <div className="grid grid-cols-4 gap-2">
+                                {jobTypes.map(job => (
+                                    <button key={job.id} onClick={() => updateData('jobType', job.id)} className={`flex flex-col items-center gap-1 p-3 rounded-xl text-xs transition-all ${data.jobType === job.id ? 'bg-orange-500 text-white' : 'bg-white/10 text-gray-400 border border-white/20'}`}>
+                                        <i className={`fas ${job.icon} text-lg`}></i>
+                                        <span>{job.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-gray-400 text-sm mb-2 block">Stress Level</label>
+                            <div className="grid grid-cols-4 gap-2">
+                                {stressLevels.map(stress => (
+                                    <button key={stress.id} onClick={() => updateData('stressLevel', stress.id)} className={`py-3 rounded-xl text-sm transition-all ${data.stressLevel === stress.id ? `bg-${stress.color}-500 text-white` : 'bg-white/10 text-gray-400 border border-white/20'}`}>
+                                        {stress.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-gray-400 text-sm">Avg Sleep (hrs)</label>
+                                <input type="number" step="0.5" value={data.sleepHours || ''} onChange={(e) => updateData('sleepHours', e.target.value)} placeholder="7" className="w-full mt-1 bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:outline-none" />
+                            </div>
+                            <div>
+                                <label className="text-gray-400 text-sm">Sleep Quality</label>
+                                <select value={data.sleepQuality || ''} onChange={(e) => updateData('sleepQuality', e.target.value)} className="w-full mt-1 bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:outline-none">
+                                    <option value="">Select</option>
+                                    <option value="poor">Poor</option>
+                                    <option value="fair">Fair</option>
+                                    <option value="good">Good</option>
+                                    <option value="excellent">Excellent</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-gray-400 text-sm">Other Activities/Hobbies (comma separated)</label>
+                            <input type="text" value={data.hobbies || ''} onChange={(e) => updateData('hobbies', e.target.value)} placeholder="Basketball, Hiking, Swimming" className="w-full mt-1 bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:outline-none" />
+                        </div>
+                    </div>
+                    <div className="flex gap-3 mt-8">
+                        <button onClick={onBack} className="flex-1 border border-white/20 text-white py-3 rounded-xl hover:bg-white/10">Back</button>
+                        <button onClick={onNext} className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl glow">Continue</button>
+                    </div>
+                </div>
+            );
+        };
+
+        // ═══════════════════════════════════════════════════════════
+        // HABITS TAB - GOD TIER HABIT TRACKING
+        // ═══════════════════════════════════════════════════════════
+
+        const HabitsTab = ({ user }) => {
+            const [habits, setHabits] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [weekData, setWeekData] = useState(null);
+
+            useEffect(() => {
+                loadHabits();
+            }, []);
+
+            const loadHabits = async () => {
+                try {
+                    const [todayRes, weeklyRes] = await Promise.all([
+                        api.get('/habits/today'),
+                        api.get('/habits/weekly')
+                    ]);
+                    setHabits(todayRes.habits || []);
+                    setWeekData(weeklyRes);
+                } catch (err) {
+                    console.error('Load habits error:', err);
+                }
+                setLoading(false);
+            };
+
+            const toggleHabit = async (habitId) => {
+                try {
+                    const res = await api.post(`/habits/${habitId}/toggle`);
+                    setHabits(prev => prev.map(h => h._id === habitId ? { ...h, completedToday: res.completed, currentStreak: res.streak } : h));
+                } catch (err) {
+                    console.error('Toggle habit error:', err);
+                }
+            };
+
+            if (loading) {
+                return <div className="flex items-center justify-center py-12"><div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div></div>;
+            }
+
+            return (
+                <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                        <h1 className="text-2xl font-bold text-white">Daily Habits</h1>
+                        <div className="text-sm text-gray-400">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</div>
+                    </div>
+
+                    {/* Weekly Progress */}
+                    {weekData && (
+                        <div className="glass rounded-2xl p-4">
+                            <div className="flex items-center justify-between mb-3">
+                                <span className="text-gray-400 text-sm">This Week</span>
+                                <span className="text-orange-500 font-bold">{weekData.summary?.weeklyPercentage || 0}%</span>
+                            </div>
+                            <div className="flex gap-1">
+                                {weekData.weekData?.map((day, i) => (
+                                    <div key={i} className="flex-1 text-center">
+                                        <div className={`h-8 rounded-lg mb-1 flex items-end justify-center ${day.percentage >= 100 ? 'bg-green-500' : day.percentage >= 50 ? 'bg-orange-500' : day.percentage > 0 ? 'bg-orange-500/30' : 'bg-white/10'}`}>
+                                            <div className="text-xs text-white font-medium pb-1">{day.percentage > 0 ? `${day.percentage}%` : ''}</div>
+                                        </div>
+                                        <div className="text-xs text-gray-500">{day.dayName}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Today's Habits */}
+                    <div className="space-y-3">
+                        {habits.length === 0 ? (
+                            <div className="glass rounded-2xl p-8 text-center">
+                                <i className="fas fa-check-circle text-4xl text-gray-600 mb-3"></i>
+                                <p className="text-gray-400">No habits set up yet</p>
+                                <button className="mt-4 bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-xl">Add Habits</button>
+                            </div>
+                        ) : (
+                            habits.map(habit => (
+                                <button key={habit._id} onClick={() => toggleHabit(habit._id)} className={`w-full flex items-center gap-4 p-4 rounded-xl border transition-all ${habit.completedToday ? 'bg-green-500/20 border-green-500/50' : 'bg-white/5 border-white/20 hover:bg-white/10'}`}>
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${habit.completedToday ? 'bg-green-500' : 'bg-white/10'}`}>
+                                        {habit.completedToday ? <i className="fas fa-check text-white"></i> : <i className={`fas fa-${habit.icon || 'check-circle'} text-gray-400`}></i>}
+                                    </div>
+                                    <div className="flex-1 text-left">
+                                        <div className={`font-medium ${habit.completedToday ? 'text-green-400' : 'text-white'}`}>{habit.name}</div>
+                                        {habit.description && <div className="text-xs text-gray-500">{habit.description}</div>}
+                                    </div>
+                                    {habit.currentStreak > 0 && (
+                                        <div className="flex items-center gap-1 text-orange-500">
+                                            <i className="fas fa-fire text-sm"></i>
+                                            <span className="text-sm font-bold">{habit.currentStreak}</span>
+                                        </div>
+                                    )}
+                                </button>
+                            ))
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        // ═══════════════════════════════════════════════════════════
+        // PR CELEBRATION WITH CONFETTI
+        // ═══════════════════════════════════════════════════════════
+
+        const PRCelebration = ({ pr, onClose }) => {
+            const [confetti, setConfetti] = useState([]);
+
+            useEffect(() => {
+                // Generate confetti particles
+                const particles = [];
+                for (let i = 0; i < 50; i++) {
+                    particles.push({
+                        id: i,
+                        x: Math.random() * 100,
+                        delay: Math.random() * 2,
+                        duration: 2 + Math.random() * 2,
+                        color: ['#f97316', '#eab308', '#22c55e', '#3b82f6', '#a855f7'][Math.floor(Math.random() * 5)]
+                    });
+                }
+                setConfetti(particles);
+
+                // Auto-close after 4 seconds
+                const timer = setTimeout(onClose, 4000);
+                return () => clearTimeout(timer);
+            }, []);
+
+            return (
+                <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center" onClick={onClose}>
+                    {/* Confetti */}
+                    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                        {confetti.map(p => (
+                            <div key={p.id} className="absolute w-3 h-3 rounded-full animate-confetti" style={{
+                                left: `${p.x}%`,
+                                backgroundColor: p.color,
+                                animationDelay: `${p.delay}s`,
+                                animationDuration: `${p.duration}s`
+                            }} />
+                        ))}
+                    </div>
+
+                    {/* PR Card */}
+                    <div className="glass rounded-3xl p-8 text-center max-w-sm mx-4 animate-bounce-in">
+                        <div className="text-6xl mb-4 animate-pulse">🏆</div>
+                        <h2 className="text-3xl font-black text-yellow-500 mb-2">NEW PR!</h2>
+                        <p className="text-xl text-white font-bold mb-1">{pr.exerciseName}</p>
+                        <p className="text-3xl text-orange-500 font-black">{pr.weight}lbs × {pr.reps}</p>
+                        <p className="text-gray-400 mt-2">Est. 1RM: {pr.oneRepMax}lbs</p>
+                        {pr.improvement && (
+                            <div className="mt-4 bg-green-500/20 text-green-400 px-4 py-2 rounded-xl inline-block">
+                                <i className="fas fa-arrow-up mr-2"></i>+{pr.improvement}lbs ({pr.improvementPercent}%)
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
 
         // Main App
         const MainApp = ({ user, setUser, onLogout }) => {
@@ -2984,6 +3481,45 @@
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
+    </script>
+
+    <!-- PWA SERVICE WORKER REGISTRATION -->
+    <script>
+        // Register service worker for PWA functionality
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', async () => {
+                try {
+                    const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+                    console.log('ServiceWorker registered:', registration.scope);
+
+                    // Check for updates
+                    registration.addEventListener('updatefound', () => {
+                        const newWorker = registration.installing;
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                console.log('New version available! Refresh to update.');
+                            }
+                        });
+                    });
+                } catch (error) {
+                    console.log('ServiceWorker registration failed:', error);
+                }
+            });
+        }
+
+        // Handle PWA install prompt
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            console.log('PWA install available');
+        });
+
+        // Handle successful install
+        window.addEventListener('appinstalled', () => {
+            deferredPrompt = null;
+            console.log('PWA installed successfully');
+        });
     </script>
 </body>
 </html>
