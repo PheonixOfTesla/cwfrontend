@@ -327,7 +327,7 @@
 
         const AuthScreen = ({ onLogin }) => {
             const [isSignup, setIsSignup] = useState(false);
-            const [formData, setFormData] = useState({ name: '', email: '', password: '', phone: '' });
+            const [formData, setFormData] = useState({ name: '', email: '', password: '', confirmPassword: '', phone: '' });
             const [loading, setLoading] = useState(false);
             const [error, setError] = useState('');
             const [success, setSuccess] = useState('');
@@ -348,9 +348,15 @@
                 e.preventDefault();
                 setLoading(true);
                 setError('');
+                if (isSignup && formData.password !== formData.confirmPassword) {
+                    setError('Passwords do not match');
+                    setLoading(false);
+                    return;
+                }
                 try {
                     const endpoint = isSignup ? '/auth/register' : '/auth/login';
                     const payload = { ...formData, email: formData.email.toLowerCase().trim(), userType: 'individual' };
+                    delete payload.confirmPassword; // Don't send confirm password to server
                     if (!isSignup) delete payload.phone; // Don't send phone on login
                     if (!payload.phone) delete payload.phone; // Don't send empty phone
                     const data = await api.post(endpoint, payload);
@@ -525,6 +531,7 @@
                             <input type="email" placeholder="Email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" required />
                             {isSignup && <input type="tel" placeholder="Phone Number (optional)" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value.replace(/[^\d+\-() ]/g, '')})} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" />}
                             <input type="password" placeholder="Password" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" required minLength={6} />
+                            {isSignup && <input type="password" placeholder="Confirm Password" value={formData.confirmPassword} onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" required minLength={6} />}
                             <button type="submit" disabled={loading} className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl transition-all disabled:opacity-50 glow">
                                 {loading ? 'Loading...' : isSignup ? 'Create Account' : 'Sign In'}
                             </button>
