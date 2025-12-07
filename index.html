@@ -580,10 +580,15 @@
                 onboardingStorage.set({ step, data });
             }, [step, data]);
 
-            const totalSteps = 10;
+            const totalSteps = 15;
             const progress = (step / totalSteps) * 100;
             const updateData = (key, value) => setData(prev => ({ ...prev, [key]: value }));
-            const toggleArrayItem = (key, item) => setData(prev => ({ ...prev, [key]: prev[key].includes(item) ? prev[key].filter(i => i !== item) : [...prev[key], item] }));
+            const toggleArrayItem = (key, item) => {
+                setData(prev => {
+                    const arr = prev[key] || [];
+                    return { ...prev, [key]: arr.includes(item) ? arr.filter(i => i !== item) : [...arr, item] };
+                });
+            };
             const nextStep = () => setStep(s => Math.min(s + 1, totalSteps));
             const prevStep = () => setStep(s => Math.max(s - 1, 1));
 
@@ -629,18 +634,73 @@
                     if (data.firstName && data.firstName !== user?.name?.split(' ')[0]) {
                         await api.put('/users/profile', { name: data.firstName });
                     }
+                    // Step 1: Profile
                     await api.post('/onboarding/step/1', { data: { gender: data.gender || 'prefer-not-to-say', currentWeight: parseFloat(data.weight) || 0, unitPreference: data.weightUnit === 'kg' ? 'metric' : 'imperial' } });
+                    // Step 2: Experience
                     await api.post('/onboarding/step/2', { data: { level: data.experience, primaryDiscipline: data.goal === 'competition-prep' ? 'powerlifting' : 'general-fitness' } });
+                    // Step 3: Goal
                     await api.post('/onboarding/step/3', { data: { type: data.goal } });
-                    await api.post('/onboarding/step/4', { data: { daysPerWeek: data.daysPerWeek, sessionDuration: parseInt(data.sessionDuration.split('-')[0]) || 60 } });
-                    // Mark onboarding as completed
-                    await api.put('/users/profile', { onboarding: { completed: true, currentStep: 10, completedAt: new Date().toISOString() } });
-                    await api.post('/onboarding/step/5', { data: { trainingLocation: data.equipment.includes('full-gym') ? 'commercial-gym' : 'home-gym', availableEquipment: mapEquipment(data.equipment) } });
-                    if (data.injuries.length > 0 && !data.injuries.includes('none')) {
-                        await api.post('/onboarding/step/6', { data: { injuries: data.injuries.map(injury => ({ bodyPart: injury, severity: 'moderate' })) } });
+
+                    // GOD TIER: Competition Prep (Step 4)
+                    if (data.competitionLevel === 'competitive' && data.meetDate) {
+                        await api.post('/onboarding/step/4', { data: {
+                            isCompeting: true,
+                            sport: 'powerlifting',
+                            federation: data.federation,
+                            meetDate: data.meetDate,
+                            targetWeightClass: data.targetWeightClass,
+                            weighInType: data.weighInType || '24-hour'
+                        }});
                     }
+
+                    // GOD TIER: Body Composition (Step 5)
+                    if (data.targetWeight || data.bodyCompGoal) {
+                        await api.post('/onboarding/step/5', { data: {
+                            currentWeight: parseFloat(data.weight) || 0,
+                            targetWeight: parseFloat(data.targetWeight) || 0,
+                            goal: data.bodyCompGoal || 'maintain'
+                        }});
+                    }
+
+                    // Step 6: Schedule
+                    await api.post('/onboarding/step/6', { data: { daysPerWeek: data.daysPerWeek, sessionDuration: parseInt(data.sessionDuration?.split('-')[0]) || 60 } });
+                    // Step 7: Equipment
+                    await api.post('/onboarding/step/7', { data: { trainingLocation: data.equipment?.includes('full-gym') ? 'commercial-gym' : 'home-gym', availableEquipment: mapEquipment(data.equipment || []) } });
+
+                    // GOD TIER: Exercise Preferences (Step 8)
+                    await api.post('/onboarding/step/8', { data: {
+                        favoriteExercises: data.favoriteExercises?.split(',').map(s => s.trim()).filter(Boolean) || [],
+                        hatedExercises: data.hatedExercises?.split(',').map(s => s.trim()).filter(Boolean) || [],
+                        cardioPreference: data.cardioPreference || 'mixed',
+                        preferredSplit: data.preferredSplit || 'ai-decides'
+                    }});
+
+                    // GOD TIER: Dietary Preferences (Step 9)
+                    await api.post('/onboarding/step/9', { data: {
+                        dietType: data.dietType || 'flexible',
+                        allergies: data.allergies?.split(',').map(s => s.trim()).filter(Boolean) || [],
+                        cookingSkill: data.cookingSkill || 'basic',
+                        mealsPerDay: data.mealsPerDay || 4
+                    }});
+
+                    // GOD TIER: Lifestyle (Step 10)
+                    await api.post('/onboarding/step/10', { data: {
+                        jobType: data.jobType || 'sedentary',
+                        stressLevel: data.stressLevel || 'moderate',
+                        sleepHours: parseFloat(data.sleepHours) || 7,
+                        sleepQuality: data.sleepQuality || 'fair',
+                        hobbies: data.hobbies?.split(',').map(s => s.trim()).filter(Boolean) || []
+                    }});
+
+                    // Step 11: Injuries/Limitations
+                    if (data.injuries?.length > 0 && !data.injuries.includes('none')) {
+                        await api.post('/onboarding/step/11', { data: { injuries: data.injuries.map(injury => ({ bodyPart: injury, severity: 'moderate' })) } });
+                    }
+
+                    // Mark onboarding as completed
+                    await api.put('/users/profile', { onboarding: { completed: true, currentStep: 15, completedAt: new Date().toISOString() } });
                     await api.post('/onboarding/complete', {});
-                    onboardingStorage.clear(); // Clear localStorage on completion
+                    onboardingStorage.clear();
                     const userData = await api.get('/users/profile');
                     onComplete(userData.user || userData.data || userData);
                 } catch (err) {
@@ -676,11 +736,23 @@
                     case 3: return <StepCompetitionLevel data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />;
                     case 4: return <StepGoal data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />;
                     case 5: return <StepExperience data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />;
-                    case 6: return <StepFrequency data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />;
-                    case 7: return <StepDuration data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />;
-                    case 8: return <StepEquipment data={data} toggleArrayItem={toggleArrayItem} onNext={nextStep} onBack={prevStep} />;
-                    case 9: return <StepInjuries data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />;
-                    case 10: return <StepCurrentLifts data={data} updateData={updateData} onComplete={completeOnboarding} onBack={prevStep} />;
+                    // GOD TIER: Competition prep (only for competitive athletes)
+                    case 6: return data.competitionLevel === 'competitive'
+                        ? <StepCompetitionPrep data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />
+                        : (() => { nextStep(); return null; })();
+                    // GOD TIER: Body composition goals
+                    case 7: return <StepBodyComposition data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />;
+                    case 8: return <StepFrequency data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />;
+                    case 9: return <StepDuration data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />;
+                    case 10: return <StepEquipment data={data} toggleArrayItem={toggleArrayItem} onNext={nextStep} onBack={prevStep} />;
+                    // GOD TIER: Exercise preferences
+                    case 11: return <StepExercisePreferences data={data} updateData={updateData} toggleArrayItem={toggleArrayItem} onNext={nextStep} onBack={prevStep} />;
+                    // GOD TIER: Dietary preferences
+                    case 12: return <StepDietaryPreferences data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />;
+                    // GOD TIER: Lifestyle factors
+                    case 13: return <StepLifestyle data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />;
+                    case 14: return <StepInjuries data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />;
+                    case 15: return <StepCurrentLifts data={data} updateData={updateData} onComplete={completeOnboarding} onBack={prevStep} />;
                     default: return null;
                 }
             };
@@ -1425,6 +1497,7 @@
                     case 'home': return <HomeTab user={user} />;
                     case 'calendar': return <CalendarTab user={user} globalGenerating={globalGenerating} setGlobalGenerating={setGlobalGenerating} setGlobalGenerateMessage={setGlobalGenerateMessage} setActiveTab={setActiveTab} />;
                     case 'forge': return <ForgeTab user={user} />;
+                    case 'habits': return <HabitsTab user={user} />;
                     case 'kitchen': return <KitchenTab user={user} />;
                     case 'exercises': return <ExercisesTab user={user} />;
                     case 'profile': return <ProfileTab user={user} setUser={setUser} onLogout={onLogout} />;
@@ -1463,7 +1536,7 @@
                                 { id: 'home', icon: 'fa-home', label: 'Home' },
                                 { id: 'calendar', icon: 'fa-calendar-alt', label: 'Calendar' },
                                 { id: 'forge', icon: 'fa-bolt', label: 'FORGE' },
-                                { id: 'kitchen', icon: 'fa-utensils', label: 'Kitchen' },
+                                { id: 'habits', icon: 'fa-check-circle', label: 'Habits' },
                                 { id: 'profile', icon: 'fa-user', label: 'Profile' }
                             ].map(tab => (
                                 <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all ${activeTab === tab.id ? 'text-orange-500 bg-orange-500/10' : 'text-gray-500 hover:text-gray-300'}`}>
