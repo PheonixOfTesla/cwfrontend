@@ -1338,10 +1338,36 @@
             const [habits, setHabits] = useState([]);
             const [loading, setLoading] = useState(true);
             const [weekData, setWeekData] = useState(null);
+            const [showAddModal, setShowAddModal] = useState(false);
+            const [creating, setCreating] = useState(false);
+            const [newHabit, setNewHabit] = useState({
+                name: '', description: '', trackingType: 'boolean', targetValue: 1, unit: '', frequency: 'daily', specificDays: [], category: 'custom'
+            });
+            const [selectedHabit, setSelectedHabit] = useState(null);
+            const [logValue, setLogValue] = useState('');
 
-            useEffect(() => {
-                loadHabits();
-            }, []);
+            const categories = [
+                { id: 'training', icon: 'fa-dumbbell', label: 'Training' },
+                { id: 'nutrition', icon: 'fa-utensils', label: 'Nutrition' },
+                { id: 'recovery', icon: 'fa-bed', label: 'Recovery' },
+                { id: 'mindset', icon: 'fa-brain', label: 'Mindset' },
+                { id: 'lifestyle', icon: 'fa-heart', label: 'Lifestyle' },
+                { id: 'custom', icon: 'fa-star', label: 'Custom' }
+            ];
+            const trackingTypes = [
+                { id: 'boolean', icon: 'fa-check', label: 'Yes/No' },
+                { id: 'quantity', icon: 'fa-hashtag', label: 'Quantity' },
+                { id: 'duration', icon: 'fa-clock', label: 'Duration' }
+            ];
+            const frequencies = [
+                { id: 'daily', label: 'Every Day' },
+                { id: 'weekdays', label: 'Weekdays' },
+                { id: 'weekends', label: 'Weekends' },
+                { id: 'specific-days', label: 'Specific Days' }
+            ];
+            const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
+            useEffect(() => { loadHabits(); }, []);
 
             const loadHabits = async () => {
                 try {
@@ -1351,9 +1377,7 @@
                     ]);
                     setHabits(todayRes.habits || []);
                     setWeekData(weeklyRes);
-                } catch (err) {
-                    console.error('Load habits error:', err);
-                }
+                } catch (err) { console.error('Load habits error:', err); }
                 setLoading(false);
             };
 
@@ -1361,9 +1385,58 @@
                 try {
                     const res = await api.post(`/habits/${habitId}/toggle`);
                     setHabits(prev => prev.map(h => h._id === habitId ? { ...h, completedToday: res.completed, currentStreak: res.streak } : h));
-                } catch (err) {
-                    console.error('Toggle habit error:', err);
+                } catch (err) { console.error('Toggle habit error:', err); }
+            };
+
+            const handleHabitClick = (habit) => {
+                // For quantity/duration habits, open log modal
+                if (habit.trackingType === 'quantity' || habit.trackingType === 'duration') {
+                    setSelectedHabit(habit);
+                    setLogValue(habit.todayProgress?.toString() || '');
+                } else {
+                    // Boolean habits just toggle
+                    toggleHabit(habit._id);
                 }
+            };
+
+            const logHabitProgress = async () => {
+                if (!selectedHabit || !logValue) return;
+                try {
+                    const value = parseFloat(logValue);
+                    // Use /complete endpoint with value for quantity habits
+                    const res = await api.post(`/habits/${selectedHabit._id}/complete`, { value });
+                    setHabits(prev => prev.map(h =>
+                        h._id === selectedHabit._id
+                            ? { ...h, todayProgress: value, completedToday: value >= (h.targetValue || 1), currentStreak: res.streak || h.currentStreak }
+                            : h
+                    ));
+                    setSelectedHabit(null);
+                    setLogValue('');
+                    // Refresh to get updated data
+                    loadHabits();
+                } catch (err) {
+                    console.error('Log habit error:', err);
+                    alert('Failed to log progress');
+                }
+            };
+
+            const createHabit = async () => {
+                if (!newHabit.name.trim()) return;
+                setCreating(true);
+                try {
+                    const res = await api.post('/habits', newHabit);
+                    setHabits(prev => [...prev, { ...res.habit, completedToday: false }]);
+                    setShowAddModal(false);
+                    setNewHabit({ name: '', description: '', trackingType: 'boolean', targetValue: 1, unit: '', frequency: 'daily', specificDays: [], category: 'custom' });
+                } catch (err) { console.error('Create habit error:', err); alert('Failed to create habit'); }
+                setCreating(false);
+            };
+
+            const toggleDay = (day) => {
+                setNewHabit(prev => ({
+                    ...prev,
+                    specificDays: prev.specificDays.includes(day) ? prev.specificDays.filter(d => d !== day) : [...prev.specificDays, day]
+                }));
             };
 
             if (loading) {
@@ -1374,7 +1447,7 @@
                 <div className="space-y-6">
                     <div className="flex items-center justify-between">
                         <h1 className="text-2xl font-bold text-white">Daily Habits</h1>
-                        <div className="text-sm text-gray-400">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</div>
+                        <button onClick={() => setShowAddModal(true)} className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl text-sm"><i className="fas fa-plus mr-2"></i>Add</button>
                     </div>
 
                     {/* Weekly Progress */}
@@ -1403,17 +1476,24 @@
                             <div className="glass rounded-2xl p-8 text-center">
                                 <i className="fas fa-check-circle text-4xl text-gray-600 mb-3"></i>
                                 <p className="text-gray-400">No habits set up yet</p>
-                                <button className="mt-4 bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-xl">Add Habits</button>
+                                <button onClick={() => setShowAddModal(true)} className="mt-4 bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-xl">Add Habits</button>
                             </div>
                         ) : (
                             habits.map(habit => (
-                                <button key={habit._id} onClick={() => toggleHabit(habit._id)} className={`w-full flex items-center gap-4 p-4 rounded-xl border transition-all ${habit.completedToday ? 'bg-green-500/20 border-green-500/50' : 'bg-white/5 border-white/20 hover:bg-white/10'}`}>
+                                <button key={habit._id} onClick={() => handleHabitClick(habit)} className={`w-full flex items-center gap-4 p-4 rounded-xl border transition-all ${habit.completedToday ? 'bg-green-500/20 border-green-500/50' : 'bg-white/5 border-white/20 hover:bg-white/10'}`}>
                                     <div className={`w-10 h-10 rounded-full flex items-center justify-center ${habit.completedToday ? 'bg-green-500' : 'bg-white/10'}`}>
                                         {habit.completedToday ? <i className="fas fa-check text-white"></i> : <i className={`fas fa-${habit.icon || 'check-circle'} text-gray-400`}></i>}
                                     </div>
                                     <div className="flex-1 text-left">
                                         <div className={`font-medium ${habit.completedToday ? 'text-green-400' : 'text-white'}`}>{habit.name}</div>
-                                        {habit.description && <div className="text-xs text-gray-500">{habit.description}</div>}
+                                        {/* Show progress for quantity/duration habits */}
+                                        {(habit.trackingType === 'quantity' || habit.trackingType === 'duration') ? (
+                                            <div className="text-xs text-gray-500">
+                                                {habit.todayProgress || 0} / {habit.targetValue} {habit.unit || (habit.trackingType === 'duration' ? 'min' : '')}
+                                            </div>
+                                        ) : habit.description && (
+                                            <div className="text-xs text-gray-500">{habit.description}</div>
+                                        )}
                                     </div>
                                     {habit.currentStreak > 0 && (
                                         <div className="flex items-center gap-1 text-orange-500">
@@ -1425,6 +1505,168 @@
                             ))
                         )}
                     </div>
+
+                    {/* Add Habit Modal */}
+                    {showAddModal && (
+                        <div className="fixed inset-0 bg-black/80 flex items-end sm:items-center justify-center z-50 p-4">
+                            <div className="glass rounded-2xl w-full max-w-md max-h-[85vh] overflow-y-auto">
+                                <div className="p-4 border-b border-white/10 flex items-center justify-between sticky top-0 bg-black/50 backdrop-blur">
+                                    <h2 className="text-lg font-bold text-white">New Habit</h2>
+                                    <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-white"><i className="fas fa-times"></i></button>
+                                </div>
+                                <div className="p-4 space-y-4">
+                                    {/* Name */}
+                                    <div>
+                                        <label className="text-gray-400 text-sm">Habit Name *</label>
+                                        <input type="text" value={newHabit.name} onChange={(e) => setNewHabit(p => ({ ...p, name: e.target.value }))} placeholder="e.g., Drink 8 glasses of water" className="w-full mt-1 bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" />
+                                    </div>
+                                    {/* Description */}
+                                    <div>
+                                        <label className="text-gray-400 text-sm">Description (optional)</label>
+                                        <input type="text" value={newHabit.description} onChange={(e) => setNewHabit(p => ({ ...p, description: e.target.value }))} placeholder="Why this habit matters" className="w-full mt-1 bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" />
+                                    </div>
+                                    {/* Category */}
+                                    <div>
+                                        <label className="text-gray-400 text-sm mb-2 block">Category</label>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {categories.map(cat => (
+                                                <button key={cat.id} onClick={() => setNewHabit(p => ({ ...p, category: cat.id }))} className={`flex flex-col items-center gap-1 p-3 rounded-xl text-xs transition-all ${newHabit.category === cat.id ? 'bg-orange-500 text-white' : 'bg-white/10 text-gray-400'}`}>
+                                                    <i className={`fas ${cat.icon}`}></i>
+                                                    <span>{cat.label}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    {/* Tracking Type */}
+                                    <div>
+                                        <label className="text-gray-400 text-sm mb-2 block">How to Track</label>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {trackingTypes.map(tt => (
+                                                <button key={tt.id} onClick={() => setNewHabit(p => ({ ...p, trackingType: tt.id }))} className={`flex flex-col items-center gap-1 p-3 rounded-xl text-xs transition-all ${newHabit.trackingType === tt.id ? 'bg-orange-500 text-white' : 'bg-white/10 text-gray-400'}`}>
+                                                    <i className={`fas ${tt.icon}`}></i>
+                                                    <span>{tt.label}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    {/* Target Value (if quantity/duration) */}
+                                    {(newHabit.trackingType === 'quantity' || newHabit.trackingType === 'duration') && (
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="text-gray-400 text-sm">Target</label>
+                                                <input type="number" value={newHabit.targetValue} onChange={(e) => setNewHabit(p => ({ ...p, targetValue: parseInt(e.target.value) || 1 }))} className="w-full mt-1 bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:outline-none" />
+                                            </div>
+                                            <div>
+                                                <label className="text-gray-400 text-sm">Unit</label>
+                                                <input type="text" value={newHabit.unit} onChange={(e) => setNewHabit(p => ({ ...p, unit: e.target.value }))} placeholder={newHabit.trackingType === 'duration' ? 'minutes' : 'glasses'} className="w-full mt-1 bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" />
+                                            </div>
+                                        </div>
+                                    )}
+                                    {/* Frequency */}
+                                    <div>
+                                        <label className="text-gray-400 text-sm mb-2 block">Frequency</label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {frequencies.map(f => (
+                                                <button key={f.id} onClick={() => setNewHabit(p => ({ ...p, frequency: f.id }))} className={`p-3 rounded-xl text-sm transition-all ${newHabit.frequency === f.id ? 'bg-orange-500 text-white' : 'bg-white/10 text-gray-400'}`}>
+                                                    {f.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    {/* Specific Days (if selected) */}
+                                    {newHabit.frequency === 'specific-days' && (
+                                        <div>
+                                            <label className="text-gray-400 text-sm mb-2 block">Select Days</label>
+                                            <div className="flex flex-wrap gap-2">
+                                                {daysOfWeek.map(day => (
+                                                    <button key={day} onClick={() => toggleDay(day)} className={`px-3 py-2 rounded-lg text-xs capitalize transition-all ${newHabit.specificDays.includes(day) ? 'bg-orange-500 text-white' : 'bg-white/10 text-gray-400'}`}>
+                                                        {day.slice(0, 3)}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="p-4 border-t border-white/10 flex gap-3">
+                                    <button onClick={() => setShowAddModal(false)} className="flex-1 border border-white/20 text-white py-3 rounded-xl hover:bg-white/10">Cancel</button>
+                                    <button onClick={createHabit} disabled={creating || !newHabit.name.trim()} className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl disabled:opacity-50">
+                                        {creating ? <><i className="fas fa-spinner fa-spin mr-2"></i>Creating...</> : 'Create Habit'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Log Habit Progress Modal */}
+                    {selectedHabit && (
+                        <div className="fixed inset-0 bg-black/80 flex items-end sm:items-center justify-center z-50 p-4" onClick={() => setSelectedHabit(null)}>
+                            <div className="glass rounded-2xl w-full max-w-sm p-5" onClick={e => e.stopPropagation()}>
+                                <div className="text-center mb-6">
+                                    <div className={`w-16 h-16 rounded-full mx-auto mb-3 flex items-center justify-center ${selectedHabit.completedToday ? 'bg-green-500' : 'bg-orange-500/20'}`}>
+                                        <i className={`fas fa-${selectedHabit.trackingType === 'duration' ? 'clock' : 'hashtag'} text-2xl ${selectedHabit.completedToday ? 'text-white' : 'text-orange-500'}`}></i>
+                                    </div>
+                                    <h2 className="text-xl font-bold text-white">{selectedHabit.name}</h2>
+                                    <p className="text-gray-400 text-sm mt-1">
+                                        Target: {selectedHabit.targetValue} {selectedHabit.unit || (selectedHabit.trackingType === 'duration' ? 'minutes' : '')}
+                                    </p>
+                                </div>
+
+                                <div className="mb-6">
+                                    <label className="text-gray-400 text-sm mb-2 block">
+                                        {selectedHabit.trackingType === 'duration' ? 'Minutes completed' : `How many ${selectedHabit.unit || 'units'}?`}
+                                    </label>
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            onClick={() => setLogValue(Math.max(0, (parseFloat(logValue) || 0) - 1).toString())}
+                                            className="w-12 h-12 rounded-xl bg-white/10 text-white text-xl hover:bg-white/20"
+                                        >-</button>
+                                        <input
+                                            type="number"
+                                            value={logValue}
+                                            onChange={e => setLogValue(e.target.value)}
+                                            placeholder="0"
+                                            className="flex-1 text-center text-3xl font-bold bg-white/10 border border-white/20 rounded-xl py-3 text-white focus:border-orange-500 focus:outline-none"
+                                        />
+                                        <button
+                                            onClick={() => setLogValue(((parseFloat(logValue) || 0) + 1).toString())}
+                                            className="w-12 h-12 rounded-xl bg-white/10 text-white text-xl hover:bg-white/20"
+                                        >+</button>
+                                    </div>
+                                    {/* Quick add buttons */}
+                                    <div className="flex justify-center gap-2 mt-3">
+                                        {[1, 2, 5, 10].map(n => (
+                                            <button
+                                                key={n}
+                                                onClick={() => setLogValue(((parseFloat(logValue) || 0) + n).toString())}
+                                                className="px-3 py-1 rounded-lg bg-white/10 text-gray-400 text-sm hover:bg-orange-500/20 hover:text-orange-400"
+                                            >+{n}</button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Progress bar */}
+                                <div className="mb-6">
+                                    <div className="flex justify-between text-sm mb-1">
+                                        <span className="text-gray-400">Progress</span>
+                                        <span className="text-orange-500">{Math.round(((parseFloat(logValue) || 0) / selectedHabit.targetValue) * 100)}%</span>
+                                    </div>
+                                    <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                                        <div
+                                            className={`h-full transition-all ${(parseFloat(logValue) || 0) >= selectedHabit.targetValue ? 'bg-green-500' : 'bg-orange-500'}`}
+                                            style={{ width: `${Math.min(100, ((parseFloat(logValue) || 0) / selectedHabit.targetValue) * 100)}%` }}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3">
+                                    <button onClick={() => setSelectedHabit(null)} className="flex-1 border border-white/20 text-white py-3 rounded-xl hover:bg-white/10">Cancel</button>
+                                    <button onClick={logHabitProgress} className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl">
+                                        <i className="fas fa-check mr-2"></i>Log
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         };
@@ -1538,7 +1780,6 @@
                                 { id: 'forge', icon: 'fa-bolt', label: 'FORGE' },
                                 { id: 'kitchen', icon: 'fa-utensils', label: 'Kitchen' },
                                 { id: 'exercises', icon: 'fa-dumbbell', label: 'Exercises' },
-                                { id: 'habits', icon: 'fa-check-circle', label: 'Habits' },
                                 { id: 'profile', icon: 'fa-user', label: 'Profile' }
                             ].map(tab => (
                                 <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all ${activeTab === tab.id ? 'text-orange-500 bg-orange-500/10' : 'text-gray-500 hover:text-gray-300'}`}>
@@ -3130,8 +3371,20 @@
             const [newLog, setNewLog] = useState({ name: '', calories: '', protein: '', carbs: '', fat: '' });
             const [selectedMeal, setSelectedMeal] = useState(null);
             const [error, setError] = useState(null);
+            const [userPrefs, setUserPrefs] = useState(null);
+            const [showEditPrefs, setShowEditPrefs] = useState(false);
+            const [editingPrefs, setEditingPrefs] = useState({
+                dietType: 'flexible',
+                allergies: [],
+                currentWeight: '',
+                targetWeight: '',
+                goal: 'maintain'
+            });
 
-            useEffect(() => { loadNutrition(); }, []);
+            useEffect(() => {
+                loadNutrition();
+                loadUserPrefs();
+            }, []);
 
             const loadNutrition = async () => {
                 setLoading(true);
@@ -3149,6 +3402,47 @@
                     }
                 }
                 setLoading(false);
+            };
+
+            const loadUserPrefs = async () => {
+                try {
+                    const userData = await api.get('/users/profile');
+                    const prefs = {
+                        dietType: userData.dietaryPreferences?.dietType || userData.profile?.dietType || 'flexible',
+                        allergies: userData.dietaryPreferences?.allergies || userData.profile?.allergies || [],
+                        currentWeight: userData.bodyComposition?.currentWeight || userData.profile?.currentWeight || userData.currentWeight,
+                        targetWeight: userData.bodyComposition?.targetWeight || userData.profile?.targetWeight || userData.targetWeight,
+                        goal: userData.bodyComposition?.goal || userData.profile?.goal || userData.goal
+                    };
+                    setUserPrefs(prefs);
+                    setEditingPrefs(prefs);
+                } catch (err) {
+                    console.error('Load user prefs error:', err);
+                }
+            };
+
+            const saveUserPrefs = async () => {
+                try {
+                    await api.put('/users/profile', {
+                        dietaryPreferences: {
+                            dietType: editingPrefs.dietType,
+                            allergies: editingPrefs.allergies
+                        },
+                        bodyComposition: {
+                            currentWeight: parseFloat(editingPrefs.currentWeight) || undefined,
+                            targetWeight: parseFloat(editingPrefs.targetWeight) || undefined,
+                            goal: editingPrefs.goal
+                        }
+                    });
+                    setUserPrefs(editingPrefs);
+                    setShowEditPrefs(false);
+                    // Recalculate targets if they exist since body comp changed
+                    if (targets) {
+                        calculateTargets();
+                    }
+                } catch (err) {
+                    alert('Failed to save preferences: ' + err.message);
+                }
             };
 
             const calculateTargets = async () => {
@@ -3271,6 +3565,59 @@
                             </button>
                         </div>
                     )}
+
+                    {/* Nutrition Profile Card - Always show so user can set preferences */}
+                    <div className="glass rounded-2xl p-4">
+                        <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-white font-semibold flex items-center gap-2">
+                                <i className="fas fa-user-cog text-orange-500"></i>
+                                Your Nutrition Profile
+                            </h3>
+                            <button onClick={() => setShowEditPrefs(true)} className="text-orange-500 hover:text-orange-400 text-sm">
+                                <i className="fas fa-edit mr-1"></i>Edit
+                            </button>
+                        </div>
+
+                        {/* Diet Type & Allergies */}
+                        <div className="flex flex-wrap gap-2 mb-3">
+                            <span className="bg-orange-500/20 text-orange-400 px-3 py-1 rounded-full text-sm flex items-center gap-1">
+                                <i className="fas fa-utensils"></i>
+                                {userPrefs?.dietType ? userPrefs.dietType.charAt(0).toUpperCase() + userPrefs.dietType.slice(1) : 'Flexible'}
+                            </span>
+                            {userPrefs?.allergies?.length > 0 && userPrefs.allergies.map(allergy => (
+                                <span key={allergy} className="bg-red-500/20 text-red-400 px-3 py-1 rounded-full text-sm flex items-center gap-1">
+                                    <i className="fas fa-exclamation-triangle"></i>
+                                    {allergy}
+                                </span>
+                            ))}
+                        </div>
+
+                        {/* Body Composition */}
+                        {(userPrefs?.currentWeight || userPrefs?.targetWeight) ? (
+                            <div className="flex items-center gap-3 text-sm">
+                                {userPrefs.currentWeight && (
+                                    <span className="text-white font-medium">{userPrefs.currentWeight} lbs</span>
+                                )}
+                                {userPrefs.targetWeight && (
+                                    <>
+                                        <i className="fas fa-arrow-right text-orange-500"></i>
+                                        <span className="text-white font-medium">{userPrefs.targetWeight} lbs</span>
+                                    </>
+                                )}
+                                {userPrefs.goal && (
+                                    <span className={`px-2 py-0.5 rounded text-xs ${
+                                        userPrefs.goal?.includes('cut') || userPrefs.goal?.includes('lose') ? 'bg-red-500/20 text-red-400' :
+                                        userPrefs.goal?.includes('bulk') || userPrefs.goal?.includes('gain') ? 'bg-green-500/20 text-green-400' :
+                                        'bg-blue-500/20 text-blue-400'
+                                    }`}>
+                                        {userPrefs.goal?.replace('-', ' ').replace('_', ' ') || 'Maintain'}
+                                    </span>
+                                )}
+                            </div>
+                        ) : (
+                            <p className="text-gray-500 text-sm">Tap Edit to set your weight and goals</p>
+                        )}
+                    </div>
 
                     {/* Targets Card - Show if no targets yet */}
                     {!targets ? (
@@ -3444,6 +3791,136 @@
                                             <i className="fas fa-plus mr-2"></i>Log This Meal
                                         </button>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Edit Preferences Modal */}
+                    {showEditPrefs && (
+                        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50" onClick={() => setShowEditPrefs(false)}>
+                            <div className="glass rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-5" onClick={e => e.stopPropagation()}>
+                                <h2 className="text-xl font-bold text-white mb-4">
+                                    <i className="fas fa-user-cog text-orange-500 mr-2"></i>
+                                    Edit Nutrition Profile
+                                </h2>
+
+                                <div className="space-y-4">
+                                    {/* Diet Type */}
+                                    <div>
+                                        <label className="text-gray-400 text-sm mb-2 block">Diet Type</label>
+                                        <select
+                                            value={editingPrefs.dietType || 'flexible'}
+                                            onChange={e => setEditingPrefs({...editingPrefs, dietType: e.target.value})}
+                                            className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:outline-none"
+                                        >
+                                            <option value="flexible" className="bg-gray-900">Flexible</option>
+                                            <option value="vegan" className="bg-gray-900">Vegan</option>
+                                            <option value="vegetarian" className="bg-gray-900">Vegetarian</option>
+                                            <option value="pescatarian" className="bg-gray-900">Pescatarian</option>
+                                            <option value="keto" className="bg-gray-900">Keto</option>
+                                            <option value="paleo" className="bg-gray-900">Paleo</option>
+                                            <option value="mediterranean" className="bg-gray-900">Mediterranean</option>
+                                        </select>
+                                    </div>
+
+                                    {/* Allergies */}
+                                    <div>
+                                        <label className="text-gray-400 text-sm mb-2 block">Allergies / Restrictions</label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {['Dairy', 'Gluten', 'Nuts', 'Soy', 'Eggs', 'Shellfish', 'Fish'].map(allergy => (
+                                                <button
+                                                    key={allergy}
+                                                    onClick={() => {
+                                                        const current = editingPrefs.allergies || [];
+                                                        if (current.includes(allergy)) {
+                                                            setEditingPrefs({...editingPrefs, allergies: current.filter(a => a !== allergy)});
+                                                        } else {
+                                                            setEditingPrefs({...editingPrefs, allergies: [...current, allergy]});
+                                                        }
+                                                    }}
+                                                    className={`px-3 py-1.5 rounded-full text-sm transition-all ${
+                                                        (editingPrefs.allergies || []).includes(allergy)
+                                                            ? 'bg-red-500/30 text-red-400 border border-red-500/50'
+                                                            : 'bg-white/10 text-gray-400 hover:bg-white/20'
+                                                    }`}
+                                                >
+                                                    {allergy}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Body Composition */}
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="text-gray-400 text-sm mb-2 block">Current Weight (lbs)</label>
+                                            <input
+                                                type="number"
+                                                value={editingPrefs.currentWeight || ''}
+                                                onChange={e => setEditingPrefs({...editingPrefs, currentWeight: e.target.value})}
+                                                placeholder="180"
+                                                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-gray-400 text-sm mb-2 block">Target Weight (lbs)</label>
+                                            <input
+                                                type="number"
+                                                value={editingPrefs.targetWeight || ''}
+                                                onChange={e => setEditingPrefs({...editingPrefs, targetWeight: e.target.value})}
+                                                placeholder="170"
+                                                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Goal */}
+                                    <div>
+                                        <label className="text-gray-400 text-sm mb-2 block">Goal</label>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            <button
+                                                onClick={() => setEditingPrefs({...editingPrefs, goal: 'cut'})}
+                                                className={`p-3 rounded-xl text-center transition-all ${
+                                                    editingPrefs.goal === 'cut'
+                                                        ? 'bg-red-500/30 border border-red-500/50 text-red-400'
+                                                        : 'bg-white/10 text-gray-400 hover:bg-white/20'
+                                                }`}
+                                            >
+                                                <i className="fas fa-arrow-down mb-1"></i>
+                                                <div className="text-sm">Cut</div>
+                                            </button>
+                                            <button
+                                                onClick={() => setEditingPrefs({...editingPrefs, goal: 'maintain'})}
+                                                className={`p-3 rounded-xl text-center transition-all ${
+                                                    editingPrefs.goal === 'maintain'
+                                                        ? 'bg-blue-500/30 border border-blue-500/50 text-blue-400'
+                                                        : 'bg-white/10 text-gray-400 hover:bg-white/20'
+                                                }`}
+                                            >
+                                                <i className="fas fa-equals mb-1"></i>
+                                                <div className="text-sm">Maintain</div>
+                                            </button>
+                                            <button
+                                                onClick={() => setEditingPrefs({...editingPrefs, goal: 'bulk'})}
+                                                className={`p-3 rounded-xl text-center transition-all ${
+                                                    editingPrefs.goal === 'bulk'
+                                                        ? 'bg-green-500/30 border border-green-500/50 text-green-400'
+                                                        : 'bg-white/10 text-gray-400 hover:bg-white/20'
+                                                }`}
+                                            >
+                                                <i className="fas fa-arrow-up mb-1"></i>
+                                                <div className="text-sm">Bulk</div>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3 mt-6">
+                                    <button onClick={() => setShowEditPrefs(false)} className="flex-1 border border-white/20 text-white py-3 rounded-xl hover:bg-white/10">Cancel</button>
+                                    <button onClick={saveUserPrefs} className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl">
+                                        <i className="fas fa-save mr-2"></i>Save
+                                    </button>
                                 </div>
                             </div>
                         </div>
