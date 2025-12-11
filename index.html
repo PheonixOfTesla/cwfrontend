@@ -340,10 +340,11 @@
 
         const AuthScreen = ({ onLogin }) => {
             const [isSignup, setIsSignup] = useState(false);
-            const [formData, setFormData] = useState({ name: '', email: '', password: '', confirmPassword: '', phone: '' });
+            const [formData, setFormData] = useState({ name: '', email: '', password: '', confirmPassword: '', phone: '', userType: 'individual', coachId: '' });
             const [loading, setLoading] = useState(false);
             const [error, setError] = useState('');
             const [success, setSuccess] = useState('');
+            const [coaches, setCoaches] = useState([]);
             // Verification state
             const [verificationMode, setVerificationMode] = useState(false);
             const [pendingToken, setPendingToken] = useState('');
@@ -357,6 +358,19 @@
             const [resetMethod, setResetMethod] = useState('email'); // 'email' or 'sms'
             const [phoneForReset, setPhoneForReset] = useState('');
 
+            // Fetch available coaches when component mounts
+            useEffect(() => {
+                const fetchCoaches = async () => {
+                    try {
+                        const data = await api.get('/coach/list');
+                        setCoaches(data.coaches || []);
+                    } catch (err) {
+                        console.error('Error fetching coaches:', err);
+                    }
+                };
+                fetchCoaches();
+            }, []);
+
             const handleSubmit = async (e) => {
                 e.preventDefault();
                 setLoading(true);
@@ -366,12 +380,23 @@
                     setLoading(false);
                     return;
                 }
+                // Validate coach selection for clients
+                if (isSignup && formData.userType === 'client' && !formData.coachId) {
+                    setError('Please select a coach');
+                    setLoading(false);
+                    return;
+                }
                 try {
                     const endpoint = isSignup ? '/auth/register' : '/auth/login';
-                    const payload = { ...formData, email: formData.email.toLowerCase().trim(), userType: 'individual' };
+                    const payload = { ...formData, email: formData.email.toLowerCase().trim() };
                     delete payload.confirmPassword; // Don't send confirm password to server
-                    if (!isSignup) delete payload.phone; // Don't send phone on login
+                    if (!isSignup) {
+                        delete payload.phone; // Don't send phone on login
+                        delete payload.userType; // Don't send userType on login
+                        delete payload.coachId; // Don't send coachId on login
+                    }
                     if (!payload.phone) delete payload.phone; // Don't send empty phone
+                    if (!payload.coachId) delete payload.coachId; // Don't send empty coachId
                     const data = await api.post(endpoint, payload);
 
                     // Check if verification is required
@@ -543,6 +568,75 @@
                             {isSignup && <input type="text" placeholder="Your Name" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" required />}
                             <input type="email" placeholder="Email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" required />
                             {isSignup && <input type="tel" placeholder="Phone Number (optional)" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value.replace(/[^\d+\-() ]/g, '')})} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" />}
+
+                            {isSignup && (
+                                <div className="w-full bg-white/10 border border-white/20 rounded-xl p-4">
+                                    <label className="text-white text-sm font-medium mb-3 block">I am a:</label>
+                                    <div className="space-y-2">
+                                        <label className="flex items-center cursor-pointer group">
+                                            <input type="radio" name="userType" value="coach" checked={formData.userType === 'coach'} onChange={(e) => setFormData({...formData, userType: e.target.value, coachId: ''})} className="w-4 h-4 text-orange-500 focus:ring-orange-500" />
+                                            <span className="ml-3 text-white group-hover:text-orange-400 transition-colors">Coach - I want to train clients</span>
+                                        </label>
+                                        <label className="flex items-center cursor-pointer group">
+                                            <input type="radio" name="userType" value="client" checked={formData.userType === 'client'} onChange={(e) => setFormData({...formData, userType: e.target.value})} className="w-4 h-4 text-orange-500 focus:ring-orange-500" />
+                                            <span className="ml-3 text-white group-hover:text-orange-400 transition-colors">Client - I want to train with a coach</span>
+                                        </label>
+                                        <label className="flex items-center cursor-pointer group">
+                                            <input type="radio" name="userType" value="individual" checked={formData.userType === 'individual'} onChange={(e) => setFormData({...formData, userType: e.target.value, coachId: ''})} className="w-4 h-4 text-orange-500 focus:ring-orange-500" />
+                                            <span className="ml-3 text-white group-hover:text-orange-400 transition-colors">Individual - I want to train solo with AI</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            )}
+
+                            {isSignup && formData.userType === 'client' && (
+                                <div className="w-full">
+                                    <label className="text-white text-sm font-medium mb-2 block">Select Your Coach</label>
+                                    {coaches.length === 0 ? (
+                                        <p className="text-gray-400 text-sm bg-white/10 border border-white/20 rounded-xl p-4">No coaches available at this time</p>
+                                    ) : (
+                                        <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar">
+                                            {coaches.map(coach => (
+                                                <div
+                                                    key={coach._id}
+                                                    onClick={() => setFormData({...formData, coachId: coach._id})}
+                                                    className={`p-4 rounded-xl cursor-pointer transition-all ${formData.coachId === coach._id ? 'bg-orange-500/20 border-2 border-orange-500' : 'bg-white/10 border border-white/20 hover:bg-white/15'}`}
+                                                >
+                                                    <div className="flex items-start gap-3">
+                                                        <div className="flex-shrink-0">
+                                                            {coach.profilePicture ? (
+                                                                <img src={coach.profilePicture} alt={coach.name} className="w-12 h-12 rounded-full object-cover" />
+                                                            ) : (
+                                                                <div className="w-12 h-12 rounded-full bg-orange-500 flex items-center justify-center text-white font-bold text-lg">
+                                                                    {coach.name.charAt(0).toUpperCase()}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center gap-2">
+                                                                <h4 className="text-white font-semibold">{coach.name}</h4>
+                                                                {formData.coachId === coach._id && (
+                                                                    <i className="fas fa-check-circle text-orange-500"></i>
+                                                                )}
+                                                            </div>
+                                                            {coach.specialty && (
+                                                                <p className="text-orange-400 text-sm">{coach.specialty}</p>
+                                                            )}
+                                                            {coach.experienceYears > 0 && (
+                                                                <p className="text-gray-400 text-xs">{coach.experienceYears} years experience</p>
+                                                            )}
+                                                            {coach.bio && (
+                                                                <p className="text-gray-300 text-sm mt-1 line-clamp-2">{coach.bio}</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                             <input type="password" placeholder="Password" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" required minLength={6} />
                             {isSignup && <input type="password" placeholder="Confirm Password" value={formData.confirmPassword} onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" required minLength={6} />}
                             <button type="submit" disabled={loading} className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl transition-all disabled:opacity-50 glow">
