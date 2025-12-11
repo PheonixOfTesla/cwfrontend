@@ -665,7 +665,8 @@
             const [data, setData] = useState(savedOnboarding?.data || {
                 firstName: user?.name?.split(' ')[0] || '', age: '', gender: '', weight: '', weightUnit: 'lb',
                 goal: '', experience: '', daysPerWeek: 4, sessionDuration: '45-60', equipment: [], injuries: [],
-                squat: '', bench: '', deadlift: '', ohp: '', competitionLevel: ''
+                squat: '', bench: '', deadlift: '', ohp: '', competitionLevel: '',
+                userType: user?.userType || 'individual', coachId: user?.coachId || ''
             });
             const [generating, setGenerating] = useState(false);
 
@@ -674,7 +675,7 @@
                 onboardingStorage.set({ step, data });
             }, [step, data]);
 
-            const totalSteps = 15;
+            const totalSteps = 16;
             const progress = (step / totalSteps) * 100;
             const updateData = (key, value) => setData(prev => ({ ...prev, [key]: value }));
             const toggleArrayItem = (key, item) => {
@@ -826,27 +827,28 @@
             const renderStep = () => {
                 switch(step) {
                     case 1: return <StepWelcome onNext={nextStep} onSkip={skipOnboarding} hasExistingData={hasExistingData} />;
-                    case 2: return <StepBasicInfo data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />;
-                    case 3: return <StepCompetitionLevel data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />;
-                    case 4: return <StepGoal data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />;
-                    case 5: return <StepExperience data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />;
+                    case 2: return <StepUserType data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} user={user} />;
+                    case 3: return <StepBasicInfo data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />;
+                    case 4: return <StepCompetitionLevel data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />;
+                    case 5: return <StepGoal data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />;
+                    case 6: return <StepExperience data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />;
                     // GOD TIER: Competition prep (only for competitive athletes)
-                    case 6: return data.competitionLevel === 'competitive'
+                    case 7: return data.competitionLevel === 'competitive'
                         ? <StepCompetitionPrep data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />
                         : (() => { nextStep(); return null; })();
                     // GOD TIER: Body composition goals
-                    case 7: return <StepBodyComposition data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />;
-                    case 8: return <StepFrequency data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />;
-                    case 9: return <StepDuration data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />;
-                    case 10: return <StepEquipment data={data} toggleArrayItem={toggleArrayItem} onNext={nextStep} onBack={prevStep} />;
+                    case 8: return <StepBodyComposition data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />;
+                    case 9: return <StepFrequency data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />;
+                    case 10: return <StepDuration data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />;
+                    case 11: return <StepEquipment data={data} toggleArrayItem={toggleArrayItem} onNext={nextStep} onBack={prevStep} />;
                     // GOD TIER: Exercise preferences
-                    case 11: return <StepExercisePreferences data={data} updateData={updateData} toggleArrayItem={toggleArrayItem} onNext={nextStep} onBack={prevStep} />;
+                    case 12: return <StepExercisePreferences data={data} updateData={updateData} toggleArrayItem={toggleArrayItem} onNext={nextStep} onBack={prevStep} />;
                     // GOD TIER: Dietary preferences
-                    case 12: return <StepDietaryPreferences data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />;
+                    case 13: return <StepDietaryPreferences data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />;
                     // GOD TIER: Lifestyle factors
-                    case 13: return <StepLifestyle data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />;
-                    case 14: return <StepInjuries data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />;
-                    case 15: return <StepCurrentLifts data={data} updateData={updateData} onComplete={completeOnboarding} onBack={prevStep} />;
+                    case 14: return <StepLifestyle data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />;
+                    case 15: return <StepInjuries data={data} updateData={updateData} onNext={nextStep} onBack={prevStep} />;
+                    case 16: return <StepCurrentLifts data={data} updateData={updateData} onComplete={completeOnboarding} onBack={prevStep} />;
                     default: return null;
                 }
             };
@@ -877,6 +879,155 @@
                 )}
             </div>
         );
+
+        const StepUserType = ({ data, updateData, onNext, onBack, user }) => {
+            const [coaches, setCoaches] = useState([]);
+            const [loading, setLoading] = useState(false);
+
+            useEffect(() => {
+                if (!data.userType) {
+                    updateData('userType', user?.userType || 'individual');
+                }
+                loadCoaches();
+            }, []);
+
+            const loadCoaches = async () => {
+                setLoading(true);
+                try {
+                    const res = await api.get('/coach/list');
+                    setCoaches(res.coaches || []);
+                } catch (err) {
+                    console.error('Failed to load coaches:', err);
+                }
+                setLoading(false);
+            };
+
+            const handleNext = async () => {
+                // Update user's userType in database
+                try {
+                    await api.put('/users/profile', { userType: data.userType, coachId: data.coachId });
+                    onNext();
+                } catch (err) {
+                    console.error('Failed to update user type:', err);
+                    alert('Failed to save. Please try again.');
+                }
+            };
+
+            return (
+                <div className="w-full max-w-md">
+                    <h2 className="text-2xl font-bold text-white mb-2">I am a:</h2>
+                    <p className="text-gray-400 mb-6">Choose how you want to use ClockWork</p>
+
+                    <div className="space-y-3 mb-6">
+                        <button
+                            onClick={() => updateData('userType', 'coach')}
+                            className={`w-full flex items-center gap-4 p-4 rounded-xl border transition-all ${
+                                data.userType === 'coach'
+                                    ? 'border-orange-500 bg-orange-500/20'
+                                    : 'border-white/20 bg-white/5 hover:bg-white/10'
+                            }`}
+                        >
+                            <i className="fas fa-chalkboard-teacher text-2xl text-orange-500"></i>
+                            <div className="text-left flex-1">
+                                <div className="text-white font-medium">Coach</div>
+                                <div className="text-gray-400 text-sm">I want to train clients</div>
+                            </div>
+                            {data.userType === 'coach' && <i className="fas fa-check text-orange-500"></i>}
+                        </button>
+
+                        <button
+                            onClick={() => updateData('userType', 'client')}
+                            className={`w-full flex items-center gap-4 p-4 rounded-xl border transition-all ${
+                                data.userType === 'client'
+                                    ? 'border-orange-500 bg-orange-500/20'
+                                    : 'border-white/20 bg-white/5 hover:bg-white/10'
+                            }`}
+                        >
+                            <i className="fas fa-user-friends text-2xl text-orange-500"></i>
+                            <div className="text-left flex-1">
+                                <div className="text-white font-medium">Client</div>
+                                <div className="text-gray-400 text-sm">I want to train with a coach</div>
+                            </div>
+                            {data.userType === 'client' && <i className="fas fa-check text-orange-500"></i>}
+                        </button>
+
+                        <button
+                            onClick={() => { updateData('userType', 'individual'); updateData('coachId', ''); }}
+                            className={`w-full flex items-center gap-4 p-4 rounded-xl border transition-all ${
+                                data.userType === 'individual'
+                                    ? 'border-orange-500 bg-orange-500/20'
+                                    : 'border-white/20 bg-white/5 hover:bg-white/10'
+                            }`}
+                        >
+                            <i className="fas fa-user text-2xl text-orange-500"></i>
+                            <div className="text-left flex-1">
+                                <div className="text-white font-medium">Individual</div>
+                                <div className="text-gray-400 text-sm">I want to train solo with AI</div>
+                            </div>
+                            {data.userType === 'individual' && <i className="fas fa-check text-orange-500"></i>}
+                        </button>
+                    </div>
+
+                    {data.userType === 'client' && (
+                        <div className="mb-6">
+                            <label className="text-white text-sm font-medium mb-2 block">Select Your Coach</label>
+                            {loading ? (
+                                <div className="text-center py-8 text-gray-400">Loading coaches...</div>
+                            ) : coaches.length === 0 ? (
+                                <p className="text-gray-400 text-sm bg-white/10 border border-white/20 rounded-xl p-4">No coaches available</p>
+                            ) : (
+                                <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar">
+                                    {coaches.map(coach => (
+                                        <div
+                                            key={coach._id}
+                                            onClick={() => updateData('coachId', coach._id)}
+                                            className={`p-4 rounded-xl cursor-pointer transition-all ${
+                                                data.coachId === coach._id
+                                                    ? 'bg-orange-500/20 border-2 border-orange-500'
+                                                    : 'bg-white/10 border border-white/20 hover:bg-white/15'
+                                            }`}
+                                        >
+                                            <div className="flex items-start gap-3">
+                                                {coach.coachProfile?.profilePicture ? (
+                                                    <img src={coach.coachProfile.profilePicture} alt={coach.name} className="w-12 h-12 rounded-full object-cover" />
+                                                ) : (
+                                                    <div className="w-12 h-12 rounded-full bg-orange-500 flex items-center justify-center text-white font-bold">
+                                                        {coach.name.charAt(0).toUpperCase()}
+                                                    </div>
+                                                )}
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <h4 className="text-white font-semibold">{coach.name}</h4>
+                                                        {data.coachId === coach._id && <i className="fas fa-check-circle text-orange-500"></i>}
+                                                    </div>
+                                                    {coach.coachProfile?.specialty && (
+                                                        <p className="text-orange-400 text-sm">{coach.coachProfile.specialty}</p>
+                                                    )}
+                                                    {coach.coachProfile?.bio && (
+                                                        <p className="text-gray-300 text-sm mt-1">{coach.coachProfile.bio}</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    <div className="flex gap-3">
+                        <button onClick={onBack} className="flex-1 border border-white/20 text-white py-3 rounded-xl hover:bg-white/10">Back</button>
+                        <button
+                            onClick={handleNext}
+                            disabled={data.userType === 'client' && !data.coachId}
+                            className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl glow disabled:opacity-50"
+                        >
+                            Continue
+                        </button>
+                    </div>
+                </div>
+            );
+        };
 
         const StepBasicInfo = ({ data, updateData, onNext, onBack }) => (
             <div className="w-full max-w-md">
