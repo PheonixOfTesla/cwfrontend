@@ -340,11 +340,19 @@
 
         const AuthScreen = ({ onLogin }) => {
             const [isSignup, setIsSignup] = useState(false);
-            const [formData, setFormData] = useState({ name: '', email: '', password: '', confirmPassword: '', phone: '', userType: 'individual', coachId: '' });
+            const [signupStep, setSignupStep] = useState(1); // Multi-step signup for coaches
+            const [formData, setFormData] = useState({
+                name: '', email: '', password: '', confirmPassword: '', phone: '',
+                userType: 'individual', coachId: '',
+                // Coach-specific fields
+                specialty: '', bio: '', experienceYears: '', certifications: []
+            });
             const [loading, setLoading] = useState(false);
             const [error, setError] = useState('');
             const [success, setSuccess] = useState('');
             const [coaches, setCoaches] = useState([]);
+            // Certification input
+            const [newCert, setNewCert] = useState({ name: '', organization: '', year: '' });
             // Verification state
             const [verificationMode, setVerificationMode] = useState(false);
             const [pendingToken, setPendingToken] = useState('');
@@ -375,6 +383,40 @@
                 e.preventDefault();
                 setLoading(true);
                 setError('');
+
+                // Multi-step signup for coaches
+                if (isSignup && formData.userType === 'coach') {
+                    if (signupStep === 1) {
+                        // Validate step 1: Basic info
+                        if (formData.password !== formData.confirmPassword) {
+                            setError('Passwords do not match');
+                            setLoading(false);
+                            return;
+                        }
+                        if (!formData.name || !formData.email || !formData.password) {
+                            setError('Please fill in all required fields');
+                            setLoading(false);
+                            return;
+                        }
+                        setSignupStep(2);
+                        setLoading(false);
+                        return;
+                    } else if (signupStep === 2) {
+                        // Validate step 2: Professional info
+                        if (!formData.specialty) {
+                            setError('Please enter your specialty');
+                            setLoading(false);
+                            return;
+                        }
+                        setSignupStep(3);
+                        setLoading(false);
+                        return;
+                    }
+                    // Step 3: Certifications (optional, can skip to register)
+                    // Fall through to actual registration
+                }
+
+                // Single-step signup validation for clients/individuals
                 if (isSignup && formData.password !== formData.confirmPassword) {
                     setError('Passwords do not match');
                     setLoading(false);
@@ -386,17 +428,30 @@
                     setLoading(false);
                     return;
                 }
+
                 try {
                     const endpoint = isSignup ? '/auth/register' : '/auth/login';
                     const payload = { ...formData, email: formData.email.toLowerCase().trim() };
                     delete payload.confirmPassword; // Don't send confirm password to server
+
                     if (!isSignup) {
-                        delete payload.phone; // Don't send phone on login
-                        delete payload.userType; // Don't send userType on login
-                        delete payload.coachId; // Don't send coachId on login
+                        delete payload.phone;
+                        delete payload.userType;
+                        delete payload.coachId;
+                        delete payload.specialty;
+                        delete payload.bio;
+                        delete payload.experienceYears;
+                        delete payload.certifications;
                     }
-                    if (!payload.phone) delete payload.phone; // Don't send empty phone
-                    if (!payload.coachId) delete payload.coachId; // Don't send empty coachId
+
+                    // Clean up empty fields
+                    if (!payload.phone) delete payload.phone;
+                    if (!payload.coachId) delete payload.coachId;
+                    if (!payload.specialty) delete payload.specialty;
+                    if (!payload.bio) delete payload.bio;
+                    if (!payload.experienceYears) delete payload.experienceYears;
+                    if (!payload.certifications || payload.certifications.length === 0) delete payload.certifications;
+
                     const data = await api.post(endpoint, payload);
 
                     // Check if verification is required
@@ -478,6 +533,30 @@
                 setResetMethod('email');
                 setError('');
                 setSuccess('');
+            };
+
+            // Coach signup helpers
+            const addCertification = () => {
+                if (!newCert.name || !newCert.organization) return;
+                setFormData(prev => ({
+                    ...prev,
+                    certifications: [...prev.certifications, { ...newCert }]
+                }));
+                setNewCert({ name: '', organization: '', year: '' });
+            };
+
+            const removeCertification = (index) => {
+                setFormData(prev => ({
+                    ...prev,
+                    certifications: prev.certifications.filter((_, i) => i !== index)
+                }));
+            };
+
+            const goBackStep = () => {
+                if (signupStep > 1) {
+                    setSignupStep(prev => prev - 1);
+                    setError('');
+                }
             };
 
             // Verification Code Screen
@@ -564,32 +643,49 @@
                         </div>
                         {error && <div className="bg-red-500/20 border border-red-500/50 text-red-400 px-4 py-3 rounded-xl mb-4">{error}</div>}
                         {success && <div className="bg-green-500/20 border border-green-500/50 text-green-400 px-4 py-3 rounded-xl mb-4">{success}</div>}
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            {isSignup && <input type="text" placeholder="Your Name" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" required />}
-                            <input type="email" placeholder="Email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" required />
-                            {isSignup && <input type="tel" placeholder="Phone Number (optional)" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value.replace(/[^\d+\-() ]/g, '')})} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" />}
 
-                            {isSignup && (
-                                <div className="w-full bg-white/10 border border-white/20 rounded-xl p-4">
-                                    <label className="text-white text-sm font-medium mb-3 block">I am a:</label>
-                                    <div className="space-y-2">
-                                        <label className="flex items-center cursor-pointer group">
-                                            <input type="radio" name="userType" value="coach" checked={formData.userType === 'coach'} onChange={(e) => setFormData({...formData, userType: e.target.value, coachId: ''})} className="w-4 h-4 text-orange-500 focus:ring-orange-500" />
-                                            <span className="ml-3 text-white group-hover:text-orange-400 transition-colors">Coach - I want to train clients</span>
-                                        </label>
-                                        <label className="flex items-center cursor-pointer group">
-                                            <input type="radio" name="userType" value="client" checked={formData.userType === 'client'} onChange={(e) => setFormData({...formData, userType: e.target.value})} className="w-4 h-4 text-orange-500 focus:ring-orange-500" />
-                                            <span className="ml-3 text-white group-hover:text-orange-400 transition-colors">Client - I want to train with a coach</span>
-                                        </label>
-                                        <label className="flex items-center cursor-pointer group">
-                                            <input type="radio" name="userType" value="individual" checked={formData.userType === 'individual'} onChange={(e) => setFormData({...formData, userType: e.target.value, coachId: ''})} className="w-4 h-4 text-orange-500 focus:ring-orange-500" />
-                                            <span className="ml-3 text-white group-hover:text-orange-400 transition-colors">Individual - I want to train solo with AI</span>
-                                        </label>
-                                    </div>
+                        {/* Progress indicator for multi-step coach signup */}
+                        {isSignup && formData.userType === 'coach' && signupStep > 1 && (
+                            <div className="mb-6">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-gray-400 text-sm">Step {signupStep} of 3</span>
+                                    <span className="text-gray-400 text-sm">{Math.round((signupStep / 3) * 100)}%</span>
                                 </div>
-                            )}
+                                <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                                    <div className="h-full bg-orange-500 transition-all duration-300" style={{ width: `${(signupStep / 3) * 100}%` }} />
+                                </div>
+                            </div>
+                        )}
 
-                            {isSignup && formData.userType === 'client' && (
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            {/* STEP 1: Basic Info + User Type (All Users) */}
+                            {(!isSignup || signupStep === 1) && (
+                                <>
+                                    {isSignup && <input type="text" placeholder="Your Name" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" required />}
+                                    <input type="email" placeholder="Email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" required />
+                                    {isSignup && <input type="tel" placeholder="Phone Number (optional)" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value.replace(/[^\d+\-() ]/g, '')})} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" />}
+
+                                    {isSignup && (
+                                        <div className="w-full bg-white/10 border border-white/20 rounded-xl p-4">
+                                            <label className="text-white text-sm font-medium mb-3 block">I am a:</label>
+                                            <div className="space-y-2">
+                                                <label className="flex items-center cursor-pointer group">
+                                                    <input type="radio" name="userType" value="coach" checked={formData.userType === 'coach'} onChange={(e) => setFormData({...formData, userType: e.target.value, coachId: ''})} className="w-4 h-4 text-orange-500 focus:ring-orange-500" />
+                                                    <span className="ml-3 text-white group-hover:text-orange-400 transition-colors">Coach - I want to train clients</span>
+                                                </label>
+                                                <label className="flex items-center cursor-pointer group">
+                                                    <input type="radio" name="userType" value="client" checked={formData.userType === 'client'} onChange={(e) => setFormData({...formData, userType: e.target.value})} className="w-4 h-4 text-orange-500 focus:ring-orange-500" />
+                                                    <span className="ml-3 text-white group-hover:text-orange-400 transition-colors">Client - I want to train with a coach</span>
+                                                </label>
+                                                <label className="flex items-center cursor-pointer group">
+                                                    <input type="radio" name="userType" value="individual" checked={formData.userType === 'individual'} onChange={(e) => setFormData({...formData, userType: e.target.value, coachId: ''})} className="w-4 h-4 text-orange-500 focus:ring-orange-500" />
+                                                    <span className="ml-3 text-white group-hover:text-orange-400 transition-colors">Individual - I want to train solo with AI</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {isSignup && formData.userType === 'client' && (
                                 <div className="w-full">
                                     <label className="text-white text-sm font-medium mb-2 block">Select Your Coach</label>
                                     {coaches.length === 0 ? (
@@ -637,14 +733,154 @@
                                 </div>
                             )}
 
-                            <input type="password" placeholder="Password" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" required minLength={6} />
-                            {isSignup && <input type="password" placeholder="Confirm Password" value={formData.confirmPassword} onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" required minLength={6} />}
-                            <button type="submit" disabled={loading} className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl transition-all disabled:opacity-50 glow">
-                                {loading ? 'Loading...' : isSignup ? 'Create Account' : 'Sign In'}
-                            </button>
+                                    <input type="password" placeholder="Password" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" required minLength={6} />
+                                    {isSignup && <input type="password" placeholder="Confirm Password" value={formData.confirmPassword} onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" required minLength={6} />}
+                                </>
+                            )}
+
+                            {/* STEP 2: Professional Info (Coaches Only) */}
+                            {isSignup && formData.userType === 'coach' && signupStep === 2 && (
+                                <>
+                                    <div className="text-center mb-4">
+                                        <h3 className="text-white font-semibold text-lg">Professional Information</h3>
+                                        <p className="text-gray-400 text-sm mt-1">Tell clients about your expertise</p>
+                                    </div>
+
+                                    <div>
+                                        <label className="text-gray-400 text-sm">Specialty *</label>
+                                        <input
+                                            type="text"
+                                            placeholder="e.g., Strength Training, Yoga, CrossFit"
+                                            value={formData.specialty}
+                                            onChange={(e) => setFormData({...formData, specialty: e.target.value})}
+                                            className="w-full mt-1 bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none"
+                                            required
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-gray-400 text-sm">Years of Experience</label>
+                                        <input
+                                            type="number"
+                                            placeholder="Years coaching"
+                                            value={formData.experienceYears}
+                                            onChange={(e) => setFormData({...formData, experienceYears: e.target.value})}
+                                            className="w-full mt-1 bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none"
+                                            min="0"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-gray-400 text-sm">Bio / About You</label>
+                                        <textarea
+                                            placeholder="Tell potential clients about yourself, your approach, and what makes you unique..."
+                                            value={formData.bio}
+                                            onChange={(e) => setFormData({...formData, bio: e.target.value})}
+                                            rows={4}
+                                            maxLength={500}
+                                            className="w-full mt-1 bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none resize-none"
+                                        />
+                                        <p className="text-gray-500 text-xs mt-1">{formData.bio.length}/500 characters</p>
+                                    </div>
+                                </>
+                            )}
+
+                            {/* STEP 3: Certifications (Coaches Only - Optional) */}
+                            {isSignup && formData.userType === 'coach' && signupStep === 3 && (
+                                <>
+                                    <div className="text-center mb-4">
+                                        <h3 className="text-white font-semibold text-lg">Certifications</h3>
+                                        <p className="text-gray-400 text-sm mt-1">Add your credentials (optional)</p>
+                                    </div>
+
+                                    {/* Certification List */}
+                                    {formData.certifications.length > 0 && (
+                                        <div className="space-y-2 mb-4">
+                                            {formData.certifications.map((cert, index) => (
+                                                <div key={index} className="flex items-center justify-between bg-white/10 rounded-xl p-3">
+                                                    <div className="flex-1">
+                                                        <div className="text-white font-medium">{cert.name}</div>
+                                                        <div className="text-gray-400 text-sm">{cert.organization} {cert.year && `• ${cert.year}`}</div>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeCertification(index)}
+                                                        className="text-red-400 hover:text-red-300 ml-2"
+                                                    >
+                                                        <i className="fas fa-times"></i>
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Add Certification Form */}
+                                    <div className="space-y-3 bg-white/5 rounded-xl p-4">
+                                        <input
+                                            type="text"
+                                            placeholder="Certification Name"
+                                            value={newCert.name}
+                                            onChange={(e) => setNewCert({...newCert, name: e.target.value})}
+                                            className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none"
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Issuing Organization"
+                                            value={newCert.organization}
+                                            onChange={(e) => setNewCert({...newCert, organization: e.target.value})}
+                                            className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none"
+                                        />
+                                        <input
+                                            type="number"
+                                            placeholder="Year (optional)"
+                                            value={newCert.year}
+                                            onChange={(e) => setNewCert({...newCert, year: e.target.value})}
+                                            className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none"
+                                            min="1900"
+                                            max="2030"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={addCertification}
+                                            disabled={!newCert.name || !newCert.organization}
+                                            className="w-full bg-white/10 hover:bg-white/20 text-white py-2 rounded-xl transition-all disabled:opacity-50"
+                                        >
+                                            <i className="fas fa-plus mr-2"></i>Add Certification
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+
+                            {/* Submit Button with conditional text */}
+                            <div className="flex gap-3">
+                                {signupStep > 1 && isSignup && (
+                                    <button
+                                        type="button"
+                                        onClick={goBackStep}
+                                        className="flex-1 border border-white/20 text-white py-3 rounded-xl hover:bg-white/10 transition-all"
+                                    >
+                                        Back
+                                    </button>
+                                )}
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className={`${signupStep > 1 && isSignup ? 'flex-1' : 'w-full'} bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl transition-all disabled:opacity-50 glow`}
+                                >
+                                    {loading ? 'Loading...' :
+                                        isSignup ?
+                                            (formData.userType === 'coach' ?
+                                                (signupStep === 1 ? 'Next: Professional Info' :
+                                                 signupStep === 2 ? 'Next: Certifications' :
+                                                 'Create Coach Account')
+                                                : 'Create Account')
+                                            : 'Sign In'
+                                    }
+                                </button>
+                            </div>
                         </form>
                         <div className="mt-6 text-center space-y-2">
-                            <button onClick={() => setIsSignup(!isSignup)} className="text-gray-400 hover:text-orange-500 transition-colors block w-full">
+                            <button onClick={() => { setIsSignup(!isSignup); setSignupStep(1); setError(''); }} className="text-gray-400 hover:text-orange-500 transition-colors block w-full">
                                 {isSignup ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
                             </button>
                             {!isSignup && (
