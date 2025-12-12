@@ -267,7 +267,13 @@
                     const data = await api.get('/users/profile');
                     const userData = data.user || data.data || data;
                     setUser(userData);
-                    setView(userData.onboarding?.completed ? 'app' : 'onboarding');
+                    // Coaches skip onboarding - go straight to app
+                    if (userData.userType === 'coach') {
+                        setView('app');
+                    } else {
+                        // Clients and individuals need onboarding for fitness goals
+                        setView(userData.onboarding?.completed ? 'app' : 'onboarding');
+                    }
                 } catch (err) {
                     localStorage.removeItem('token');
                     setView('auth');
@@ -277,7 +283,13 @@
 
             const handleLogin = (userData) => {
                 setUser(userData);
-                setView(userData.onboarding?.completed ? 'app' : 'onboarding');
+                // Coaches skip onboarding - go straight to app
+                if (userData.userType === 'coach') {
+                    setView('app');
+                } else {
+                    // Clients and individuals need onboarding for fitness goals
+                    setView(userData.onboarding?.completed ? 'app' : 'onboarding');
+                }
             };
 
             const handleOnboardingComplete = (updatedUser) => { setUser(updatedUser); setView('app'); };
