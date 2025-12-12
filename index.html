@@ -2973,7 +2973,183 @@
             );
         };
 
+        // Coach Dashboard - Shows pending clients and active clients
+        const CoachDashboard = ({ user }) => {
+            const [pendingClients, setPendingClients] = useState([]);
+            const [activeClients, setActiveClients] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [processing, setProcessing] = useState(null);
+
+            useEffect(() => {
+                loadClients();
+            }, []);
+
+            const loadClients = async () => {
+                setLoading(true);
+                try {
+                    const res = await api.get('/coach/clients');
+                    // Separate by status
+                    const clients = res.clients || [];
+                    setPendingClients(clients.filter(c => c.status === 'pending'));
+                    setActiveClients(clients.filter(c => c.status === 'active'));
+                } catch (err) {
+                    console.error('Failed to load clients:', err);
+                }
+                setLoading(false);
+            };
+
+            const handleApprove = async (relationshipId) => {
+                setProcessing(relationshipId);
+                try {
+                    await api.put(`/coach/clients/${relationshipId}/approve`);
+                    await loadClients(); // Reload
+                    alert('✓ Client approved!');
+                } catch (err) {
+                    alert('Failed to approve: ' + err.message);
+                }
+                setProcessing(null);
+            };
+
+            const handleReject = async (relationshipId) => {
+                if (!confirm('Are you sure you want to reject this client request?')) return;
+                setProcessing(relationshipId);
+                try {
+                    await api.delete(`/coach/clients/${relationshipId}`);
+                    await loadClients(); // Reload
+                    alert('✓ Client request rejected');
+                } catch (err) {
+                    alert('Failed to reject: ' + err.message);
+                }
+                setProcessing(null);
+            };
+
+            if (loading) {
+                return (
+                    <div className="flex items-center justify-center min-h-screen">
+                        <div className="text-center">
+                            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mb-3"></div>
+                            <p className="text-gray-400">Loading dashboard...</p>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="space-y-6 pb-24">
+                    {/* Header */}
+                    <div className="text-center">
+                        <h1 className="text-3xl font-bold text-white mb-2">
+                            👨‍🏫 Coach Dashboard
+                        </h1>
+                        <p className="text-gray-400">Manage your clients and programs</p>
+                    </div>
+
+                    {/* Stats */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="glass rounded-2xl p-4">
+                            <div className="text-gray-400 text-sm mb-1">Active Clients</div>
+                            <div className="text-3xl font-bold text-white">{activeClients.length}</div>
+                        </div>
+                        <div className="glass rounded-2xl p-4">
+                            <div className="text-gray-400 text-sm mb-1">Pending Requests</div>
+                            <div className="text-3xl font-bold text-orange-500">{pendingClients.length}</div>
+                        </div>
+                    </div>
+
+                    {/* Pending Client Requests */}
+                    {pendingClients.length > 0 && (
+                        <div>
+                            <h2 className="text-white font-semibold text-lg mb-3 flex items-center gap-2">
+                                <i className="fas fa-clock text-orange-500"></i>
+                                Pending Approvals ({pendingClients.length})
+                            </h2>
+                            <div className="space-y-3">
+                                {pendingClients.map(relationship => (
+                                    <div key={relationship._id} className="glass rounded-2xl p-4">
+                                        <div className="flex items-start justify-between mb-3">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center text-white font-bold text-lg">
+                                                    {relationship.client?.name?.charAt(0).toUpperCase() || '?'}
+                                                </div>
+                                                <div>
+                                                    <h3 className="text-white font-semibold">{relationship.client?.name || 'Unknown'}</h3>
+                                                    <p className="text-gray-400 text-sm">{relationship.client?.email}</p>
+                                                    <p className="text-gray-500 text-xs mt-1">
+                                                        Requested {new Date(relationship.invitedAt).toLocaleDateString()}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => handleApprove(relationship._id)}
+                                                disabled={processing === relationship._id}
+                                                className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 rounded-xl font-medium transition-all disabled:opacity-50"
+                                            >
+                                                <i className="fas fa-check mr-2"></i>
+                                                {processing === relationship._id ? 'Approving...' : 'Approve'}
+                                            </button>
+                                            <button
+                                                onClick={() => handleReject(relationship._id)}
+                                                disabled={processing === relationship._id}
+                                                className="flex-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 py-2 rounded-xl font-medium transition-all disabled:opacity-50"
+                                            >
+                                                <i className="fas fa-times mr-2"></i>
+                                                Reject
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Active Clients */}
+                    {activeClients.length > 0 && (
+                        <div>
+                            <h2 className="text-white font-semibold text-lg mb-3 flex items-center gap-2">
+                                <i className="fas fa-users text-green-500"></i>
+                                Active Clients ({activeClients.length})
+                            </h2>
+                            <div className="grid grid-cols-2 gap-3">
+                                {activeClients.map(relationship => (
+                                    <div key={relationship._id} className="glass rounded-2xl p-4">
+                                        <div className="flex flex-col items-center text-center">
+                                            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center text-white font-bold text-xl mb-2">
+                                                {relationship.client?.name?.charAt(0).toUpperCase() || '?'}
+                                            </div>
+                                            <h3 className="text-white font-semibold text-sm">{relationship.client?.name || 'Unknown'}</h3>
+                                            <p className="text-gray-500 text-xs mt-1">
+                                                {relationship.durationDays || 0} days
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Empty State */}
+                    {pendingClients.length === 0 && activeClients.length === 0 && (
+                        <div className="glass rounded-2xl p-8 text-center">
+                            <i className="fas fa-users text-6xl text-gray-600 mb-4"></i>
+                            <h3 className="text-white font-semibold mb-2">No clients yet</h3>
+                            <p className="text-gray-400 text-sm">
+                                Clients will appear here when they sign up and select you as their coach.
+                            </p>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
         const HomeTab = ({ user }) => {
+            // Show different dashboard based on user type
+            if (user?.userType === 'coach') {
+                return <CoachDashboard user={user} />;
+            }
+
+            // Original HomeTab for clients and individuals
             const [wearableData, setWearableData] = useState(null);
             const [todayWorkout, setTodayWorkout] = useState(null);
             const [weeklyStats, setWeeklyStats] = useState({ workouts: 0, total: 4, streak: 0 });
