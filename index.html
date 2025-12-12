@@ -248,16 +248,20 @@
             const [view, setView] = useState('loading');
 
             useEffect(() => {
-                checkAuth();
                 const params = new URLSearchParams(window.location.search);
+
+                // Handle wearable OAuth callbacks BEFORE checkAuth
                 if (params.get('wearable_connected')) {
-                    setTimeout(() => alert(`${params.get('wearable_connected')} connected successfully!`), 500);
+                    setTimeout(() => alert(`✓ ${params.get('wearable_connected')} connected successfully!`), 500);
                     window.history.replaceState({}, '', window.location.pathname);
                 }
                 if (params.get('wearable_error')) {
-                    setTimeout(() => alert(`Connection failed: ${params.get('wearable_error')}`), 500);
+                    setTimeout(() => alert(`⚠️ Connection failed: ${params.get('wearable_error')}`), 500);
                     window.history.replaceState({}, '', window.location.pathname);
                 }
+
+                // Check auth status
+                checkAuth();
             }, []);
 
             const checkAuth = async () => {
@@ -5584,13 +5588,13 @@
 
                 setUploading(true);
                 try {
-                    // Save base64 image to profile
-                    const endpoint = user.userType === 'coach' ? '/coach/profile' : '/users/profile';
-                    const payload = user.userType === 'coach'
-                        ? { profilePicture: preview }
-                        : { profilePicture: preview };
-
-                    await api.put(endpoint, payload);
+                    if (user.userType === 'coach') {
+                        // Coaches: POST to /coach/profile/picture with imageData
+                        await api.post('/coach/profile/picture', { imageData: preview });
+                    } else {
+                        // Clients/Individuals: Update via PUT /users/profile
+                        await api.put('/users/profile', { profilePicture: preview });
+                    }
 
                     alert('✓ Profile photo updated!');
                     setPreview(null);
