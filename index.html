@@ -16,6 +16,7 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -240,6 +241,43 @@
             },
             set: (data) => localStorage.setItem('clockwork_onboarding', JSON.stringify(data)),
             clear: () => localStorage.removeItem('clockwork_onboarding')
+        };
+
+        // ============================================
+        // SOCKET.IO MANAGER
+        // ============================================
+        let socketInstance = null;
+
+        const getSocket = () => {
+            if (!socketInstance) {
+                const token = localStorage.getItem('token');
+                if (!token) return null;
+
+                socketInstance = io(API_URL, {
+                    auth: { token },
+                    transports: ['websocket', 'polling']
+                });
+
+                socketInstance.on('connect', () => {
+                    console.log('[Socket] Connected:', socketInstance.id);
+                });
+
+                socketInstance.on('disconnect', () => {
+                    console.log('[Socket] Disconnected');
+                });
+
+                socketInstance.on('connect_error', (err) => {
+                    console.error('[Socket] Connection error:', err.message);
+                });
+            }
+            return socketInstance;
+        };
+
+        const disconnectSocket = () => {
+            if (socketInstance) {
+                socketInstance.disconnect();
+                socketInstance = null;
+            }
         };
 
         const App = () => {
@@ -2982,6 +3020,36 @@
 
             useEffect(() => {
                 loadClients();
+            }, []);
+
+            // Real-time socket listener
+            useEffect(() => {
+                const socket = getSocket();
+                if (!socket) return;
+
+                // Subscribe to coach updates
+                socket.emit('coach:subscribe');
+                console.log('[Coach] Subscribed to real-time updates');
+
+                // Listen for new client requests
+                socket.on('coach:new-client-request', (data) => {
+                    console.log('[Coach] New client request:', data);
+                    // Reload clients to show new pending request
+                    loadClients();
+                    alert(`New client request from ${data.client.name || data.client.email}!`);
+                });
+
+                // Listen for client workout completions
+                socket.on('coach:client-workout-complete', (data) => {
+                    console.log('[Coach] Client completed workout:', data);
+                    alert(`${data.workout.clientName} completed ${data.workout.name}!`);
+                });
+
+                // Cleanup
+                return () => {
+                    socket.off('coach:new-client-request');
+                    socket.off('coach:client-workout-complete');
+                };
             }, []);
 
             const loadClients = async () => {
