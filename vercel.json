@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://cwbackend-production-314e.up.railway.app/api/:path*"
+    }
+  ]
+}
