@@ -4022,6 +4022,50 @@
 
             return (
                 <div className="flex flex-col h-[calc(100vh-180px)]">
+                    {/* Forging Animation While Generating */}
+                    {loading && (
+                        <div className="mb-4 p-6 rounded-xl bg-gradient-to-br from-orange-500/20 to-red-500/20 border border-orange-500/40 backdrop-blur-md">
+                            <div className="flex flex-col items-center justify-center gap-4">
+                                <div className="relative w-32 h-32 flex items-center justify-center">
+                                    {/* Animated Hammer */}
+                                    <div className="forge-hammering text-6xl">🔨</div>
+
+                                    {/* Anvil */}
+                                    <div className="absolute bottom-0 forge-anvil text-5xl">⬜</div>
+
+                                    {/* Sparks - Multiple particles */}
+                                    {[...Array(8)].map((_, i) => (
+                                        <div
+                                            key={i}
+                                            className="forge-spark absolute text-orange-400"
+                                            style={{
+                                                left: `${30 + Math.random() * 40}%`,
+                                                top: `${30 + Math.random() * 30}%`,
+                                                animationDelay: `${i * 0.15}s`,
+                                                fontSize: `${12 + Math.random() * 8}px`
+                                            }}
+                                        >
+                                            ✨
+                                        </div>
+                                    ))}
+
+                                    {/* Glow effect */}
+                                    <div className="absolute inset-0 forge-glowing rounded-full blur-2xl bg-orange-500/30"></div>
+                                </div>
+
+                                <div className="text-center">
+                                    <h3 className="text-lg font-bold text-orange-400 glow-text mb-2">Forging Your Elite Program...</h3>
+                                    <p className="text-sm text-gray-400">Analyzing your profile • Structuring workouts • Calculating macros</p>
+                                    <div className="mt-3 flex items-center justify-center gap-1">
+                                        <div className="w-2 h-2 bg-orange-400 rounded-full animate-pulse"></div>
+                                        <div className="w-2 h-2 bg-orange-400 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
+                                        <div className="w-2 h-2 bg-orange-400 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Action Notice Banner */}
                     {actionNotice && (
                         <div className="mb-3 p-4 rounded-xl bg-green-500/20 border border-green-500/30">
