@@ -3319,10 +3319,16 @@
                         </div>
                     </div>
 
-                    {/* Pending Client Requests */}
+                    {/* Pending Client Requests - Coming Soon */}
                     {pendingClients.length > 0 && (
-                        <div>
-                            <h2 className="text-white font-semibold text-lg mb-3 flex items-center gap-2">
+                        <div className="relative opacity-50 pointer-events-none">
+                            <div className="absolute inset-0 flex items-center justify-center z-10 bg-black/30 rounded-2xl backdrop-blur-sm">
+                                <div className="text-center">
+                                    <p className="text-white font-bold text-lg">Coming Soon</p>
+                                    <p className="text-gray-300 text-sm">Coach/Client features launching Q1 2026</p>
+                                </div>
+                            </div>
+                            <h2 className="text-white font-semibold text-lg mb-3 flex items-center gap-2 line-through opacity-50">
                                 <i className="fas fa-clock text-orange-500"></i>
                                 Pending Approvals ({pendingClients.length})
                             </h2>
@@ -3367,10 +3373,16 @@
                         </div>
                     )}
 
-                    {/* Active Clients */}
+                    {/* Active Clients - Coming Soon */}
                     {activeClients.length > 0 && (
-                        <div>
-                            <h2 className="text-white font-semibold text-lg mb-3 flex items-center gap-2">
+                        <div className="relative opacity-50 pointer-events-none">
+                            <div className="absolute inset-0 flex items-center justify-center z-10 bg-black/30 rounded-2xl backdrop-blur-sm">
+                                <div className="text-center">
+                                    <p className="text-white font-bold text-lg">Coming Soon</p>
+                                    <p className="text-gray-300 text-sm">Coach/Client features launching Q1 2026</p>
+                                </div>
+                            </div>
+                            <h2 className="text-white font-semibold text-lg mb-3 flex items-center gap-2 line-through opacity-50">
                                 <i className="fas fa-users text-green-500"></i>
                                 Active Clients ({activeClients.length})
                             </h2>
@@ -3392,12 +3404,18 @@
                         </div>
                     )}
 
-                    {/* Empty State */}
+                    {/* Empty State - Coming Soon */}
                     {pendingClients.length === 0 && activeClients.length === 0 && (
-                        <div className="glass rounded-2xl p-8 text-center">
-                            <i className="fas fa-users text-6xl text-gray-600 mb-4"></i>
-                            <h3 className="text-white font-semibold mb-2">No clients yet</h3>
-                            <p className="text-gray-400 text-sm">
+                        <div className="glass rounded-2xl p-8 text-center relative opacity-50 pointer-events-none">
+                            <div className="absolute inset-0 flex items-center justify-center z-10 bg-black/30 rounded-2xl backdrop-blur-sm">
+                                <div className="text-center">
+                                    <p className="text-white font-bold text-lg">Coming Soon</p>
+                                    <p className="text-gray-300 text-sm">Coach/Client features launching Q1 2026</p>
+                                </div>
+                            </div>
+                            <i className="fas fa-users text-6xl text-gray-600 mb-4 line-through"></i>
+                            <h3 className="text-white font-semibold mb-2 line-through">No clients yet</h3>
+                            <p className="text-gray-400 text-sm line-through">
                                 Clients will appear here when they sign up and select you as their coach.
                             </p>
                         </div>
