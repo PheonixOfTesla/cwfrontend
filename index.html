@@ -3862,7 +3862,7 @@
         const ForgeTab = ({ user }) => {
             const [messages, setMessages] = useState(() => {
                 const saved = chatStorage.get();
-                return saved.length > 0 ? saved : [{ role: 'assistant', content: `Hey ${user?.name?.split(' ')[0] || 'there'}! I'm FORGE, your AI coach. Whether you're an elite powerlifter or just starting out, I adapt to YOUR level. What's on your mind?` }];
+                return saved.length > 0 ? saved : [{ role: 'assistant', content: `What's up, ${user?.name?.split(' ')[0] || 'Elite'}! I'm FORGE, your AI training partner - powered by Llama 3.3 and here to help you actually hit your goals. Whether you're chasing PRs or just getting started, let's make it happen. What are we working on?` }];
             });
             const [input, setInput] = useState('');
             const [loading, setLoading] = useState(false);
@@ -3928,7 +3928,7 @@
                 setLoading(false);
             };
 
-            const clearChat = () => { chatStorage.clear(); setMessages([{ role: 'assistant', content: `Chat cleared. How can I help you today, ${user?.name?.split(' ')[0] || 'there'}?` }]); };
+            const clearChat = () => { chatStorage.clear(); setMessages([{ role: 'assistant', content: `Fresh start, ${user?.name?.split(' ')[0] || 'Elite'}. What are we tackling today?` }]); };
 
             const quickActions = ['Add workouts to calendar', "I'm feeling sore", 'Nutrition advice', 'Check my progress', 'Deload week?'];
 
