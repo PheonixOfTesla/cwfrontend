@@ -304,7 +304,13 @@
 
             const checkAuth = async () => {
                 const token = localStorage.getItem('token');
-                if (!token) { setLoading(false); setView('auth'); return; }
+                if (!token) {
+                    // Check if first visit - show landing page
+                    const hasVisited = localStorage.getItem('hasVisited');
+                    setLoading(false);
+                    setView(hasVisited ? 'auth' : 'landing');
+                    return;
+                }
                 try {
                     const data = await api.get('/users/profile');
                     const userData = data.user || data.data || data;
@@ -338,6 +344,7 @@
             const handleLogout = () => { localStorage.removeItem('token'); chatStorage.clear(); setUser(null); setView('auth'); };
 
             if (loading) return <LoadingScreen />;
+            if (view === 'landing') return <LandingPage onGetStarted={() => { localStorage.setItem('hasVisited', 'true'); setView('auth'); }} />;
             if (view === 'auth') return <AuthScreen onLogin={handleLogin} />;
             if (view === 'onboarding') return <OnboardingFlow user={user} onComplete={handleOnboardingComplete} />;
             return <MainApp user={user} setUser={setUser} onLogout={handleLogout} />;
@@ -376,6 +383,141 @@
                             </svg>
                         </span>rk
                     </span>
+                </div>
+            );
+        };
+
+        // Landing Page Component
+        const LandingPage = ({ onGetStarted }) => {
+            const videoRef = useRef(null);
+            const audioRef = useRef(null);
+
+            useEffect(() => {
+                // Auto-play video and audio
+                if (videoRef.current) {
+                    videoRef.current.play().catch(e => console.log('Video autoplay prevented'));
+                }
+                if (audioRef.current) {
+                    audioRef.current.play().catch(e => console.log('Audio autoplay prevented'));
+                }
+            }, []);
+
+            const features = [
+                {
+                    icon: 'fa-bolt',
+                    title: 'FORGE AI Coach',
+                    description: 'Your personal AI fitness coach that learns from you and adapts to your needs 24/7'
+                },
+                {
+                    icon: 'fa-calendar-alt',
+                    title: 'Smart Programming',
+                    description: 'Custom workout programs that adapt to your recovery, goals, and competition schedule'
+                },
+                {
+                    icon: 'fa-chart-line',
+                    title: 'Recovery Tracking',
+                    description: 'Integrate with Whoop, Oura, and other wearables for AI-powered recovery insights'
+                },
+                {
+                    icon: 'fa-utensils',
+                    title: 'Nutrition Planning',
+                    description: 'AI-generated meal plans that align with your training goals and dietary preferences'
+                },
+                {
+                    icon: 'fa-dumbbell',
+                    title: 'Exercise Library',
+                    description: 'Thousands of exercises with video demonstrations and proper form cues'
+                },
+                {
+                    icon: 'fa-trophy',
+                    title: 'Competition Prep',
+                    description: 'Specialized programming for powerlifters, bodybuilders, and competitive athletes'
+                }
+            ];
+
+            return (
+                <div className="relative min-h-screen overflow-hidden">
+                    {/* Video Background */}
+                    <video
+                        ref={videoRef}
+                        className="absolute inset-0 w-full h-full object-cover"
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                    >
+                        <source src="/workout-video.mp4" type="video/mp4" />
+                    </video>
+
+                    {/* Dark Overlay */}
+                    <div className="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+
+                    {/* Background Music */}
+                    <audio ref={audioRef} loop>
+                        <source src="/house-music.mp3" type="audio/mpeg" />
+                    </audio>
+
+                    {/* Content */}
+                    <div className="relative z-10 min-h-screen flex flex-col">
+                        {/* Header */}
+                        <nav className="p-6">
+                            <div className="flex items-center gap-3">
+                                <i className="fas fa-bolt text-4xl text-orange-500 lightning-icon"></i>
+                                <span className="text-3xl font-bold text-white lightning-text">
+                                    cl<i className="fas fa-clock text-orange-500" style={{fontSize: '0.8em'}}></i>ckw<i className="fas fa-clock text-orange-500" style={{fontSize: '0.8em'}}></i>rk
+                                </span>
+                            </div>
+                        </nav>
+
+                        {/* Hero Section */}
+                        <div className="flex-1 flex items-center justify-center px-6">
+                            <div className="max-w-6xl w-full text-center">
+                                <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
+                                    Elite Coaching for
+                                    <span className="text-orange-500 lightning-text"> Everyone</span>
+                                </h1>
+                                <p className="text-xl md:text-2xl text-gray-300 mb-12 max-w-3xl mx-auto">
+                                    AI-powered fitness coaching that adapts to your goals, recovery, and lifestyle.
+                                    From beginners to competitive athletes.
+                                </p>
+                                <button
+                                    onClick={onGetStarted}
+                                    className="bg-orange-500 hover:bg-orange-600 text-white px-12 py-4 rounded-xl text-xl font-bold transition-all transform hover:scale-105 animate-pulse-glow"
+                                >
+                                    Get Started <i className="fas fa-arrow-right ml-2"></i>
+                                </button>
+                                <p className="text-gray-400 mt-4">24-hour free trial • $9.99/mo after</p>
+                            </div>
+                        </div>
+
+                        {/* Features Grid */}
+                        <div className="pb-20 px-6">
+                            <div className="max-w-6xl mx-auto">
+                                <h2 className="text-3xl md:text-4xl font-bold text-white mb-12 text-center">
+                                    Everything You Need to <span className="text-orange-500">Dominate</span>
+                                </h2>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {features.map((feature, idx) => (
+                                        <div key={idx} className="glass p-6 rounded-xl hover:glow transition-all">
+                                            <i className={`fas ${feature.icon} text-4xl text-orange-500 mb-4`}></i>
+                                            <h3 className="text-xl font-bold text-white mb-2">{feature.title}</h3>
+                                            <p className="text-gray-400">{feature.description}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer CTA */}
+                        <div className="pb-12 px-6 text-center">
+                            <button
+                                onClick={onGetStarted}
+                                className="bg-white text-black px-10 py-3 rounded-xl font-bold hover:bg-orange-500 hover:text-white transition-all"
+                            >
+                                Start Your Free Trial
+                            </button>
+                        </div>
+                    </div>
                 </div>
             );
         };
