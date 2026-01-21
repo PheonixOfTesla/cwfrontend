@@ -3956,6 +3956,14 @@
                             });
                             setTimeout(() => setActionNotice(null), 5000);
                         }
+                        // Show calendar button after any program/workout is generated
+                        else if (data.answer && (data.answer.toLowerCase().includes('workout') || data.answer.toLowerCase().includes('program') || data.answer.toLowerCase().includes('day 1') || data.answer.toLowerCase().includes('day 2'))) {
+                            setActionNotice({
+                                type: 'calendar',
+                                message: 'Program ready! View your workouts in the Calendar.',
+                                icon: 'fa-calendar-check'
+                            });
+                        }
                         setLoading(false);
                         return; // Success - exit function
                     } catch (err) {
