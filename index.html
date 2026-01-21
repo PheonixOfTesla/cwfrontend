@@ -3966,10 +3966,11 @@
                         setMessages(responseMessages);
 
                         // Handle action results from FORGE
-                        if (data.action?.action === 'PROGRAM_GENERATED') {
+                        if (data.action?.action === 'CALENDAR_GENERATED' || data.action?.action === 'PROGRAM_GENERATED') {
+                            const eventsCount = data.action.eventsCreated || data.action.stats?.totalEventsCreated || 0;
                             setActionNotice({
                                 type: 'calendar',
-                                message: `✅ Program created! ${data.action.stats.totalEventsCreated} events added to calendar.`,
+                                message: `✅ Program created! ${eventsCount} workouts added to calendar.`,
                                 icon: 'fa-calendar-check'
                             });
                         }
