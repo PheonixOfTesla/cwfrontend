@@ -3882,31 +3882,50 @@
                 setMessages(newMessages);
                 setLoading(true);
 
-                try {
-                    // Send conversation history for context (last 20 messages to avoid token limits)
-                    const conversationHistory = messages.slice(-20).map(m => ({
-                        role: m.role,
-                        content: m.content
-                    }));
-                    const data = await api.post('/ai-coach/ask', {
-                        question: userMessage,
-                        conversationHistory: conversationHistory
-                    });
-                    setMessages([...newMessages, { role: 'assistant', content: data.answer || data.response || 'I had trouble processing that. Try rephrasing?' }]);
+                // Retry logic with exponential backoff
+                const maxRetries = 3;
+                let retryCount = 0;
+                let lastError = null;
 
-                    // Handle action results from FORGE
-                    if (data.action?.action === 'CALENDAR_GENERATED') {
-                        setActionNotice({
-                            type: 'calendar',
-                            message: `Added ${data.action.eventsCreated} workouts to your calendar!`,
-                            icon: 'fa-calendar-check'
-                        });
-                        setTimeout(() => setActionNotice(null), 5000);
+                while (retryCount < maxRetries) {
+                    try {
+                        // Send conversation history for context (last 20 messages to avoid token limits)
+                        const conversationHistory = messages.slice(-20).map(m => ({
+                            role: m.role,
+                            content: m.content
+                        }));
+                        const data = await api.post('/ai-coach/ask', {
+                            question: userMessage,
+                            conversationHistory: conversationHistory
+                        }, AI_TIMEOUT);
+                        setMessages([...newMessages, { role: 'assistant', content: data.answer || data.response || 'I had trouble processing that. Try rephrasing?' }]);
+
+                        // Handle action results from FORGE
+                        if (data.action?.action === 'CALENDAR_GENERATED') {
+                            setActionNotice({
+                                type: 'calendar',
+                                message: `Added ${data.action.eventsCreated} workouts to your calendar!`,
+                                icon: 'fa-calendar-check'
+                            });
+                            setTimeout(() => setActionNotice(null), 5000);
+                        }
+                        setLoading(false);
+                        return; // Success - exit function
+                    } catch (err) {
+                        lastError = err;
+                        retryCount++;
+                        console.error(`FORGE error (attempt ${retryCount}/${maxRetries}):`, err);
+
+                        if (retryCount < maxRetries) {
+                            // Exponential backoff: 1s, 2s, 4s
+                            await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount - 1) * 1000));
+                        }
                     }
-                } catch (err) {
-                    console.error('FORGE error:', err);
-                    setMessages([...newMessages, { role: 'assistant', content: "Connection issue - the AI service might be busy. Try again in a moment." }]);
                 }
+
+                // All retries failed
+                console.error('FORGE failed after all retries:', lastError);
+                setMessages([...newMessages, { role: 'assistant', content: "I'm having trouble connecting right now. Please check your internet connection and try again." }]);
                 setLoading(false);
             };
 
