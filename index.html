@@ -33,25 +33,32 @@
 
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html {
+            scroll-behavior: smooth;
+            -webkit-text-size-adjust: 100%;
+        }
         body {
             background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
             min-height: 100vh;
             font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overflow-x: hidden;
         }
-        .glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.08); }
-        .glass-dark { background: rgba(0,0,0,0.4); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+        .glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.08); transform: translateZ(0); will-change: transform; }
+        .glass-dark { background: rgba(0,0,0,0.4); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); transform: translateZ(0); }
         .glow { box-shadow: 0 0 30px rgba(249, 115, 22, 0.3); }
         .glow-text { text-shadow: 0 0 20px rgba(249, 115, 22, 0.5); }
         @keyframes pulse-glow { 0%, 100% { box-shadow: 0 0 20px rgba(249, 115, 22, 0.3); } 50% { box-shadow: 0 0 40px rgba(249, 115, 22, 0.6); } }
-        .animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+        .animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; will-change: box-shadow; }
         .progress-ring { transform: rotate(-90deg); }
         .chat-bubble { max-width: 85%; }
         .ring-progress { transition: stroke-dashoffset 0.5s ease-in-out; }
         .calendar-day { transition: all 0.2s ease; }
         .calendar-day:hover { background: rgba(249, 115, 22, 0.2); }
         .stat-card { background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%); }
-        @keyframes breathe { 0%, 100% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.05); opacity: 1; } }
-        .animate-breathe { animation: breathe 4s ease-in-out infinite; }
+        @keyframes breathe { 0%, 100% { transform: scale(1) translateZ(0); opacity: 0.8; } 50% { transform: scale(1.05) translateZ(0); opacity: 1; } }
+        .animate-breathe { animation: breathe 4s ease-in-out infinite; will-change: transform, opacity; }
         .metric-ring { filter: drop-shadow(0 0 10px rgba(249, 115, 22, 0.4)); }
         .expandable { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
         .expandable.open { max-height: 500px; }
@@ -73,11 +80,12 @@
             20%, 24%, 55% { opacity: 0.5; text-shadow: none; }
         }
         @keyframes electric-pulse {
-            0%, 100% { transform: scale(1); filter: brightness(1); }
-            50% { transform: scale(1.02); filter: brightness(1.3); }
+            0%, 100% { transform: scale(1) translateZ(0); filter: brightness(1); }
+            50% { transform: scale(1.02) translateZ(0); filter: brightness(1.3); }
         }
         .lightning-icon {
             animation: lightning-glow 2s ease-in-out infinite, electric-pulse 1.5s ease-in-out infinite;
+            will-change: transform, filter;
         }
         .lightning-text {
             animation: flicker 3s linear infinite;
@@ -397,6 +405,12 @@
                 if (videoRef.current) {
                     videoRef.current.play().catch(e => console.log('Video autoplay prevented'));
                 }
+                // Try to auto-play audio (will fail on most browsers, but worth trying)
+                if (audioRef.current) {
+                    audioRef.current.play()
+                        .then(() => setAudioPlaying(true))
+                        .catch(e => console.log('Audio autoplay prevented - user can click button'));
+                }
             }, []);
 
             const toggleAudio = () => {
@@ -412,10 +426,11 @@
             };
 
             const handleGetStarted = () => {
-                // Start audio on user interaction if not already playing
+                // Try to start audio on user interaction if not already playing
                 if (audioRef.current && !audioPlaying) {
-                    audioRef.current.play().catch(e => console.log('Audio play failed'));
-                    setAudioPlaying(true);
+                    audioRef.current.play()
+                        .then(() => setAudioPlaying(true))
+                        .catch(e => console.log('Audio play failed'));
                 }
                 onGetStarted();
             };
@@ -454,7 +469,7 @@
             ];
 
             return (
-                <div className="relative min-h-screen overflow-hidden">
+                <div className="relative min-h-screen overflow-hidden bg-black">
                     {/* Video Background */}
                     <video
                         ref={videoRef}
@@ -463,15 +478,20 @@
                         loop
                         muted
                         playsInline
+                        preload="auto"
+                        webkit-playsinline="true"
+                        x-webkit-airplay="allow"
+                        style={{ willChange: 'transform' }}
                     >
                         <source src="/workout-video.mp4" type="video/mp4" />
+                        <source src="/workout-video.mp4" type="video/quicktime" />
                     </video>
 
                     {/* Dark Overlay */}
-                    <div className="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+                    <div className="absolute inset-0 bg-black/70"></div>
 
                     {/* Background Music */}
-                    <audio ref={audioRef} loop>
+                    <audio ref={audioRef} loop preload="auto">
                         <source src="/house-music.mp3" type="audio/mpeg" />
                     </audio>
 
