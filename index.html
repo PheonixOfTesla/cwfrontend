@@ -305,10 +305,9 @@
             const checkAuth = async () => {
                 const token = localStorage.getItem('token');
                 if (!token) {
-                    // Check if first visit - show landing page
-                    const hasVisited = localStorage.getItem('hasVisited');
+                    // Always show landing page for non-authenticated users
                     setLoading(false);
-                    setView(hasVisited ? 'auth' : 'landing');
+                    setView('landing');
                     return;
                 }
                 try {
@@ -341,10 +340,10 @@
             };
 
             const handleOnboardingComplete = (updatedUser) => { setUser(updatedUser); setView('app'); };
-            const handleLogout = () => { localStorage.removeItem('token'); chatStorage.clear(); setUser(null); setView('auth'); };
+            const handleLogout = () => { localStorage.removeItem('token'); chatStorage.clear(); setUser(null); setView('landing'); };
 
             if (loading) return <LoadingScreen />;
-            if (view === 'landing') return <LandingPage onGetStarted={() => { localStorage.setItem('hasVisited', 'true'); setView('auth'); }} />;
+            if (view === 'landing') return <LandingPage onGetStarted={() => setView('auth')} />;
             if (view === 'auth') return <AuthScreen onLogin={handleLogin} />;
             if (view === 'onboarding') return <OnboardingFlow user={user} onComplete={handleOnboardingComplete} />;
             return <MainApp user={user} setUser={setUser} onLogout={handleLogout} />;
