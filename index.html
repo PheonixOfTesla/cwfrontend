@@ -5048,7 +5048,16 @@
                         <p className="text-gray-400">{user?.email}</p>
                         <div className="flex justify-center gap-2 mt-3">
                             <span className="px-3 py-1 rounded-full bg-orange-500/20 text-orange-400 text-sm capitalize">{user?.userType || 'Individual'}</span>
-                            <span className="px-3 py-1 rounded-full bg-green-500/20 text-green-400 text-sm">{user?.subscription?.tier || 'Free'}</span>
+                            <span className={`px-3 py-1 rounded-full text-sm ${
+                                user?.subscription?.status === 'active' ? 'bg-green-500/20 text-green-400' :
+                                user?.subscription?.status === 'trialing' ? 'bg-blue-500/20 text-blue-400' :
+                                user?.subscription?.status === 'trial_expired' ? 'bg-red-500/20 text-red-400' :
+                                'bg-red-500/20 text-red-400'
+                            }`}>{
+                                user?.subscription?.status === 'active' ? 'Pro' :
+                                user?.subscription?.status === 'trialing' ? 'Trial' :
+                                'Expired'
+                            }</span>
                         </div>
                     </div>
 
@@ -5089,7 +5098,7 @@
                             <div className="flex items-center gap-3"><i className="fas fa-heart-pulse text-gray-400 w-6"></i><span className="text-white">Connect Wearables</span></div>
                             <div className="flex items-center gap-2">{connections.filter(c => c.connected).length > 0 && <span className="text-green-400 text-sm">{connections.filter(c => c.connected).length} connected</span>}<i className="fas fa-chevron-right text-gray-500"></i></div>
                         </button>
-                        <button onClick={() => setShowSubscription(true)} className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors"><div className="flex items-center gap-3"><i className="fas fa-credit-card text-gray-400 w-6"></i><span className="text-white">Subscription</span></div><span className="text-orange-500">{user?.subscription?.tier || 'Free'}</span></button>
+                        <button onClick={() => setShowSubscription(true)} className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors"><div className="flex items-center gap-3"><i className="fas fa-credit-card text-gray-400 w-6"></i><span className="text-white">Subscription</span></div><span className={user?.subscription?.status === 'active' ? 'text-green-400' : user?.subscription?.status === 'trialing' ? 'text-blue-400' : 'text-red-400'}>{user?.subscription?.status === 'active' ? 'Pro' : user?.subscription?.status === 'trialing' ? 'Trial' : 'Expired'}</span></button>
                         <button className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors"><div className="flex items-center gap-3"><i className="fas fa-bell text-gray-400 w-6"></i><span className="text-white">Notifications</span></div><i className="fas fa-chevron-right text-gray-500"></i></button>
                     </div>
 
