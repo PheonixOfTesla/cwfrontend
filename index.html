@@ -3849,25 +3849,50 @@
                                                     ) : event.type === 'workout' ? (
                                                         <div className="mt-3 space-y-3">
                                                             {event.duration && <p className="text-gray-500 text-xs mb-2"><i className="fas fa-clock mr-1"></i>{event.duration} min</p>}
-                                                            {/* Show exercises if available */}
+                                                            {/* Show exercises grouped by category */}
                                                             {event.exercises?.length > 0 ? (
-                                                                <div className="space-y-2">
-                                                                    {event.exercises.map((ex, j) => (
-                                                                        <div key={j} className="bg-white/5 rounded-lg p-3 flex items-center justify-between">
-                                                                            <div className="flex-1">
-                                                                                <div className="text-white font-medium text-sm">{ex.name || ex.exercise}</div>
-                                                                                <div className="text-orange-400 text-xs mt-1">
-                                                                                    {ex.sets && <span>{ex.sets} sets</span>}
-                                                                                    {ex.reps && <span> × {ex.reps}</span>}
-                                                                                    {ex.rest && <span className="text-gray-500 ml-2">({ex.rest} rest)</span>}
+                                                                <div className="space-y-4">
+                                                                    {/* Group exercises by category */}
+                                                                    {(() => {
+                                                                        const warmups = event.exercises.filter(ex => ex.category === 'warmup');
+                                                                        const primaries = event.exercises.filter(ex => ex.category === 'primary' || ex.category === 'main-lift');
+                                                                        const accessories = event.exercises.filter(ex => ex.category === 'accessory' || (!ex.category && ex.category !== 'warmup' && ex.category !== 'primary'));
+
+                                                                        const renderExerciseGroup = (exercises, title, icon, color) => exercises.length > 0 && (
+                                                                            <div>
+                                                                                <div className={`flex items-center gap-2 mb-2 ${color}`}>
+                                                                                    <i className={`fas ${icon} text-xs`}></i>
+                                                                                    <span className="text-xs font-semibold uppercase tracking-wide">{title}</span>
                                                                                 </div>
-                                                                                {ex.notes && <div className="text-gray-500 text-xs mt-1 italic">{ex.notes}</div>}
+                                                                                <div className="space-y-2">
+                                                                                    {exercises.map((ex, j) => (
+                                                                                        <div key={j} className="bg-white/5 rounded-lg p-3 flex items-center justify-between">
+                                                                                            <div className="flex-1">
+                                                                                                <div className="text-white font-medium text-sm">{ex.name || ex.exercise}</div>
+                                                                                                <div className="text-orange-400 text-xs mt-1">
+                                                                                                    {ex.sets && <span>{ex.sets} sets</span>}
+                                                                                                    {ex.reps && <span> × {ex.reps}</span>}
+                                                                                                    {ex.rest && <span className="text-gray-500 ml-2">({ex.rest})</span>}
+                                                                                                </div>
+                                                                                                {ex.notes && <div className="text-gray-500 text-xs mt-1 italic">{ex.notes}</div>}
+                                                                                            </div>
+                                                                                            <button onClick={() => { setActiveTab('exercises'); setExerciseSearch && setExerciseSearch(ex.name || ex.exercise); }} className="text-orange-500 hover:text-orange-400 p-2" title="View in Library">
+                                                                                                <i className="fas fa-external-link-alt text-xs"></i>
+                                                                                            </button>
+                                                                                        </div>
+                                                                                    ))}
+                                                                                </div>
                                                                             </div>
-                                                                            <button onClick={() => { setActiveTab('exercises'); setExerciseSearch && setExerciseSearch(ex.name || ex.exercise); }} className="text-orange-500 hover:text-orange-400 p-2" title="View in Library">
-                                                                                <i className="fas fa-external-link-alt text-xs"></i>
-                                                                            </button>
-                                                                        </div>
-                                                                    ))}
+                                                                        );
+
+                                                                        return (
+                                                                            <>
+                                                                                {renderExerciseGroup(warmups, 'Warmup', 'fa-fire-alt', 'text-yellow-500')}
+                                                                                {renderExerciseGroup(primaries, 'Primary', 'fa-dumbbell', 'text-orange-500')}
+                                                                                {renderExerciseGroup(accessories, 'Accessories', 'fa-layer-group', 'text-blue-400')}
+                                                                            </>
+                                                                        );
+                                                                    })()}
                                                                 </div>
                                                             ) : event.description ? (
                                                                 <div className="space-y-2">
