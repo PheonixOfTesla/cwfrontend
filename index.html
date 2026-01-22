@@ -3978,6 +3978,18 @@
                         return; // Success - exit function
                     } catch (err) {
                         lastError = err;
+
+                        // Check for 403 - Trial expired / Subscription required
+                        if (err.status === 403 || err.requiresSubscription) {
+                            setMessages([...newMessages, {
+                                role: 'assistant',
+                                content: err.message || 'Your free trial has ended.',
+                                isSubscribePrompt: true
+                            }]);
+                            setLoading(false);
+                            return; // Don't retry - show subscribe prompt
+                        }
+
                         retryCount++;
                         console.error(`FORGE error (attempt ${retryCount}/${maxRetries}):`, err);
 
@@ -4017,6 +4029,17 @@
                                         <div className="flex items-center gap-3">
                                             <div className="forge-hammering-slow">🔨</div>
                                             <span className="text-sm text-gray-300">Forging your program...</span>
+                                        </div>
+                                    ) : msg.isSubscribePrompt ? (
+                                        <div className="space-y-3">
+                                            <p className="text-orange-400 font-semibold">⚠️ Trial Ended</p>
+                                            <p>{msg.content}</p>
+                                            <button
+                                                onClick={() => setActiveTab('profile')}
+                                                className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-2 px-4 rounded-lg font-semibold hover:opacity-90 transition"
+                                            >
+                                                Update Subscription
+                                            </button>
                                         </div>
                                     ) : (
                                         msg.content
