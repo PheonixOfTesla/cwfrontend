@@ -322,7 +322,7 @@
         }
 
         async function login(email, passcode) {
-            const data = await api.post('/users/login', { email, passcode });
+            const data = await api.post('/auth/login', { email, passcode });
             localStorage.setItem('test_token', data.token);
             currentUser = data.user;
             renderChecklist();
