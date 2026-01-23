@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="ClockWork Test User Checklist">
+    <meta name="description" content="ClockWork Beta Tester Feedback">
     <meta name="theme-color" content="#f97316">
-    <title>ClockWork - Test Checklist</title>
+    <title>ClockWork - Beta Feedback</title>
 
     <link rel="icon" type="image/png" href="/forge.png">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -39,13 +39,83 @@
         }
         .glow { box-shadow: 0 0 30px rgba(249, 115, 22, 0.3); }
         .glow-text { text-shadow: 0 0 20px rgba(249, 115, 22, 0.5); }
-        @keyframes pulse-glow {
-            0%, 100% { box-shadow: 0 0 20px rgba(249, 115, 22, 0.3); }
-            50% { box-shadow: 0 0 40px rgba(249, 115, 22, 0.6); }
-        }
-        .animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
 
-        /* Custom checkbox styling */
+        /* Section styling */
+        .section-card {
+            background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            transition: all 0.3s ease;
+        }
+
+        /* Mood selector */
+        .mood-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.1);
+            background: rgba(0,0,0,0.3);
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .mood-btn:hover {
+            transform: scale(1.1);
+            border-color: rgba(249, 115, 22, 0.5);
+        }
+        .mood-btn.selected {
+            border-color: #f97316;
+            background: rgba(249, 115, 22, 0.2);
+            transform: scale(1.15);
+            box-shadow: 0 0 20px rgba(249, 115, 22, 0.4);
+        }
+
+        /* Rating slider */
+        .rating-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.1);
+            outline: none;
+        }
+        .rating-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #f97316;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(249, 115, 22, 0.5);
+        }
+        .rating-slider::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #f97316;
+            cursor: pointer;
+            border: none;
+        }
+
+        /* Progress bar */
+        .progress-bar-bg {
+            background: rgba(255,255,255,0.1);
+            border-radius: 9999px;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            background: linear-gradient(90deg, #f97316, #fb923c);
+            height: 100%;
+            border-radius: 9999px;
+            transition: width 0.5s ease-out;
+        }
+
+        /* Task checkbox */
         .task-checkbox {
             appearance: none;
             width: 24px;
@@ -71,44 +141,27 @@
             font-size: 14px;
             height: 100%;
         }
-        .task-checkbox:hover {
+
+        /* Textarea */
+        .feedback-textarea {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            color: white;
+            padding: 12px;
+            width: 100%;
+            min-height: 80px;
+            resize: vertical;
+        }
+        .feedback-textarea:focus {
+            outline: none;
             border-color: #f97316;
-            box-shadow: 0 0 10px rgba(249, 115, 22, 0.3);
+        }
+        .feedback-textarea::placeholder {
+            color: rgba(255,255,255,0.3);
         }
 
-        .task-label {
-            transition: all 0.2s ease;
-        }
-        .task-label.completed {
-            text-decoration: line-through;
-            opacity: 0.6;
-        }
-
-        /* Progress bar */
-        .progress-bar-bg {
-            background: rgba(255,255,255,0.1);
-            border-radius: 9999px;
-            overflow: hidden;
-        }
-        .progress-bar-fill {
-            background: linear-gradient(90deg, #f97316, #fb923c);
-            height: 100%;
-            border-radius: 9999px;
-            transition: width 0.5s ease-out;
-        }
-
-        /* Section styling */
-        .section-card {
-            background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 16px;
-            transition: all 0.3s ease;
-        }
-        .section-card:hover {
-            border-color: rgba(249, 115, 22, 0.3);
-        }
-
-        /* Celebration animation */
+        /* Celebration */
         @keyframes celebrate {
             0% { transform: scale(1); }
             50% { transform: scale(1.05); }
@@ -126,7 +179,6 @@
             animation: confetti 1s ease-out forwards;
         }
 
-        /* Error styling */
         .error-message {
             background: rgba(239, 68, 68, 0.2);
             border: 1px solid rgba(239, 68, 68, 0.5);
@@ -139,8 +191,7 @@
 </head>
 <body class="text-white">
     <div id="app" class="min-h-screen">
-        <!-- Loading State -->
-        <div id="loading" class="flex items-center justify-center min-h-screen">
+        <div class="flex items-center justify-center min-h-screen">
             <div class="text-center">
                 <i class="fas fa-circle-notch fa-spin text-4xl text-clockwork-orange mb-4"></i>
                 <p class="text-gray-400">Loading...</p>
@@ -174,105 +225,132 @@
         };
 
         // ============================================
-        // CHECKLIST DATA
+        // FEEDBACK SECTIONS DATA
         // ============================================
-        const checklistSections = [
+        const feedbackSections = [
             {
-                id: 'getting-started',
-                title: 'Getting Started',
-                icon: 'fa-rocket',
+                id: 'first-impressions',
+                title: 'First Impressions',
+                icon: 'fa-eye',
+                description: 'Your initial reaction to ClockWork',
                 tasks: [
-                    { id: 'gs-1', text: 'Create an account or log in' },
-                    { id: 'gs-2', text: 'Complete the onboarding questionnaire' },
-                    { id: 'gs-3', text: 'Set your fitness goals' },
-                    { id: 'gs-4', text: 'Review your dashboard' }
-                ]
+                    { id: 'fi-1', text: 'Open the app and look around the dashboard' },
+                    { id: 'fi-2', text: 'Check out the navigation and menu options' }
+                ],
+                moodQuestion: 'How did the app make you feel when you first opened it?',
+                ratingQuestion: 'How intuitive was the layout?',
+                feedbackPrompt: 'What was your first thought when you saw the app?'
             },
             {
-                id: 'forge-program',
-                title: 'FORGE Program',
+                id: 'onboarding',
+                title: 'Getting Set Up',
+                icon: 'fa-user-plus',
+                description: 'The signup and onboarding experience',
+                tasks: [
+                    { id: 'ob-1', text: 'Complete the onboarding questionnaire' },
+                    { id: 'ob-2', text: 'Set your fitness goals and preferences' }
+                ],
+                moodQuestion: 'How did the onboarding process feel?',
+                ratingQuestion: 'How easy was it to get started?',
+                feedbackPrompt: 'Was anything confusing or missing during setup?'
+            },
+            {
+                id: 'forge',
+                title: 'FORGE - AI Program',
                 icon: 'fa-hammer',
+                description: 'Getting your personalized workout program',
                 tasks: [
-                    { id: 'fp-1', text: 'Generate your AI workout program' },
-                    { id: 'fp-2', text: 'Review the generated workouts' },
-                    { id: 'fp-3', text: 'Check the exercise selections' },
-                    { id: 'fp-4', text: 'Regenerate program if needed' }
-                ]
+                    { id: 'fg-1', text: 'Generate your AI workout program' },
+                    { id: 'fg-2', text: 'Review the workouts it created for you' },
+                    { id: 'fg-3', text: 'Check if the exercises match your goals' }
+                ],
+                moodQuestion: 'How did you feel about your generated program?',
+                ratingQuestion: 'How personalized did the program feel?',
+                feedbackPrompt: 'Did the AI understand what you were looking for? What would you change?'
             },
             {
-                id: 'complete-workout',
-                title: 'Complete a Workout',
+                id: 'workout',
+                title: 'Working Out',
                 icon: 'fa-dumbbell',
+                description: 'Actually using ClockWork during a workout',
                 tasks: [
-                    { id: 'cw-1', text: 'Start a workout session' },
-                    { id: 'cw-2', text: 'Log your sets and reps' },
-                    { id: 'cw-3', text: 'Use the rest timer between sets' },
-                    { id: 'cw-4', text: 'Complete and save the workout' },
-                    { id: 'cw-5', text: 'View workout summary' }
-                ]
+                    { id: 'wo-1', text: 'Start and complete at least one workout' },
+                    { id: 'wo-2', text: 'Log your sets, reps, and weights' },
+                    { id: 'wo-3', text: 'Use the rest timer between sets' }
+                ],
+                moodQuestion: 'How was the experience of working out with ClockWork?',
+                ratingQuestion: 'How easy was it to log your exercises?',
+                feedbackPrompt: 'Would you actually use this during your real workouts? Why or why not?'
             },
             {
                 id: 'ai-coach',
                 title: 'AI Coach',
                 icon: 'fa-robot',
+                description: 'Chatting with your AI fitness coach',
                 tasks: [
-                    { id: 'ac-1', text: 'Open the AI coach chat' },
-                    { id: 'ac-2', text: 'Ask a fitness question' },
-                    { id: 'ac-3', text: 'Get workout tips or advice' },
-                    { id: 'ac-4', text: 'Ask about nutrition' }
-                ]
+                    { id: 'ai-1', text: 'Ask the AI coach a fitness question' },
+                    { id: 'ai-2', text: 'Ask for advice on form or technique' }
+                ],
+                moodQuestion: 'How helpful was the AI coach?',
+                ratingQuestion: 'How knowledgeable did the AI seem?',
+                feedbackPrompt: 'Did the AI give you useful answers? What did you ask it?'
             },
             {
-                id: 'track-progress',
-                title: 'Track Progress',
+                id: 'progress',
+                title: 'Tracking Progress',
                 icon: 'fa-chart-line',
+                description: 'Seeing your stats and improvements',
                 tasks: [
-                    { id: 'tp-1', text: 'Log your body weight' },
-                    { id: 'tp-2', text: 'View weight history chart' },
-                    { id: 'tp-3', text: 'Check your personal records (PRs)' },
-                    { id: 'tp-4', text: 'Review workout history' }
-                ]
+                    { id: 'pr-1', text: 'Log your body weight' },
+                    { id: 'pr-2', text: 'View your workout history or stats' }
+                ],
+                moodQuestion: 'How motivating is the progress tracking?',
+                ratingQuestion: 'How useful are the stats and charts?',
+                feedbackPrompt: 'What other stats or tracking would you want to see?'
             },
             {
-                id: 'calendar',
-                title: 'Calendar',
-                icon: 'fa-calendar',
+                id: 'overall',
+                title: 'Overall Experience',
+                icon: 'fa-star',
+                description: 'Your big-picture thoughts on ClockWork',
                 tasks: [
-                    { id: 'cal-1', text: 'View the workout calendar' },
-                    { id: 'cal-2', text: 'Check scheduled workouts' },
-                    { id: 'cal-3', text: 'Navigate between weeks/months' }
-                ]
+                    { id: 'ov-1', text: 'Explore any features we haven\'t mentioned' }
+                ],
+                moodQuestion: 'Overall, how do you feel about ClockWork?',
+                ratingQuestion: 'How likely are you to recommend ClockWork to a friend?',
+                feedbackPrompt: 'What\'s the ONE thing that would make you love this app?'
             },
             {
-                id: 'check-ins',
-                title: 'Check-Ins',
-                icon: 'fa-clipboard-check',
-                tasks: [
-                    { id: 'ci-1', text: 'Complete a daily check-in' },
-                    { id: 'ci-2', text: 'Rate your energy/mood' },
-                    { id: 'ci-3', text: 'Complete a weekly check-in' }
-                ]
-            },
-            {
-                id: 'settings',
-                title: 'Settings',
-                icon: 'fa-cog',
-                tasks: [
-                    { id: 'set-1', text: 'View your profile' },
-                    { id: 'set-2', text: 'Update preferences' },
-                    { id: 'set-3', text: 'Check notification settings' },
-                    { id: 'set-4', text: 'Log out and log back in' }
+                id: 'pricing',
+                title: 'Value & Pricing',
+                icon: 'fa-tag',
+                description: 'Is ClockWork worth it?',
+                tasks: [],
+                moodQuestion: 'How do you feel about paying for an app like this?',
+                ratingQuestion: 'How would you rate the value for the price?',
+                feedbackPrompt: 'What price feels fair? What features would make you willing to pay more?',
+                extraQuestions: [
+                    {
+                        id: 'price-range',
+                        question: 'What would you pay monthly for ClockWork?',
+                        options: ['Free only', '$5-10/mo', '$10-20/mo', '$20-30/mo', '$30+/mo']
+                    },
+                    {
+                        id: 'compare',
+                        question: 'Compared to other fitness apps you\'ve tried:',
+                        options: ['Much worse', 'Worse', 'About the same', 'Better', 'Much better', 'Haven\'t tried others']
+                    }
                 ]
             }
         ];
 
         // ============================================
-        // STATE MANAGEMENT
+        // STATE
         // ============================================
         let currentUser = null;
 
         function getStorageKey() {
-            return currentUser ? `clockwork_test_${currentUser.id}` : null;
+            return currentUser ? `clockwork_feedback_${currentUser.id}` : null;
         }
 
         function getStoredData() {
@@ -280,10 +358,21 @@
             if (!key) return null;
             try {
                 const data = localStorage.getItem(key);
-                return data ? JSON.parse(data) : { completedTasks: [], celebrationShown: false };
+                return data ? JSON.parse(data) : getDefaultData();
             } catch {
-                return { completedTasks: [], celebrationShown: false };
+                return getDefaultData();
             }
+        }
+
+        function getDefaultData() {
+            return {
+                completedTasks: [],
+                moods: {},
+                ratings: {},
+                feedback: {},
+                extraAnswers: {},
+                celebrationShown: false
+            };
         }
 
         function saveData(data) {
@@ -293,17 +382,35 @@
             }
         }
 
-        function getAllTaskIds() {
-            return checklistSections.flatMap(section => section.tasks.map(t => t.id));
-        }
+        function calculateProgress(data) {
+            let total = 0;
+            let completed = 0;
 
-        function calculateProgress(completedTasks) {
-            const totalTasks = getAllTaskIds().length;
-            return totalTasks > 0 ? Math.round((completedTasks.length / totalTasks) * 100) : 0;
+            feedbackSections.forEach(section => {
+                // Tasks
+                total += section.tasks.length;
+                completed += section.tasks.filter(t => data.completedTasks.includes(t.id)).length;
+
+                // Mood (counts as 1)
+                total += 1;
+                if (data.moods[section.id]) completed += 1;
+
+                // Rating (counts as 1)
+                total += 1;
+                if (data.ratings[section.id] !== undefined) completed += 1;
+
+                // Extra questions
+                if (section.extraQuestions) {
+                    total += section.extraQuestions.length;
+                    completed += section.extraQuestions.filter(q => data.extraAnswers[q.id]).length;
+                }
+            });
+
+            return total > 0 ? Math.round((completed / total) * 100) : 0;
         }
 
         // ============================================
-        // AUTHENTICATION
+        // AUTH
         // ============================================
         async function checkAuth() {
             const token = localStorage.getItem('test_token');
@@ -314,7 +421,7 @@
             try {
                 const data = await api.get('/users/profile');
                 currentUser = data.user || data.data || data;
-                renderChecklist();
+                renderApp();
             } catch (err) {
                 localStorage.removeItem('test_token');
                 renderLogin();
@@ -325,7 +432,7 @@
             const data = await api.post('/auth/login', { email, passcode });
             localStorage.setItem('test_token', data.token);
             currentUser = data.user;
-            renderChecklist();
+            renderApp();
         }
 
         function logout() {
@@ -335,7 +442,7 @@
         }
 
         // ============================================
-        // RENDER FUNCTIONS
+        // RENDER
         // ============================================
         function renderLogin() {
             const app = document.getElementById('app');
@@ -345,43 +452,30 @@
                         <div class="mb-6">
                             <i class="fas fa-bolt text-5xl text-clockwork-orange glow-text mb-4"></i>
                             <h1 class="text-3xl font-bold mb-2">ClockWork</h1>
-                            <p class="text-gray-400">Test User Checklist</p>
+                            <p class="text-gray-400">Beta Tester Feedback</p>
                         </div>
 
                         <p class="text-gray-300 mb-6">
-                            Sign in with your ClockWork account to track your testing progress.
+                            Sign in to share your experience and help us make ClockWork amazing.
                         </p>
 
                         <div id="login-error" class="hidden error-message mb-4"></div>
 
                         <form id="login-form" class="space-y-4">
-                            <input
-                                type="email"
-                                id="email-input"
-                                placeholder="Email address"
-                                class="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-clockwork-orange focus:ring-1 focus:ring-clockwork-orange"
-                                required
-                                autocomplete="email"
-                            />
-                            <input
-                                type="password"
-                                id="passcode-input"
-                                placeholder="Passcode"
-                                class="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-clockwork-orange focus:ring-1 focus:ring-clockwork-orange"
-                                required
-                                autocomplete="current-password"
-                            />
-                            <button
-                                type="submit"
-                                id="login-btn"
-                                class="w-full py-3 bg-clockwork-orange hover:bg-orange-600 text-white font-semibold rounded-xl transition-all glow disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
+                            <input type="email" id="email-input" placeholder="Email address"
+                                class="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-clockwork-orange"
+                                required autocomplete="email" />
+                            <input type="password" id="passcode-input" placeholder="Passcode"
+                                class="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-clockwork-orange"
+                                required autocomplete="current-password" />
+                            <button type="submit" id="login-btn"
+                                class="w-full py-3 bg-clockwork-orange hover:bg-orange-600 text-white font-semibold rounded-xl transition-all glow">
                                 Sign In <i class="fas fa-arrow-right ml-2"></i>
                             </button>
                         </form>
 
                         <p class="text-gray-500 text-sm mt-6">
-                            Don't have an account? <a href="/" class="text-clockwork-orange hover:underline">Sign up at ClockWork</a>
+                            Need an account? <a href="/" class="text-clockwork-orange hover:underline">Sign up at ClockWork</a>
                         </p>
                     </div>
                 </div>
@@ -409,18 +503,13 @@
             });
         }
 
-        function renderChecklist() {
-            if (!currentUser) {
-                renderLogin();
-                return;
-            }
+        function renderApp() {
+            if (!currentUser) return renderLogin();
 
             const data = getStoredData();
-            const { completedTasks } = data;
-            const progress = calculateProgress(completedTasks);
-            const totalTasks = getAllTaskIds().length;
-            const isComplete = progress === 100;
+            const progress = calculateProgress(data);
             const displayName = currentUser.name || currentUser.email.split('@')[0];
+            const isComplete = progress === 100;
 
             const app = document.getElementById('app');
             app.innerHTML = `
@@ -430,58 +519,50 @@
                         <div class="flex items-center justify-between mb-4">
                             <div>
                                 <h1 class="text-2xl font-bold">
-                                    <i class="fas fa-bolt text-clockwork-orange mr-2"></i>ClockWork Test
+                                    <i class="fas fa-bolt text-clockwork-orange mr-2"></i>Beta Feedback
                                 </h1>
-                                <p class="text-gray-400">Hey ${escapeHtml(displayName)}! Let's test the app.</p>
+                                <p class="text-gray-400">Thanks for testing, ${escapeHtml(displayName)}!</p>
                             </div>
-                            <div class="flex items-center gap-3">
-                                <button
-                                    onclick="resetProgress()"
-                                    class="text-gray-500 hover:text-yellow-400 transition-colors"
-                                    title="Reset Progress"
-                                >
-                                    <i class="fas fa-redo"></i>
-                                </button>
-                                <button
-                                    onclick="logout()"
-                                    class="text-gray-500 hover:text-red-400 transition-colors"
-                                    title="Sign Out"
-                                >
-                                    <i class="fas fa-sign-out-alt"></i>
-                                </button>
-                            </div>
+                            <button onclick="logout()" class="text-gray-500 hover:text-red-400 transition-colors" title="Sign Out">
+                                <i class="fas fa-sign-out-alt"></i>
+                            </button>
                         </div>
 
-                        <!-- Progress Bar -->
                         <div class="mb-2">
                             <div class="flex justify-between text-sm mb-1">
-                                <span class="text-gray-400">Progress</span>
+                                <span class="text-gray-400">Feedback Progress</span>
                                 <span class="text-clockwork-orange font-semibold">${progress}%</span>
                             </div>
                             <div class="progress-bar-bg h-3">
                                 <div class="progress-bar-fill" style="width: ${progress}%"></div>
                             </div>
                         </div>
-                        <p class="text-sm text-gray-500">${completedTasks.length} of ${totalTasks} tasks completed</p>
+                        <p class="text-sm text-gray-500">Your feedback helps us build a better app</p>
                     </div>
 
-                    ${isComplete ? renderCelebration(displayName) : ''}
+                    ${isComplete ? renderCompletion(displayName) : ''}
 
-                    <!-- Checklist Sections -->
-                    <div class="space-y-4">
-                        ${checklistSections.map(section => renderSection(section, completedTasks)).join('')}
+                    <!-- Sections -->
+                    <div class="space-y-6">
+                        ${feedbackSections.map(section => renderSection(section, data)).join('')}
+                    </div>
+
+                    <!-- Final thoughts -->
+                    <div class="section-card p-6 mt-6">
+                        <h2 class="text-xl font-bold mb-4">
+                            <i class="fas fa-comment-dots text-clockwork-orange mr-2"></i>
+                            Anything else?
+                        </h2>
+                        <textarea
+                            class="feedback-textarea"
+                            placeholder="Any bugs, ideas, complaints, or compliments? We want to hear it all..."
+                            data-field="final-thoughts"
+                            onchange="saveFeedback('final-thoughts', this.value)"
+                        >${escapeHtml(data.feedback['final-thoughts'] || '')}</textarea>
                     </div>
                 </div>
             `;
 
-            // Add event listeners to checkboxes
-            document.querySelectorAll('.task-checkbox').forEach(checkbox => {
-                checkbox.addEventListener('change', (e) => {
-                    toggleTask(e.target.dataset.taskId, e.target.checked);
-                });
-            });
-
-            // Trigger celebration if just completed
             if (isComplete && !data.celebrationShown) {
                 data.celebrationShown = true;
                 saveData(data);
@@ -489,64 +570,110 @@
             }
         }
 
-        function renderSection(section, completedTasks) {
-            const sectionCompleted = section.tasks.every(t => completedTasks.includes(t.id));
-            const sectionProgress = section.tasks.filter(t => completedTasks.includes(t.id)).length;
+        function renderSection(section, data) {
+            const sectionMood = data.moods[section.id];
+            const sectionRating = data.ratings[section.id];
 
             return `
-                <div class="section-card p-4">
-                    <div class="flex items-center justify-between mb-3">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-xl bg-clockwork-orange/20 flex items-center justify-center">
-                                <i class="fas ${section.icon} text-clockwork-orange"></i>
-                            </div>
-                            <div>
-                                <h2 class="font-semibold">${section.title}</h2>
-                                <p class="text-xs text-gray-500">${sectionProgress}/${section.tasks.length} completed</p>
+                <div class="section-card p-6">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-12 h-12 rounded-xl bg-clockwork-orange/20 flex items-center justify-center">
+                            <i class="fas ${section.icon} text-clockwork-orange text-xl"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-bold">${section.title}</h2>
+                            <p class="text-sm text-gray-500">${section.description}</p>
+                        </div>
+                    </div>
+
+                    ${section.tasks.length > 0 ? `
+                        <div class="mb-5">
+                            <p class="text-sm text-gray-400 mb-2">Try these:</p>
+                            <div class="space-y-2">
+                                ${section.tasks.map(task => `
+                                    <label class="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer">
+                                        <input type="checkbox" class="task-checkbox" data-task="${task.id}"
+                                            ${data.completedTasks.includes(task.id) ? 'checked' : ''}
+                                            onchange="toggleTask('${task.id}', this.checked)" />
+                                        <span class="text-sm text-gray-300 ${data.completedTasks.includes(task.id) ? 'line-through opacity-60' : ''}">${task.text}</span>
+                                    </label>
+                                `).join('')}
                             </div>
                         </div>
-                        ${sectionCompleted ? '<i class="fas fa-check-circle text-green-500"></i>' : ''}
+                    ` : ''}
+
+                    <!-- Mood -->
+                    <div class="mb-5">
+                        <p class="text-sm text-gray-300 mb-3">${section.moodQuestion}</p>
+                        <div class="flex justify-between gap-2">
+                            ${['😫', '😕', '😐', '🙂', '😍'].map((emoji, i) => `
+                                <button class="mood-btn ${sectionMood === i + 1 ? 'selected' : ''}"
+                                    onclick="setMood('${section.id}', ${i + 1})">
+                                    ${emoji}
+                                </button>
+                            `).join('')}
+                        </div>
+                        <div class="flex justify-between text-xs text-gray-500 mt-1 px-2">
+                            <span>Frustrated</span>
+                            <span>Loved it</span>
+                        </div>
                     </div>
-                    <div class="space-y-2 ml-1">
-                        ${section.tasks.map(task => renderTask(task, completedTasks.includes(task.id))).join('')}
+
+                    <!-- Rating slider -->
+                    <div class="mb-5">
+                        <div class="flex justify-between text-sm mb-2">
+                            <span class="text-gray-300">${section.ratingQuestion}</span>
+                            <span class="text-clockwork-orange font-semibold">${sectionRating !== undefined ? sectionRating + '/10' : '—'}</span>
+                        </div>
+                        <input type="range" min="1" max="10" value="${sectionRating || 5}" class="rating-slider"
+                            oninput="setRating('${section.id}', this.value)" />
+                        <div class="flex justify-between text-xs text-gray-500 mt-1">
+                            <span>Poor</span>
+                            <span>Amazing</span>
+                        </div>
+                    </div>
+
+                    ${section.extraQuestions ? section.extraQuestions.map(q => `
+                        <div class="mb-5">
+                            <p class="text-sm text-gray-300 mb-2">${q.question}</p>
+                            <div class="flex flex-wrap gap-2">
+                                ${q.options.map(opt => `
+                                    <button class="px-3 py-2 text-sm rounded-lg border transition-all
+                                        ${data.extraAnswers[q.id] === opt
+                                            ? 'border-clockwork-orange bg-clockwork-orange/20 text-white'
+                                            : 'border-white/10 bg-black/30 text-gray-400 hover:border-white/30'}"
+                                        onclick="setExtraAnswer('${q.id}', '${opt}')">
+                                        ${opt}
+                                    </button>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `).join('') : ''}
+
+                    <!-- Open feedback -->
+                    <div>
+                        <p class="text-sm text-gray-400 mb-2">${section.feedbackPrompt}</p>
+                        <textarea
+                            class="feedback-textarea text-sm"
+                            placeholder="Type your thoughts..."
+                            data-section="${section.id}"
+                            onchange="saveFeedback('${section.id}', this.value)"
+                        >${escapeHtml(data.feedback[section.id] || '')}</textarea>
                     </div>
                 </div>
             `;
         }
 
-        function renderTask(task, isCompleted) {
+        function renderCompletion(name) {
             return `
-                <label class="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer transition-colors">
-                    <input
-                        type="checkbox"
-                        class="task-checkbox"
-                        data-task-id="${task.id}"
-                        ${isCompleted ? 'checked' : ''}
-                    />
-                    <span class="task-label ${isCompleted ? 'completed' : ''} text-sm text-gray-300">
-                        ${task.text}
-                    </span>
-                </label>
-            `;
-        }
-
-        function renderCelebration(name) {
-            return `
-                <div class="glass rounded-2xl p-6 mb-6 text-center border-2 border-clockwork-orange glow celebrate">
-                    <div class="text-5xl mb-4">
-                        <i class="fas fa-trophy text-yellow-500"></i>
-                    </div>
-                    <h2 class="text-2xl font-bold text-clockwork-orange mb-2">
-                        Congratulations, ${escapeHtml(name)}!
+                <div class="glass rounded-2xl p-6 mb-6 text-center border-2 border-green-500 celebrate" style="box-shadow: 0 0 30px rgba(34, 197, 94, 0.3);">
+                    <div class="text-5xl mb-4">🎉</div>
+                    <h2 class="text-2xl font-bold text-green-400 mb-2">
+                        You're amazing, ${escapeHtml(name)}!
                     </h2>
-                    <p class="text-gray-300 mb-4">
-                        You've completed all the test tasks! Thanks for helping us make ClockWork better.
+                    <p class="text-gray-300">
+                        Thank you for your detailed feedback. You're helping shape the future of ClockWork!
                     </p>
-                    <div class="flex gap-2 justify-center text-2xl">
-                        <span>&#127881;</span>
-                        <span>&#127882;</span>
-                        <span>&#127881;</span>
-                    </div>
                 </div>
             `;
         }
@@ -554,31 +681,45 @@
         // ============================================
         // ACTIONS
         // ============================================
-        function toggleTask(taskId, isChecked) {
+        function toggleTask(taskId, checked) {
             const data = getStoredData();
-            if (!data) return;
-
-            if (isChecked) {
-                if (!data.completedTasks.includes(taskId)) {
-                    data.completedTasks.push(taskId);
-                }
-            } else {
+            if (checked && !data.completedTasks.includes(taskId)) {
+                data.completedTasks.push(taskId);
+            } else if (!checked) {
                 data.completedTasks = data.completedTasks.filter(id => id !== taskId);
-                data.celebrationShown = false; // Allow celebration again
             }
-
             saveData(data);
-            renderChecklist();
+            renderApp();
         }
 
-        function resetProgress() {
-            if (confirm('Are you sure you want to reset your progress? This cannot be undone.')) {
-                const key = getStorageKey();
-                if (key) {
-                    localStorage.removeItem(key);
-                }
-                renderChecklist();
-            }
+        function setMood(sectionId, value) {
+            const data = getStoredData();
+            data.moods[sectionId] = value;
+            saveData(data);
+            renderApp();
+        }
+
+        function setRating(sectionId, value) {
+            const data = getStoredData();
+            data.ratings[sectionId] = parseInt(value);
+            saveData(data);
+            // Don't re-render to avoid slider jumping, just save
+            const progress = calculateProgress(data);
+            document.querySelector('.progress-bar-fill').style.width = progress + '%';
+            document.querySelector('.text-clockwork-orange.font-semibold').textContent = progress + '%';
+        }
+
+        function setExtraAnswer(questionId, value) {
+            const data = getStoredData();
+            data.extraAnswers[questionId] = value;
+            saveData(data);
+            renderApp();
+        }
+
+        function saveFeedback(sectionId, value) {
+            const data = getStoredData();
+            data.feedback[sectionId] = value;
+            saveData(data);
         }
 
         function triggerConfetti() {
@@ -596,18 +737,13 @@
             }
         }
 
-        // ============================================
-        // UTILITIES
-        // ============================================
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
         }
 
-        // ============================================
-        // INIT
-        // ============================================
+        // Init
         document.addEventListener('DOMContentLoaded', checkAuth);
     </script>
 </body>
