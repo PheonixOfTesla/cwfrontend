@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="ClockWork Test User Checklist">
+    <meta name="theme-color" content="#f97316">
+    <title>ClockWork - Test Checklist</title>
+
+    <link rel="icon" type="image/png" href="/forge.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        clockwork: { orange: '#f97316', dark: '#0a0a0a', darker: '#050505' }
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html { scroll-behavior: smooth; }
+        body {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .glass {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .glow { box-shadow: 0 0 30px rgba(249, 115, 22, 0.3); }
+        .glow-text { text-shadow: 0 0 20px rgba(249, 115, 22, 0.5); }
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(249, 115, 22, 0.3); }
+            50% { box-shadow: 0 0 40px rgba(249, 115, 22, 0.6); }
+        }
+        .animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+
+        /* Custom checkbox styling */
+        .task-checkbox {
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border: 2px solid rgba(249, 115, 22, 0.5);
+            border-radius: 6px;
+            background: rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+        .task-checkbox:checked {
+            background: #f97316;
+            border-color: #f97316;
+        }
+        .task-checkbox:checked::after {
+            content: '\2713';
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            height: 100%;
+        }
+        .task-checkbox:hover {
+            border-color: #f97316;
+            box-shadow: 0 0 10px rgba(249, 115, 22, 0.3);
+        }
+
+        .task-label {
+            transition: all 0.2s ease;
+        }
+        .task-label.completed {
+            text-decoration: line-through;
+            opacity: 0.6;
+        }
+
+        /* Progress bar */
+        .progress-bar-bg {
+            background: rgba(255,255,255,0.1);
+            border-radius: 9999px;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            background: linear-gradient(90deg, #f97316, #fb923c);
+            height: 100%;
+            border-radius: 9999px;
+            transition: width 0.5s ease-out;
+        }
+
+        /* Section styling */
+        .section-card {
+            background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            transition: all 0.3s ease;
+        }
+        .section-card:hover {
+            border-color: rgba(249, 115, 22, 0.3);
+        }
+
+        /* Celebration animation */
+        @keyframes celebrate {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        @keyframes confetti {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(-100px) rotate(720deg); opacity: 0; }
+        }
+        .celebrate { animation: celebrate 0.5s ease-in-out; }
+        .confetti-piece {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            animation: confetti 1s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="text-white">
+    <div id="app" class="min-h-screen">
+        <!-- Loading State -->
+        <div id="loading" class="flex items-center justify-center min-h-screen">
+            <div class="text-center">
+                <i class="fas fa-circle-notch fa-spin text-4xl text-clockwork-orange mb-4"></i>
+                <p class="text-gray-400">Loading...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // CHECKLIST DATA
+        // ============================================
+        const checklistSections = [
+            {
+                id: 'getting-started',
+                title: 'Getting Started',
+                icon: 'fa-rocket',
+                tasks: [
+                    { id: 'gs-1', text: 'Create an account or log in' },
+                    { id: 'gs-2', text: 'Complete the onboarding questionnaire' },
+                    { id: 'gs-3', text: 'Set your fitness goals' },
+                    { id: 'gs-4', text: 'Review your dashboard' }
+                ]
+            },
+            {
+                id: 'forge-program',
+                title: 'FORGE Program',
+                icon: 'fa-hammer',
+                tasks: [
+                    { id: 'fp-1', text: 'Generate your AI workout program' },
+                    { id: 'fp-2', text: 'Review the generated workouts' },
+                    { id: 'fp-3', text: 'Check the exercise selections' },
+                    { id: 'fp-4', text: 'Regenerate program if needed' }
+                ]
+            },
+            {
+                id: 'complete-workout',
+                title: 'Complete a Workout',
+                icon: 'fa-dumbbell',
+                tasks: [
+                    { id: 'cw-1', text: 'Start a workout session' },
+                    { id: 'cw-2', text: 'Log your sets and reps' },
+                    { id: 'cw-3', text: 'Use the rest timer between sets' },
+                    { id: 'cw-4', text: 'Complete and save the workout' },
+                    { id: 'cw-5', text: 'View workout summary' }
+                ]
+            },
+            {
+                id: 'ai-coach',
+                title: 'AI Coach',
+                icon: 'fa-robot',
+                tasks: [
+                    { id: 'ac-1', text: 'Open the AI coach chat' },
+                    { id: 'ac-2', text: 'Ask a fitness question' },
+                    { id: 'ac-3', text: 'Get workout tips or advice' },
+                    { id: 'ac-4', text: 'Ask about nutrition' }
+                ]
+            },
+            {
+                id: 'track-progress',
+                title: 'Track Progress',
+                icon: 'fa-chart-line',
+                tasks: [
+                    { id: 'tp-1', text: 'Log your body weight' },
+                    { id: 'tp-2', text: 'View weight history chart' },
+                    { id: 'tp-3', text: 'Check your personal records (PRs)' },
+                    { id: 'tp-4', text: 'Review workout history' }
+                ]
+            },
+            {
+                id: 'calendar',
+                title: 'Calendar',
+                icon: 'fa-calendar',
+                tasks: [
+                    { id: 'cal-1', text: 'View the workout calendar' },
+                    { id: 'cal-2', text: 'Check scheduled workouts' },
+                    { id: 'cal-3', text: 'Navigate between weeks/months' }
+                ]
+            },
+            {
+                id: 'check-ins',
+                title: 'Check-Ins',
+                icon: 'fa-clipboard-check',
+                tasks: [
+                    { id: 'ci-1', text: 'Complete a daily check-in' },
+                    { id: 'ci-2', text: 'Rate your energy/mood' },
+                    { id: 'ci-3', text: 'Complete a weekly check-in' }
+                ]
+            },
+            {
+                id: 'settings',
+                title: 'Settings',
+                icon: 'fa-cog',
+                tasks: [
+                    { id: 'set-1', text: 'View your profile' },
+                    { id: 'set-2', text: 'Update preferences' },
+                    { id: 'set-3', text: 'Check notification settings' },
+                    { id: 'set-4', text: 'Log out and log back in' }
+                ]
+            }
+        ];
+
+        // ============================================
+        // STATE MANAGEMENT
+        // ============================================
+        const STORAGE_KEY = 'clockwork_test_checklist';
+
+        function getStoredData() {
+            try {
+                const data = localStorage.getItem(STORAGE_KEY);
+                return data ? JSON.parse(data) : null;
+            } catch {
+                return null;
+            }
+        }
+
+        function saveData(data) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
+
+        function getAllTaskIds() {
+            return checklistSections.flatMap(section => section.tasks.map(t => t.id));
+        }
+
+        function calculateProgress(completedTasks) {
+            const totalTasks = getAllTaskIds().length;
+            return totalTasks > 0 ? Math.round((completedTasks.length / totalTasks) * 100) : 0;
+        }
+
+        // ============================================
+        // RENDER FUNCTIONS
+        // ============================================
+        function renderNameEntry() {
+            const app = document.getElementById('app');
+            app.innerHTML = `
+                <div class="min-h-screen flex items-center justify-center p-4">
+                    <div class="glass rounded-2xl p-8 max-w-md w-full text-center">
+                        <div class="mb-6">
+                            <i class="fas fa-bolt text-5xl text-clockwork-orange glow-text mb-4"></i>
+                            <h1 class="text-3xl font-bold mb-2">ClockWork</h1>
+                            <p class="text-gray-400">Test User Checklist</p>
+                        </div>
+
+                        <p class="text-gray-300 mb-6">
+                            Welcome, tester! Enter your name to start tracking your progress through the ClockWork app features.
+                        </p>
+
+                        <form id="name-form" class="space-y-4">
+                            <input
+                                type="text"
+                                id="name-input"
+                                placeholder="Enter your name"
+                                class="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-clockwork-orange focus:ring-1 focus:ring-clockwork-orange"
+                                required
+                                autocomplete="off"
+                            />
+                            <button
+                                type="submit"
+                                class="w-full py-3 bg-clockwork-orange hover:bg-orange-600 text-white font-semibold rounded-xl transition-all glow"
+                            >
+                                Start Testing <i class="fas fa-arrow-right ml-2"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('name-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const name = document.getElementById('name-input').value.trim();
+                if (name) {
+                    saveData({ name, completedTasks: [], startedAt: new Date().toISOString() });
+                    renderChecklist();
+                }
+            });
+        }
+
+        function renderChecklist() {
+            const data = getStoredData();
+            if (!data) {
+                renderNameEntry();
+                return;
+            }
+
+            const { name, completedTasks } = data;
+            const progress = calculateProgress(completedTasks);
+            const totalTasks = getAllTaskIds().length;
+            const isComplete = progress === 100;
+
+            const app = document.getElementById('app');
+            app.innerHTML = `
+                <div class="max-w-2xl mx-auto p-4 pb-24">
+                    <!-- Header -->
+                    <div class="glass rounded-2xl p-6 mb-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h1 class="text-2xl font-bold">
+                                    <i class="fas fa-bolt text-clockwork-orange mr-2"></i>ClockWork Test
+                                </h1>
+                                <p class="text-gray-400">Hey ${escapeHtml(name)}! Let's test the app.</p>
+                            </div>
+                            <button
+                                onclick="resetProgress()"
+                                class="text-gray-500 hover:text-red-400 transition-colors"
+                                title="Reset Progress"
+                            >
+                                <i class="fas fa-redo"></i>
+                            </button>
+                        </div>
+
+                        <!-- Progress Bar -->
+                        <div class="mb-2">
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="text-gray-400">Progress</span>
+                                <span class="text-clockwork-orange font-semibold">${progress}%</span>
+                            </div>
+                            <div class="progress-bar-bg h-3">
+                                <div class="progress-bar-fill" style="width: ${progress}%"></div>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-500">${completedTasks.length} of ${totalTasks} tasks completed</p>
+                    </div>
+
+                    ${isComplete ? renderCelebration(name) : ''}
+
+                    <!-- Checklist Sections -->
+                    <div class="space-y-4">
+                        ${checklistSections.map(section => renderSection(section, completedTasks)).join('')}
+                    </div>
+                </div>
+            `;
+
+            // Add event listeners to checkboxes
+            document.querySelectorAll('.task-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', (e) => {
+                    toggleTask(e.target.dataset.taskId, e.target.checked);
+                });
+            });
+
+            // Trigger celebration if just completed
+            if (isComplete && !data.celebrationShown) {
+                data.celebrationShown = true;
+                saveData(data);
+                triggerConfetti();
+            }
+        }
+
+        function renderSection(section, completedTasks) {
+            const sectionCompleted = section.tasks.every(t => completedTasks.includes(t.id));
+            const sectionProgress = section.tasks.filter(t => completedTasks.includes(t.id)).length;
+
+            return `
+                <div class="section-card p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-clockwork-orange/20 flex items-center justify-center">
+                                <i class="fas ${section.icon} text-clockwork-orange"></i>
+                            </div>
+                            <div>
+                                <h2 class="font-semibold">${section.title}</h2>
+                                <p class="text-xs text-gray-500">${sectionProgress}/${section.tasks.length} completed</p>
+                            </div>
+                        </div>
+                        ${sectionCompleted ? '<i class="fas fa-check-circle text-green-500"></i>' : ''}
+                    </div>
+                    <div class="space-y-2 ml-1">
+                        ${section.tasks.map(task => renderTask(task, completedTasks.includes(task.id))).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderTask(task, isCompleted) {
+            return `
+                <label class="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer transition-colors">
+                    <input
+                        type="checkbox"
+                        class="task-checkbox"
+                        data-task-id="${task.id}"
+                        ${isCompleted ? 'checked' : ''}
+                    />
+                    <span class="task-label ${isCompleted ? 'completed' : ''} text-sm text-gray-300">
+                        ${task.text}
+                    </span>
+                </label>
+            `;
+        }
+
+        function renderCelebration(name) {
+            return `
+                <div class="glass rounded-2xl p-6 mb-6 text-center border-2 border-clockwork-orange glow celebrate">
+                    <div class="text-5xl mb-4">
+                        <i class="fas fa-trophy text-yellow-500"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-clockwork-orange mb-2">
+                        Congratulations, ${escapeHtml(name)}!
+                    </h2>
+                    <p class="text-gray-300 mb-4">
+                        You've completed all the test tasks! Thanks for helping us make ClockWork better.
+                    </p>
+                    <div class="flex gap-2 justify-center text-2xl">
+                        <span>&#127881;</span>
+                        <span>&#127882;</span>
+                        <span>&#127881;</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ============================================
+        // ACTIONS
+        // ============================================
+        function toggleTask(taskId, isChecked) {
+            const data = getStoredData();
+            if (!data) return;
+
+            if (isChecked) {
+                if (!data.completedTasks.includes(taskId)) {
+                    data.completedTasks.push(taskId);
+                }
+            } else {
+                data.completedTasks = data.completedTasks.filter(id => id !== taskId);
+                data.celebrationShown = false; // Allow celebration again
+            }
+
+            saveData(data);
+            renderChecklist();
+        }
+
+        function resetProgress() {
+            if (confirm('Are you sure you want to reset your progress? This cannot be undone.')) {
+                localStorage.removeItem(STORAGE_KEY);
+                renderNameEntry();
+            }
+        }
+
+        function triggerConfetti() {
+            const colors = ['#f97316', '#fb923c', '#fbbf24', '#34d399', '#60a5fa', '#a78bfa'];
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti-piece';
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.top = '100vh';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+                confetti.style.animationDelay = Math.random() * 0.5 + 's';
+                document.body.appendChild(confetti);
+                setTimeout(() => confetti.remove(), 1500);
+            }
+        }
+
+        // ============================================
+        // UTILITIES
+        // ============================================
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ============================================
+        // INIT
+        // ============================================
+        function init() {
+            const data = getStoredData();
+            if (data && data.name) {
+                renderChecklist();
+            } else {
+                renderNameEntry();
+            }
+        }
+
+        // Start the app
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
