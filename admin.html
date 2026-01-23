@@ -46,10 +46,10 @@
     <script type="text/babel">
         const { useState, useEffect, useCallback } = React;
 
-        // API Configuration
+        // API Configuration - use relative path to go through Vercel proxy
         const API_BASE = window.location.hostname === 'localhost'
             ? 'http://localhost:5000/api'
-            : 'https://cwbackend-production.up.railway.app/api';
+            : '/api';
 
         // API Helper
         const api = {
