@@ -428,8 +428,8 @@
             }
         }
 
-        async function login(email, passcode) {
-            const data = await api.post('/auth/login', { email, passcode });
+        async function login(email, password) {
+            const data = await api.post('/auth/login', { email, password });
             localStorage.setItem('test_token', data.token);
             currentUser = data.user;
             renderApp();
@@ -484,7 +484,7 @@
             document.getElementById('login-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const email = document.getElementById('email-input').value.trim();
-                const passcode = document.getElementById('passcode-input').value;
+                const password = document.getElementById('passcode-input').value;
                 const btn = document.getElementById('login-btn');
                 const errorDiv = document.getElementById('login-error');
 
@@ -493,7 +493,7 @@
                 errorDiv.classList.add('hidden');
 
                 try {
-                    await login(email, passcode);
+                    await login(email, password);
                 } catch (err) {
                     errorDiv.textContent = err.message || 'Invalid email or passcode';
                     errorDiv.classList.remove('hidden');
