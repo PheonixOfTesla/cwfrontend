@@ -125,6 +125,16 @@
             height: 10px;
             animation: confetti 1s ease-out forwards;
         }
+
+        /* Error styling */
+        .error-message {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.5);
+            color: #fca5a5;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body class="text-white">
@@ -139,6 +149,30 @@
     </div>
 
     <script>
+        // ============================================
+        // API CONFIGURATION
+        // ============================================
+        const API_URL = '/api';
+
+        const api = {
+            async fetch(endpoint, options = {}) {
+                const token = localStorage.getItem('test_token');
+                const response = await fetch(`${API_URL}${endpoint}`, {
+                    ...options,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token && { 'Authorization': `Bearer ${token}` }),
+                        ...options.headers
+                    }
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || 'Request failed');
+                return data;
+            },
+            get: (endpoint) => api.fetch(endpoint),
+            post: (endpoint, body) => api.fetch(endpoint, { method: 'POST', body: JSON.stringify(body) })
+        };
+
         // ============================================
         // CHECKLIST DATA
         // ============================================
@@ -235,19 +269,28 @@
         // ============================================
         // STATE MANAGEMENT
         // ============================================
-        const STORAGE_KEY = 'clockwork_test_checklist';
+        let currentUser = null;
+
+        function getStorageKey() {
+            return currentUser ? `clockwork_test_${currentUser.id}` : null;
+        }
 
         function getStoredData() {
+            const key = getStorageKey();
+            if (!key) return null;
             try {
-                const data = localStorage.getItem(STORAGE_KEY);
-                return data ? JSON.parse(data) : null;
+                const data = localStorage.getItem(key);
+                return data ? JSON.parse(data) : { completedTasks: [], celebrationShown: false };
             } catch {
-                return null;
+                return { completedTasks: [], celebrationShown: false };
             }
         }
 
         function saveData(data) {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            const key = getStorageKey();
+            if (key) {
+                localStorage.setItem(key, JSON.stringify(data));
+            }
         }
 
         function getAllTaskIds() {
@@ -260,9 +303,41 @@
         }
 
         // ============================================
+        // AUTHENTICATION
+        // ============================================
+        async function checkAuth() {
+            const token = localStorage.getItem('test_token');
+            if (!token) {
+                renderLogin();
+                return;
+            }
+            try {
+                const data = await api.get('/users/profile');
+                currentUser = data.user || data.data || data;
+                renderChecklist();
+            } catch (err) {
+                localStorage.removeItem('test_token');
+                renderLogin();
+            }
+        }
+
+        async function login(email, passcode) {
+            const data = await api.post('/users/login', { email, passcode });
+            localStorage.setItem('test_token', data.token);
+            currentUser = data.user;
+            renderChecklist();
+        }
+
+        function logout() {
+            localStorage.removeItem('test_token');
+            currentUser = null;
+            renderLogin();
+        }
+
+        // ============================================
         // RENDER FUNCTIONS
         // ============================================
-        function renderNameEntry() {
+        function renderLogin() {
             const app = document.getElementById('app');
             app.innerHTML = `
                 <div class="min-h-screen flex items-center justify-center p-4">
@@ -274,50 +349,78 @@
                         </div>
 
                         <p class="text-gray-300 mb-6">
-                            Welcome, tester! Enter your name to start tracking your progress through the ClockWork app features.
+                            Sign in with your ClockWork account to track your testing progress.
                         </p>
 
-                        <form id="name-form" class="space-y-4">
+                        <div id="login-error" class="hidden error-message mb-4"></div>
+
+                        <form id="login-form" class="space-y-4">
                             <input
-                                type="text"
-                                id="name-input"
-                                placeholder="Enter your name"
+                                type="email"
+                                id="email-input"
+                                placeholder="Email address"
                                 class="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-clockwork-orange focus:ring-1 focus:ring-clockwork-orange"
                                 required
-                                autocomplete="off"
+                                autocomplete="email"
+                            />
+                            <input
+                                type="password"
+                                id="passcode-input"
+                                placeholder="Passcode"
+                                class="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-clockwork-orange focus:ring-1 focus:ring-clockwork-orange"
+                                required
+                                autocomplete="current-password"
                             />
                             <button
                                 type="submit"
-                                class="w-full py-3 bg-clockwork-orange hover:bg-orange-600 text-white font-semibold rounded-xl transition-all glow"
+                                id="login-btn"
+                                class="w-full py-3 bg-clockwork-orange hover:bg-orange-600 text-white font-semibold rounded-xl transition-all glow disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                Start Testing <i class="fas fa-arrow-right ml-2"></i>
+                                Sign In <i class="fas fa-arrow-right ml-2"></i>
                             </button>
                         </form>
+
+                        <p class="text-gray-500 text-sm mt-6">
+                            Don't have an account? <a href="/" class="text-clockwork-orange hover:underline">Sign up at ClockWork</a>
+                        </p>
                     </div>
                 </div>
             `;
 
-            document.getElementById('name-form').addEventListener('submit', (e) => {
+            document.getElementById('login-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
-                const name = document.getElementById('name-input').value.trim();
-                if (name) {
-                    saveData({ name, completedTasks: [], startedAt: new Date().toISOString() });
-                    renderChecklist();
+                const email = document.getElementById('email-input').value.trim();
+                const passcode = document.getElementById('passcode-input').value;
+                const btn = document.getElementById('login-btn');
+                const errorDiv = document.getElementById('login-error');
+
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-2"></i>Signing in...';
+                errorDiv.classList.add('hidden');
+
+                try {
+                    await login(email, passcode);
+                } catch (err) {
+                    errorDiv.textContent = err.message || 'Invalid email or passcode';
+                    errorDiv.classList.remove('hidden');
+                    btn.disabled = false;
+                    btn.innerHTML = 'Sign In <i class="fas fa-arrow-right ml-2"></i>';
                 }
             });
         }
 
         function renderChecklist() {
-            const data = getStoredData();
-            if (!data) {
-                renderNameEntry();
+            if (!currentUser) {
+                renderLogin();
                 return;
             }
 
-            const { name, completedTasks } = data;
+            const data = getStoredData();
+            const { completedTasks } = data;
             const progress = calculateProgress(completedTasks);
             const totalTasks = getAllTaskIds().length;
             const isComplete = progress === 100;
+            const displayName = currentUser.name || currentUser.email.split('@')[0];
 
             const app = document.getElementById('app');
             app.innerHTML = `
@@ -329,15 +432,24 @@
                                 <h1 class="text-2xl font-bold">
                                     <i class="fas fa-bolt text-clockwork-orange mr-2"></i>ClockWork Test
                                 </h1>
-                                <p class="text-gray-400">Hey ${escapeHtml(name)}! Let's test the app.</p>
+                                <p class="text-gray-400">Hey ${escapeHtml(displayName)}! Let's test the app.</p>
                             </div>
-                            <button
-                                onclick="resetProgress()"
-                                class="text-gray-500 hover:text-red-400 transition-colors"
-                                title="Reset Progress"
-                            >
-                                <i class="fas fa-redo"></i>
-                            </button>
+                            <div class="flex items-center gap-3">
+                                <button
+                                    onclick="resetProgress()"
+                                    class="text-gray-500 hover:text-yellow-400 transition-colors"
+                                    title="Reset Progress"
+                                >
+                                    <i class="fas fa-redo"></i>
+                                </button>
+                                <button
+                                    onclick="logout()"
+                                    class="text-gray-500 hover:text-red-400 transition-colors"
+                                    title="Sign Out"
+                                >
+                                    <i class="fas fa-sign-out-alt"></i>
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Progress Bar -->
@@ -353,7 +465,7 @@
                         <p class="text-sm text-gray-500">${completedTasks.length} of ${totalTasks} tasks completed</p>
                     </div>
 
-                    ${isComplete ? renderCelebration(name) : ''}
+                    ${isComplete ? renderCelebration(displayName) : ''}
 
                     <!-- Checklist Sections -->
                     <div class="space-y-4">
@@ -461,8 +573,11 @@
 
         function resetProgress() {
             if (confirm('Are you sure you want to reset your progress? This cannot be undone.')) {
-                localStorage.removeItem(STORAGE_KEY);
-                renderNameEntry();
+                const key = getStorageKey();
+                if (key) {
+                    localStorage.removeItem(key);
+                }
+                renderChecklist();
             }
         }
 
@@ -493,17 +608,7 @@
         // ============================================
         // INIT
         // ============================================
-        function init() {
-            const data = getStoredData();
-            if (data && data.name) {
-                renderChecklist();
-            } else {
-                renderNameEntry();
-            }
-        }
-
-        // Start the app
-        document.addEventListener('DOMContentLoaded', init);
+        document.addEventListener('DOMContentLoaded', checkAuth);
     </script>
 </body>
 </html>
