@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Coach Profile - Coastal Fitness">
+    <title>Coach Profile - Coastal Fitness</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Cal.com embed -->
+    <script src="https://app.cal.com/embed/embed.js" async></script>
+    <style>
+        :root {
+            --coastal-blue: #244398;
+            --coastal-cyan: #60E0E0;
+            --coastal-dark: #1a2f6f;
+        }
+        * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        .coastal-gradient { background: linear-gradient(135deg, #244398 0%, #60E0E0 100%); }
+        .coastal-button { background: var(--coastal-blue); transition: all 0.3s ease; }
+        .coastal-button:hover { background: var(--coastal-dark); transform: translateY(-1px); }
+        .program-card { transition: all 0.3s ease; }
+        .program-card:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div id="root"></div>
+    <script type="text/babel">
+        const API_URL = 'https://coastal-fitness-backend-production.up.railway.app';
+
+        function CoachProfilePage() {
+            const [coach, setCoach] = React.useState(null);
+            const [programs, setPrograms] = React.useState([]);
+            const [loading, setLoading] = React.useState(true);
+            const [selectedProgram, setSelectedProgram] = React.useState(null);
+            const [subscribing, setSubscribing] = React.useState(false);
+
+            React.useEffect(() => {
+                const params = new URLSearchParams(window.location.search);
+                const coachId = params.get('id');
+
+                if (!coachId) {
+                    window.location.href = '/coaches';
+                    return;
+                }
+
+                Promise.all([
+                    fetch(`${API_URL}/api/coaches/${coachId}`).then(r => r.json()),
+                    fetch(`${API_URL}/api/coaches/${coachId}/programs`).then(r => r.json())
+                ]).then(([coachData, programsData]) => {
+                    setCoach(coachData);
+                    setPrograms(programsData || []);
+                    document.title = `${coachData.displayName} - Coastal Fitness`;
+                    setLoading(false);
+
+                    // Initialize Cal.com embed if username exists
+                    if (coachData.calcomUsername && window.Cal) {
+                        window.Cal("init", { origin: "https://app.cal.com" });
+                    }
+                }).catch(err => {
+                    console.error(err);
+                    setLoading(false);
+                });
+            }, []);
+
+            const handleSubscribe = async (program) => {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    window.location.href = `/login.html?redirect=/coach?id=${coach._id}`;
+                    return;
+                }
+
+                setSubscribing(true);
+                try {
+                    const response = await fetch(`${API_URL}/api/subscriptions/checkout`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ programId: program._id })
+                    });
+
+                    const data = await response.json();
+                    if (data.checkoutUrl) {
+                        window.location.href = data.checkoutUrl;
+                    } else {
+                        alert(data.message || 'Error creating checkout');
+                    }
+                } catch (error) {
+                    alert('Error processing subscription');
+                }
+                setSubscribing(false);
+            };
+
+            const openCalBooking = () => {
+                if (coach.calcomUsername && window.Cal) {
+                    window.Cal("modal", {
+                        calLink: coach.calcomUsername + "/consultation"
+                    });
+                }
+            };
+
+            const formatPrice = (program) => {
+                const amount = (program.pricing.amount / 100).toFixed(0);
+                const period = program.pricing.billingPeriod === 'one_time' ? '' : `/${program.pricing.billingPeriod === 'monthly' ? 'mo' : 'wk'}`;
+                return `$${amount}${period}`;
+            };
+
+            if (loading) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                    </div>
+                );
+            }
+
+            if (!coach) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center">
+                        <div className="text-center">
+                            <i className="fas fa-user-slash text-gray-300 text-5xl mb-4"></i>
+                            <h2 className="text-xl font-semibold">Coach not found</h2>
+                            <a href="/coaches" className="text-blue-600 hover:underline mt-4 inline-block">
+                                Browse all coaches
+                            </a>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen bg-gray-50">
+                    {/* Cover & Profile */}
+                    <div className="relative">
+                        <div className="h-48 md:h-64 coastal-gradient">
+                            {coach.coverImage && (
+                                <img src={coach.coverImage} alt="" className="w-full h-full object-cover" />
+                            )}
+                        </div>
+                        <div className="max-w-5xl mx-auto px-4">
+                            <div className="relative -mt-16 md:-mt-20 flex flex-col md:flex-row items-start md:items-end gap-4">
+                                <div className="w-32 h-32 md:w-40 md:h-40 rounded-xl border-4 border-white bg-gray-200 overflow-hidden shadow-lg">
+                                    {coach.profileImage ? (
+                                        <img src={coach.profileImage} alt={coach.displayName} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center bg-blue-100 text-blue-600 text-4xl font-bold">
+                                            {coach.displayName?.charAt(0)}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="flex-1 pb-4">
+                                    <h1 className="text-3xl font-bold">{coach.displayName}</h1>
+                                    {coach.tagline && (
+                                        <p className="text-gray-600 mt-1">{coach.tagline}</p>
+                                    )}
+                                    <div className="flex items-center gap-4 mt-2">
+                                        <div className="flex items-center gap-1">
+                                            {[1, 2, 3, 4, 5].map(star => (
+                                                <i key={star} className={`fas fa-star ${star <= coach.averageRating ? 'text-yellow-400' : 'text-gray-300'}`}></i>
+                                            ))}
+                                            <span className="text-gray-600 ml-1">({coach.totalReviews || 0} reviews)</span>
+                                        </div>
+                                        <span className="text-gray-400">|</span>
+                                        <span className="text-gray-600">{coach.totalClients || 0} clients</span>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    {coach.calcomUsername && (
+                                        <button
+                                            onClick={openCalBooking}
+                                            className="bg-white border-2 border-blue-600 text-blue-600 px-4 py-2 rounded-lg font-medium hover:bg-blue-50"
+                                        >
+                                            <i className="fas fa-calendar mr-2"></i>Book Consultation
+                                        </button>
+                                    )}
+                                    {coach.socialLinks?.instagram && (
+                                        <a href={`https://instagram.com/${coach.socialLinks.instagram}`} target="_blank" className="w-10 h-10 flex items-center justify-center rounded-lg bg-white border hover:bg-gray-50">
+                                            <i className="fab fa-instagram text-pink-600"></i>
+                                        </a>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Main Content */}
+                    <div className="max-w-5xl mx-auto px-4 py-8">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            {/* Left Column - About */}
+                            <div className="lg:col-span-2 space-y-6">
+                                {/* Bio */}
+                                <div className="bg-white rounded-xl shadow-lg p-6">
+                                    <h2 className="text-xl font-bold mb-4">About</h2>
+                                    <p className="text-gray-700 whitespace-pre-line">{coach.bio || 'No bio provided.'}</p>
+                                </div>
+
+                                {/* Specialties */}
+                                <div className="bg-white rounded-xl shadow-lg p-6">
+                                    <h2 className="text-xl font-bold mb-4">Specialties</h2>
+                                    <div className="flex flex-wrap gap-2">
+                                        {coach.specialties?.map(spec => (
+                                            <span key={spec} className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm">
+                                                {spec}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Programs */}
+                                <div className="bg-white rounded-xl shadow-lg p-6">
+                                    <h2 className="text-xl font-bold mb-4">Programs</h2>
+                                    {programs.length === 0 ? (
+                                        <p className="text-gray-500">No programs available yet.</p>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            {programs.map(program => (
+                                                <div key={program._id} className="program-card border rounded-xl p-5">
+                                                    <div className="flex justify-between items-start">
+                                                        <div>
+                                                            <h3 className="font-bold text-lg">{program.title}</h3>
+                                                            <p className="text-sm text-gray-500 capitalize">{program.type.replace('_', ' ')}</p>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <span className="text-2xl font-bold text-blue-600">{formatPrice(program)}</span>
+                                                            {program.trial?.enabled && (
+                                                                <p className="text-sm text-green-600">{program.trial.days}-day free trial</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <p className="text-gray-600 mt-3">{program.description}</p>
+                                                    {program.features?.length > 0 && (
+                                                        <ul className="mt-4 space-y-2">
+                                                            {program.features.map((feature, i) => (
+                                                                <li key={i} className="flex items-center gap-2 text-sm">
+                                                                    <i className="fas fa-check text-green-500"></i>
+                                                                    {feature}
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    )}
+                                                    <button
+                                                        onClick={() => handleSubscribe(program)}
+                                                        disabled={subscribing || (program.maxClients && program.currentClients >= program.maxClients)}
+                                                        className="coastal-button w-full text-white py-3 rounded-lg font-medium mt-4 disabled:opacity-50"
+                                                    >
+                                                        {program.maxClients && program.currentClients >= program.maxClients
+                                                            ? 'Program Full'
+                                                            : program.trial?.enabled
+                                                                ? `Start ${program.trial.days}-Day Free Trial`
+                                                                : 'Subscribe Now'}
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Right Column - Sidebar */}
+                            <div className="space-y-6">
+                                {/* Status Card */}
+                                <div className="bg-white rounded-xl shadow-lg p-6">
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className={`w-3 h-3 rounded-full ${coach.isAcceptingClients ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                                        <span className="font-medium">
+                                            {coach.isAcceptingClients ? 'Accepting New Clients' : 'Not Accepting Clients'}
+                                        </span>
+                                    </div>
+                                    {coach.contactEmail && (
+                                        <a href={`mailto:${coach.contactEmail}`} className="block text-blue-600 hover:underline text-sm">
+                                            <i className="fas fa-envelope mr-2"></i>Contact Coach
+                                        </a>
+                                    )}
+                                </div>
+
+                                {/* Cal.com Booking */}
+                                {coach.calcomUsername && (
+                                    <div className="bg-white rounded-xl shadow-lg p-6">
+                                        <h3 className="font-bold mb-4">Schedule a Consultation</h3>
+                                        <div
+                                            id="cal-booking"
+                                            className="min-h-[300px]"
+                                            data-cal-link={`${coach.calcomUsername}/consultation`}
+                                            data-cal-config='{"layout":"month_view"}'
+                                        ></div>
+                                    </div>
+                                )}
+
+                                {/* Back to Browse */}
+                                <a href="/coaches" className="block text-center text-blue-600 hover:underline">
+                                    <i className="fas fa-arrow-left mr-2"></i>Back to Browse
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<CoachProfilePage />);
+    </script>
+</body>
+</html>

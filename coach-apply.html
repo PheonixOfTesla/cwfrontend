@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Apply to become a coach on Coastal Fitness">
+    <title>Become a Coach - Coastal Fitness</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --coastal-blue: #244398;
+            --coastal-cyan: #60E0E0;
+            --coastal-dark: #1a2f6f;
+        }
+        * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        .coastal-gradient { background: linear-gradient(135deg, #244398 0%, #60E0E0 100%); }
+        .coastal-button { background: var(--coastal-blue); transition: all 0.3s ease; }
+        .coastal-button:hover { background: var(--coastal-dark); transform: translateY(-1px); }
+        .coastal-input { border: 2px solid #e5e7eb; transition: all 0.3s ease; }
+        .coastal-input:focus { border-color: var(--coastal-blue); box-shadow: 0 0 0 3px rgba(36,67,152,0.1); outline: none; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div id="root"></div>
+    <script type="text/babel">
+        const API_URL = 'https://coastal-fitness-backend-production.up.railway.app';
+
+        function CoachApplicationPage() {
+            const [user, setUser] = React.useState(null);
+            const [loading, setLoading] = React.useState(true);
+            const [submitting, setSubmitting] = React.useState(false);
+            const [existingApp, setExistingApp] = React.useState(null);
+            const [success, setSuccess] = React.useState(false);
+
+            const [formData, setFormData] = React.useState({
+                specialties: [],
+                certifications: [{ name: '', issuer: '', date: '' }],
+                experience: { yearsCoaching: '', bio: '', philosophy: '' },
+                affiliationType: 'independent'
+            });
+
+            const specialtyOptions = [
+                'Strength Training', 'Weight Loss', 'Bodybuilding', 'CrossFit',
+                'Yoga', 'Pilates', 'HIIT', 'Nutrition', 'Sports Performance',
+                'Rehabilitation', 'Senior Fitness', 'Pre/Post Natal'
+            ];
+
+            React.useEffect(() => {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    window.location.href = '/login.html?redirect=/coach-apply';
+                    return;
+                }
+
+                // Fetch user and check existing application
+                Promise.all([
+                    fetch(`${API_URL}/api/users/profile`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    }).then(r => r.json()),
+                    fetch(`${API_URL}/api/coaches/application/status`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    }).then(r => r.json())
+                ]).then(([userData, appData]) => {
+                    setUser(userData);
+                    if (appData.hasApplication) {
+                        setExistingApp(appData.application);
+                    }
+                    setLoading(false);
+                }).catch(err => {
+                    console.error(err);
+                    setLoading(false);
+                });
+            }, []);
+
+            const handleSpecialtyToggle = (specialty) => {
+                setFormData(prev => ({
+                    ...prev,
+                    specialties: prev.specialties.includes(specialty)
+                        ? prev.specialties.filter(s => s !== specialty)
+                        : [...prev.specialties, specialty]
+                }));
+            };
+
+            const addCertification = () => {
+                setFormData(prev => ({
+                    ...prev,
+                    certifications: [...prev.certifications, { name: '', issuer: '', date: '' }]
+                }));
+            };
+
+            const updateCertification = (index, field, value) => {
+                setFormData(prev => {
+                    const certs = [...prev.certifications];
+                    certs[index][field] = value;
+                    return { ...prev, certifications: certs };
+                });
+            };
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setSubmitting(true);
+
+                try {
+                    const token = localStorage.getItem('token');
+                    const response = await fetch(`${API_URL}/api/coaches/apply`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            ...formData,
+                            certifications: formData.certifications.filter(c => c.name)
+                        })
+                    });
+
+                    if (response.ok) {
+                        setSuccess(true);
+                    } else {
+                        const data = await response.json();
+                        alert(data.message || 'Error submitting application');
+                    }
+                } catch (error) {
+                    alert('Error submitting application');
+                }
+                setSubmitting(false);
+            };
+
+            if (loading) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                    </div>
+                );
+            }
+
+            if (existingApp) {
+                return (
+                    <div className="min-h-screen bg-gray-50 py-12 px-4">
+                        <div className="max-w-2xl mx-auto">
+                            <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+                                <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-6 ${
+                                    existingApp.status === 'pending' ? 'bg-yellow-100' :
+                                    existingApp.status === 'approved' ? 'bg-green-100' : 'bg-red-100'
+                                }`}>
+                                    <i className={`fas ${
+                                        existingApp.status === 'pending' ? 'fa-clock text-yellow-600' :
+                                        existingApp.status === 'approved' ? 'fa-check text-green-600' : 'fa-times text-red-600'
+                                    } text-3xl`}></i>
+                                </div>
+                                <h2 className="text-2xl font-bold mb-2">
+                                    {existingApp.status === 'pending' && 'Application Under Review'}
+                                    {existingApp.status === 'approved' && 'Application Approved!'}
+                                    {existingApp.status === 'rejected' && 'Application Not Approved'}
+                                </h2>
+                                <p className="text-gray-600 mb-6">
+                                    {existingApp.status === 'pending' && 'Your application is being reviewed. We\'ll notify you soon.'}
+                                    {existingApp.status === 'approved' && 'Congratulations! You can now access your coach portal.'}
+                                    {existingApp.status === 'rejected' && (existingApp.reviewNotes || 'Please contact support for more information.')}
+                                </p>
+                                {existingApp.status === 'approved' && (
+                                    <a href="/coach-portal" className="coastal-button text-white px-6 py-3 rounded-lg inline-block">
+                                        Go to Coach Portal
+                                    </a>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (success) {
+                return (
+                    <div className="min-h-screen bg-gray-50 py-12 px-4">
+                        <div className="max-w-2xl mx-auto">
+                            <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+                                <div className="w-20 h-20 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-6">
+                                    <i className="fas fa-check text-green-600 text-3xl"></i>
+                                </div>
+                                <h2 className="text-2xl font-bold mb-2">Application Submitted!</h2>
+                                <p className="text-gray-600 mb-6">
+                                    Thank you for applying. Our team will review your application and get back to you within 2-3 business days.
+                                </p>
+                                <a href="/" className="text-blue-600 hover:underline">Return to Home</a>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen bg-gray-50">
+                    {/* Header */}
+                    <div className="coastal-gradient text-white py-16 px-4">
+                        <div className="max-w-4xl mx-auto text-center">
+                            <h1 className="text-4xl font-bold mb-4">Become a Coach</h1>
+                            <p className="text-xl opacity-90">Join our marketplace and grow your coaching business</p>
+                        </div>
+                    </div>
+
+                    {/* Form */}
+                    <div className="max-w-3xl mx-auto px-4 py-12">
+                        <form onSubmit={handleSubmit} className="space-y-8">
+                            {/* Specialties */}
+                            <div className="bg-white rounded-xl shadow-lg p-6">
+                                <h3 className="text-xl font-bold mb-4">
+                                    <i className="fas fa-dumbbell mr-2 text-blue-600"></i>
+                                    Specialties
+                                </h3>
+                                <p className="text-gray-600 mb-4">Select all areas you specialize in</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {specialtyOptions.map(spec => (
+                                        <button
+                                            key={spec}
+                                            type="button"
+                                            onClick={() => handleSpecialtyToggle(spec)}
+                                            className={`px-4 py-2 rounded-full text-sm font-medium transition ${
+                                                formData.specialties.includes(spec)
+                                                    ? 'bg-blue-600 text-white'
+                                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                            }`}
+                                        >
+                                            {spec}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Certifications */}
+                            <div className="bg-white rounded-xl shadow-lg p-6">
+                                <h3 className="text-xl font-bold mb-4">
+                                    <i className="fas fa-certificate mr-2 text-blue-600"></i>
+                                    Certifications
+                                </h3>
+                                {formData.certifications.map((cert, index) => (
+                                    <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                        <input
+                                            type="text"
+                                            placeholder="Certification Name"
+                                            value={cert.name}
+                                            onChange={(e) => updateCertification(index, 'name', e.target.value)}
+                                            className="coastal-input px-4 py-2 rounded-lg"
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Issuing Organization"
+                                            value={cert.issuer}
+                                            onChange={(e) => updateCertification(index, 'issuer', e.target.value)}
+                                            className="coastal-input px-4 py-2 rounded-lg"
+                                        />
+                                        <input
+                                            type="date"
+                                            value={cert.date}
+                                            onChange={(e) => updateCertification(index, 'date', e.target.value)}
+                                            className="coastal-input px-4 py-2 rounded-lg"
+                                        />
+                                    </div>
+                                ))}
+                                <button
+                                    type="button"
+                                    onClick={addCertification}
+                                    className="text-blue-600 hover:underline text-sm"
+                                >
+                                    + Add Another Certification
+                                </button>
+                            </div>
+
+                            {/* Experience */}
+                            <div className="bg-white rounded-xl shadow-lg p-6">
+                                <h3 className="text-xl font-bold mb-4">
+                                    <i className="fas fa-briefcase mr-2 text-blue-600"></i>
+                                    Experience
+                                </h3>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Years Coaching</label>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            value={formData.experience.yearsCoaching}
+                                            onChange={(e) => setFormData(prev => ({
+                                                ...prev,
+                                                experience: { ...prev.experience, yearsCoaching: e.target.value }
+                                            }))}
+                                            className="coastal-input px-4 py-2 rounded-lg w-full md:w-48"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Bio (Tell us about yourself)</label>
+                                        <textarea
+                                            rows="4"
+                                            value={formData.experience.bio}
+                                            onChange={(e) => setFormData(prev => ({
+                                                ...prev,
+                                                experience: { ...prev.experience, bio: e.target.value }
+                                            }))}
+                                            className="coastal-input px-4 py-2 rounded-lg w-full"
+                                            placeholder="Share your background, achievements, and what drives you as a coach..."
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Coaching Philosophy</label>
+                                        <textarea
+                                            rows="3"
+                                            value={formData.experience.philosophy}
+                                            onChange={(e) => setFormData(prev => ({
+                                                ...prev,
+                                                experience: { ...prev.experience, philosophy: e.target.value }
+                                            }))}
+                                            className="coastal-input px-4 py-2 rounded-lg w-full"
+                                            placeholder="What's your approach to coaching clients?"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Affiliation */}
+                            <div className="bg-white rounded-xl shadow-lg p-6">
+                                <h3 className="text-xl font-bold mb-4">
+                                    <i className="fas fa-building mr-2 text-blue-600"></i>
+                                    Affiliation Type
+                                </h3>
+                                <div className="flex gap-4">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            name="affiliation"
+                                            value="independent"
+                                            checked={formData.affiliationType === 'independent'}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, affiliationType: e.target.value }))}
+                                            className="w-4 h-4"
+                                        />
+                                        <span>Independent Coach</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            name="affiliation"
+                                            value="gym_affiliated"
+                                            checked={formData.affiliationType === 'gym_affiliated'}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, affiliationType: e.target.value }))}
+                                            className="w-4 h-4"
+                                        />
+                                        <span>Gym Affiliated</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            {/* Submit */}
+                            <button
+                                type="submit"
+                                disabled={submitting || formData.specialties.length === 0}
+                                className="coastal-button w-full text-white py-4 rounded-xl font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {submitting ? (
+                                    <span><i className="fas fa-spinner fa-spin mr-2"></i>Submitting...</span>
+                                ) : (
+                                    <span><i className="fas fa-paper-plane mr-2"></i>Submit Application</span>
+                                )}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<CoachApplicationPage />);
+    </script>
+</body>
+</html>

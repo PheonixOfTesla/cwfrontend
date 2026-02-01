@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "buildCommand": "echo 'No build needed'",
+  "outputDirectory": ".",
+  "rewrites": [
+    { "source": "/coach-apply", "destination": "/coach-apply.html" },
+    { "source": "/coaches", "destination": "/coaches.html" },
+    { "source": "/coach", "destination": "/coach.html" },
+    { "source": "/coach-portal", "destination": "/coach-portal.html" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}

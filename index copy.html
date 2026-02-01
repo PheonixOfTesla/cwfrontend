@@ -1,0 +1,2373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Coastal Fitness & Correction - Revolutionary Health Platform">
+    <meta name="theme-color" content="#244398">
+    <title>Coastal Fitness & Correction</title>
+    
+    <!-- Production React 18 -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js for Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Socket.io for Real-time -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    
+    <!-- Font Awesome Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        :root {
+            --coastal-blue: #244398;
+            --coastal-gray: #818386;
+            --coastal-light: #EBFBFF;
+            --coastal-cyan: #60E0E0;
+            --coastal-dark: #1a2f6f;
+            --success-green: #10b981;
+            --warning-orange: #f59e0b;
+            --danger-red: #ef4444;
+        }
+        
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #f8fafc;
+            color: #1f2937;
+        }
+        
+        .coastal-gradient {
+            background: linear-gradient(135deg, #244398 0%, #60E0E0 100%);
+            min-height: 100vh;
+        }
+        
+        .coastal-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .coastal-button {
+            background: var(--coastal-blue);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        
+        .coastal-button:hover {
+            background: var(--coastal-dark);
+            transform: translateY(-1px);
+        }
+        
+        .coastal-button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        
+        .coastal-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .coastal-input:focus {
+            outline: none;
+            border-color: var(--coastal-blue);
+            box-shadow: 0 0 0 3px rgba(36,67,152,0.1);
+        }
+        
+        .loading-spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #e5e7eb;
+            border-top: 2px solid var(--coastal-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            padding: 1rem;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        
+        .badge-client { background: #dbeafe; color: #1e40af; }
+        .badge-specialist { background: #d1fae5; color: #059669; }
+        .badge-admin { background: #fef3c7; color: #d97706; }
+        .badge-owner { background: #e9d5ff; color: #7c3aed; }
+        .badge-engineer { background: #fee2e2; color: #dc2626; }
+        
+        .chat-container {
+            display: flex;
+            height: 600px;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .chat-sidebar {
+            width: 320px;
+            background: white;
+            border-right: 1px solid #e5e7eb;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            padding: 1rem;
+            overflow-y: auto;
+            background: #f0f2f5;
+        }
+        
+        .message-bubble {
+            max-width: 70%;
+            padding: 0.5rem 1rem;
+            border-radius: 18px;
+            word-wrap: break-word;
+            margin-bottom: 0.5rem;
+        }
+        
+        .message-sent {
+            background: #0084ff;
+            color: white;
+            margin-left: auto;
+        }
+        
+        .message-received {
+            background: #e4e6eb;
+            color: #050505;
+        }
+        
+        @media (max-width: 768px) {
+            .chat-sidebar { width: 100%; }
+            .coastal-input { font-size: 16px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+<script type="text/babel">
+        const { useState, useEffect, useRef, useCallback, useMemo } = React;
+        
+        // API Configuration - Railway Backend
+      const API_CONFIG = {
+    baseURL: window.location.hostname === 'localhost' 
+        ? 'http://localhost:8080/api' 
+        : 'https://coastal-fitness-backend-production.up.railway.app/api',
+    socketURL: window.location.hostname === 'localhost' 
+        ? 'http://localhost:8080' 
+        : 'https://coastal-fitness-backend-production.up.railway.app',
+          
+            getHeaders: () => ({
+                'Content-Type': 'application/json',
+                'Authorization': localStorage.getItem('token') ? `Bearer ${localStorage.getItem('token')}` : ''
+            }),
+            
+            async request(endpoint, options = {}) {
+                try {
+                    const response = await fetch(`${this.baseURL}${endpoint}`, {
+                        ...options,
+                        headers: {
+                            ...this.getHeaders(),
+                            ...options.headers
+                        }
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        throw new Error(data.message || 'Request failed');
+                    }
+                    
+                    return data;
+                } catch (error) {
+                    console.error('API Error:', error);
+                    throw error;
+                }
+            }
+        };
+
+// Secure Token Manager
+const TokenManager = {
+    tokenKey: 'coastal_auth_token',
+    
+    setToken(token) {
+        // Add expiry time (24 hours)
+        const tokenData = {
+            token,
+            expiry: Date.now() + (24 * 60 * 60 * 1000)
+        };
+        localStorage.setItem(this.tokenKey, JSON.stringify(tokenData));
+    },
+    
+    getToken() {
+        try {
+            const data = JSON.parse(localStorage.getItem(this.tokenKey));
+            if (!data) return null;
+            
+            // Check if expired
+            if (Date.now() > data.expiry) {
+                this.removeToken();
+                return null;
+            }
+            return data.token;
+        } catch {
+            return null;
+        }
+    },
+    
+    removeToken() {
+        localStorage.removeItem(this.tokenKey);
+    }
+};
+
+// Socket.io Manager
+        // Socket.io Manager
+        let socket = null;
+        
+        const initSocket = (token) => {
+            if (socket) socket.disconnect();
+            
+            socket = io(API_CONFIG.socketURL, {
+                auth: { token },
+                transports: ['websocket', 'polling']
+            });
+            
+            socket.on('connect', () => console.log('Socket connected'));
+            socket.on('disconnect', () => console.log('Socket disconnected'));
+            
+            return socket;
+        };
+        
+        // Main App Component
+        const App = () => {
+            const [user, setUser] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [activeTab, setActiveTab] = useState('dashboard');
+            const [error, setError] = useState(null);
+            const [success, setSuccess] = useState(null);
+            const [viewMode, setViewMode] = useState('professional');
+            
+            // Check for saved token on mount
+            useEffect(() => {
+                const token = localStorage.getItem('token');
+                if (token) {
+                    fetchProfile();
+                } else {
+                    setLoading(false);
+                }
+            }, []);
+            
+            // Initialize socket when user logs in
+            useEffect(() => {
+                if (user) {
+                    const token = localStorage.getItem('token');
+                    initSocket(token);
+                }
+                return () => {
+                    if (socket) socket.disconnect();
+                };
+            }, [user]);
+            
+            const fetchProfile = async () => {
+                try {
+                    const data = await API_CONFIG.request('/users/profile');
+                    setUser(data.data);
+                } catch (error) {
+                    localStorage.removeItem('token');
+                } finally {
+                    setLoading(false);
+                }
+            };
+            
+            const handleLogout = () => {
+                localStorage.removeItem('token');
+                if (socket) socket.disconnect();
+                setUser(null);
+                setActiveTab('dashboard');
+            };
+            
+            const showError = (msg) => {
+                setError(msg);
+                setTimeout(() => setError(null), 5000);
+            };
+            
+            const showSuccess = (msg) => {
+                setSuccess(msg);
+                setTimeout(() => setSuccess(null), 5000);
+            };
+            
+            if (loading) {
+                return (
+                    <div className="flex items-center justify-center min-h-screen">
+                        <div className="loading-spinner"></div>
+                    </div>
+                );
+            }
+            
+            if (!user) {
+                return <LoginPage onLogin={setUser} showError={showError} />;
+            }
+            
+            const isClient = user.roles?.includes('client');
+            const isSpecialist = user.roles?.includes('specialist');
+            const isAdmin = user.roles?.includes('admin');
+            const isOwner = user.roles?.includes('owner');
+            const isEngineer = user.roles?.includes('engineer');
+            const isProfessional = isSpecialist || isAdmin || isOwner || isEngineer;
+            const isClientView = viewMode === 'client' || (!isProfessional && isClient);
+            
+            return (
+                <div className="min-h-screen bg-gray-50">
+                    <Navigation 
+                        user={user}
+                        activeTab={activeTab}
+                        setActiveTab={setActiveTab}
+                        viewMode={viewMode}
+                        setViewMode={setViewMode}
+                        isProfessional={isProfessional}
+                        isClientView={isClientView}
+                        onLogout={handleLogout}
+                    />
+                    
+                    {error && (
+                        <div className="max-w-7xl mx-auto px-4 mt-4">
+                            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                                {error}
+                            </div>
+                        </div>
+                    )}
+                    
+                    {success && (
+                        <div className="max-w-7xl mx-auto px-4 mt-4">
+                            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
+                                {success}
+                            </div>
+                        </div>
+                    )}
+                    
+                    <main className="max-w-7xl mx-auto px-4 py-6">
+                        {activeTab === 'dashboard' && <Dashboard user={user} isClientView={isClientView} />}
+                        {activeTab === 'workouts' && <Workouts user={user} isClientView={isClientView} showError={showError} showSuccess={showSuccess} />}
+                        {activeTab === 'measurements' && <Measurements user={user} isClientView={isClientView} showError={showError} showSuccess={showSuccess} />}
+                        {activeTab === 'nutrition' && <Nutrition user={user} isClientView={isClientView} showError={showError} showSuccess={showSuccess} />}
+                        {activeTab === 'goals' && <Goals user={user} isClientView={isClientView} showError={showError} showSuccess={showSuccess} />}
+                        {activeTab === 'messages' && <Messages user={user} socket={socket} showError={showError} />}
+                        {activeTab === 'reports' && <Reports user={user} isClientView={isClientView} showSuccess={showSuccess} />}
+                        {activeTab === 'tests' && isProfessional && <Tests user={user} showError={showError} showSuccess={showSuccess} />}
+                        {activeTab === 'users' && (isAdmin || isOwner) && <Users user={user} showError={showError} showSuccess={showSuccess} />}
+                    </main>
+                </div>
+            );
+        };
+        
+        // Login Page Component
+        const LoginPage = ({ onLogin, showError }) => {
+            const [isSignup, setIsSignup] = useState(false);
+            const [formData, setFormData] = useState({
+                name: '',
+                email: '',
+                password: ''
+            });
+            const [loading, setLoading] = useState(false);
+            
+           const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    
+    // Normal login/signup flow for all other users
+    setLoading(true);
+    
+    try {
+        const endpoint = isSignup ? '/auth/register' : '/auth/login';
+        const data = await API_CONFIG.request(endpoint, {
+            method: 'POST',
+            body: JSON.stringify(formData)
+        });
+        
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        onLogin(data.user);
+    } catch (error) {
+        showError(error.message || 'Authentication failed');
+    } finally {
+        setLoading(false);
+    }
+};
+            
+            return (
+                <div className="coastal-gradient flex items-center justify-center p-4">
+                    <div className="coastal-card p-8 w-full max-w-md">
+                        <div className="text-center mb-6">
+                            <h1 className="text-3xl font-bold" style={{color: 'var(--coastal-blue)'}}>
+                                COASTAL FITNESS
+                            </h1>
+                            <p className="text-gray-600 text-sm">FITNESS AND CORRECTION</p>
+                        </div>
+                        
+                        <div className="flex mb-6">
+                            <button
+                                onClick={() => setIsSignup(false)}
+                                className={`flex-1 py-2 ${!isSignup ? 'bg-blue-500 text-white' : 'bg-gray-200'} rounded-l`}
+                            >
+                                Login
+                            </button>
+                            <button
+                                onClick={() => setIsSignup(true)}
+                                className={`flex-1 py-2 ${isSignup ? 'bg-blue-500 text-white' : 'bg-gray-200'} rounded-r`}
+                            >
+                                Sign Up
+                            </button>
+                        </div>
+                        
+                        <form onSubmit={handleSubmit}>
+                            {isSignup && (
+                                <div className="mb-4">
+                                    <label className="block text-sm font-medium mb-2">Full Name</label>
+                                    <input
+                                        type="text"
+                                        className="coastal-input"
+                                        value={formData.name}
+                                        onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                        required
+                                    />
+                                </div>
+                            )}
+                            
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium mb-2">Email</label>
+                                <input
+                                    type="email"
+                                    className="coastal-input"
+                                    value={formData.email}
+                                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                                    required
+                                />
+                            </div>
+                            
+                            <div className="mb-6">
+                                <label className="block text-sm font-medium mb-2">Password</label>
+                                <input
+                                    type="password"
+                                    className="coastal-input"
+                                    value={formData.password}
+                                    onChange={(e) => setFormData({...formData, password: e.target.value})}
+                                    required
+                                />
+                            </div>
+                            
+                            <button
+                                type="submit"
+                                className="coastal-button w-full"
+                                disabled={loading}
+                            >
+                                {loading ? (
+                                    <div className="loading-spinner"></div>
+                                ) : (
+                                    isSignup ? 'Create Account' : 'Sign In'
+                                )}
+                            </button>
+                        </form>
+                        {!isSignup && (
+    <div className="text-center mt-4">
+        <a 
+            href="#"
+            onClick={(e) => {
+                e.preventDefault();
+                const email = prompt('Enter your email address:');
+                if (email) {
+                    alert('Password reset instructions sent to ' + email);
+                }
+            }}
+            className="text-sm text-blue-600 hover:text-blue-800"
+        >
+            Forgot your password?
+        </a>
+    </div>
+)}
+                    </div>
+                </div>
+            );
+        };
+        
+        // Navigation Component
+        const Navigation = ({ user, activeTab, setActiveTab, viewMode, setViewMode, isProfessional, isClientView, onLogout }) => {
+            const tabs = isClientView ? [
+                { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+                { id: 'workouts', label: 'My Workouts', icon: '💪' },
+                { id: 'measurements', label: 'My Measurements', icon: '📏' },
+                { id: 'nutrition', label: 'My Nutrition', icon: '🥗' },
+                { id: 'goals', label: 'My Goals', icon: '🎯' },
+                { id: 'messages', label: 'Messages', icon: '💬' },
+                { id: 'reports', label: 'My Reports', icon: '📈' }
+            ] : [
+                { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+                { id: 'workouts', label: 'Workouts', icon: '💪' },
+                { id: 'measurements', label: 'Measurements', icon: '📏' },
+                { id: 'nutrition', label: 'Nutrition', icon: '🥗' },
+                { id: 'goals', label: 'Goals', icon: '🎯' },
+                { id: 'messages', label: 'Messages', icon: '💬' },
+                { id: 'reports', label: 'Reports', icon: '📈' },
+                ...(isProfessional ? [{ id: 'tests', label: 'Tests', icon: '🧪' }] : []),
+                ...((user.roles?.includes('admin') || user.roles?.includes('owner')) ? [{ id: 'users', label: 'Users', icon: '👥' }] : [])
+            ];
+            
+            return (
+                <nav className="bg-white shadow">
+                    <div className="max-w-7xl mx-auto px-4">
+                        <div className="flex justify-between items-center py-4">
+                            <div className="flex items-center gap-4">
+                                <h1 className="text-xl font-bold" style={{color: 'var(--coastal-blue)'}}>
+                                    COASTAL FITNESS
+                                </h1>
+                                {user.roles?.map(role => (
+                                    <span key={role} className={`px-2 py-1 rounded text-xs font-semibold badge-${role}`}>
+                                        {role}
+                                    </span>
+                                ))}
+                            </div>
+                            
+                            <div className="flex items-center gap-4">
+                                {isProfessional && (
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => setViewMode('professional')}
+                                            className={`px-3 py-1 rounded ${viewMode === 'professional' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+                                        >
+                                            Professional
+                                        </button>
+                                        <button
+                                            onClick={() => setViewMode('client')}
+                                            className={`px-3 py-1 rounded ${viewMode === 'client' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+                                        >
+                                            Client View
+                                        </button>
+                                    </div>
+                                )}
+                                
+                                <span className="text-sm text-gray-600">{user.name}</span>
+                                <button onClick={onLogout} className="text-sm text-gray-500 hover:text-gray-700">
+                                    Logout
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div className="flex gap-2 pb-2 overflow-x-auto">
+                            {tabs.map(tab => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`px-4 py-2 rounded whitespace-nowrap ${
+                                        activeTab === tab.id 
+                                            ? 'bg-blue-500 text-white' 
+                                            : 'bg-gray-100 hover:bg-gray-200'
+                                    }`}
+                                >
+                                    <span className="mr-2">{tab.icon}</span>
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </nav>
+            );
+        };
+        
+        // Dashboard Component
+        const Dashboard = ({ user, isClientView }) => {
+            const [stats, setStats] = useState(null);
+            const [selectedClient, setSelectedClient] = useState(isClientView ? user._id : null);
+            const [clients, setClients] = useState([]);
+            const chartRef = useRef(null);
+            const chartInstance = useRef(null);
+            
+            useEffect(() => {
+               if (!isClientView && (user.roles?.includes('specialist') || user.roles?.includes('admin') || user.roles?.includes('owner'))) {
+                    fetchClients();
+                }
+                if (selectedClient) {
+                    fetchStats();
+                }
+                return () => {
+            if (chartInstance.current) {
+                chartInstance.current.destroy();
+                chartInstance.current = null;
+            }
+        };
+            }, [selectedClient, isClientView]);
+            
+            const fetchClients = async () => {
+                try {
+                    const data = await API_CONFIG.request('/users?role=client');
+                    setClients(data.data || []);
+                } catch (error) {
+                    console.error('Error fetching clients:', error);
+                }
+            };
+            
+            const fetchStats = async () => {
+                try {
+                    const [workouts, measurements, goals] = await Promise.all([
+                        API_CONFIG.request(`/workouts/client/${selectedClient}/stats`),
+                        API_CONFIG.request(`/measurements/client/${selectedClient}/stats`),
+                        API_CONFIG.request(`/goals/client/${selectedClient}`)
+                    ]);
+                    
+                    setStats({
+                        workouts: workouts.data,
+                        measurements: measurements.data,
+                        goals: goals.data
+                    });
+                    
+                    updateChart(measurements.data);
+                } catch (error) {
+                    console.error('Error fetching stats:', error);
+                }
+            };
+            
+            const updateChart = (measurements) => {
+                if (!chartRef.current || !measurements?.history) return;
+                
+                if (chartInstance.current) {
+                    chartInstance.current.destroy();
+                    chartInstance.current = null;
+                }
+                
+                const ctx = chartRef.current.getContext('2d');
+                chartInstance.current = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: measurements.history.map(m => new Date(m.date).toLocaleDateString()),
+                        datasets: [{
+                            label: 'Weight (lbs)',
+                            data: measurements.history.map(m => m.weight),
+                            borderColor: '#244398',
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+            };
+            
+            return (
+                <div className="space-y-6">
+                    <div className="coastal-card p-6">
+                        <h2 className="text-2xl font-bold mb-4">
+                            {isClientView ? 'My Dashboard' : 'Client Dashboard'}
+                        </h2>
+                        
+                        {!isClientView && (
+                            <select
+                                className="coastal-input mb-4"
+                                value={selectedClient || ''}
+                                onChange={(e) => setSelectedClient(e.target.value)}
+                            >
+                                <option value="">Select a client...</option>
+                                {clients.map(client => (
+                                    <option key={client._id} value={client._id}>
+                                        {client.name}
+                                    </option>
+                                ))}
+                            </select>
+                        )}
+                    </div>
+                    
+                    {stats && (
+                        <>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="coastal-card p-6">
+                                    <h3 className="text-lg font-semibold mb-2">Weight</h3>
+                                    <p className="text-3xl font-bold">
+                                        {stats.measurements?.latest?.weight || '-'} lbs
+                                    </p>
+                                    <p className="text-sm text-gray-600">
+                                        Change: {stats.measurements?.change?.weight || 0} lbs
+                                    </p>
+                                </div>
+                                
+                                <div className="coastal-card p-6">
+                                    <h3 className="text-lg font-semibold mb-2">Workouts</h3>
+                                    <p className="text-3xl font-bold">
+                                        {stats.workouts?.completed || 0}/{stats.workouts?.total || 0}
+                                    </p>
+                                    <p className="text-sm text-gray-600">
+                                        {stats.workouts?.completionRate || 0}% Complete
+                                    </p>
+                                </div>
+                                
+                                <div className="coastal-card p-6">
+                                    <h3 className="text-lg font-semibold mb-2">Goals</h3>
+                                    <p className="text-3xl font-bold">
+                                        {stats.goals?.filter(g => g.completed).length || 0}/{stats.goals?.length || 0}
+                                    </p>
+                                    <p className="text-sm text-gray-600">Achieved</p>
+                                </div>
+                            </div>
+                            
+                            <div className="coastal-card p-6">
+                                <h3 className="text-lg font-semibold mb-4">Progress Chart</h3>
+                                <div style={{height: '300px'}}>
+                                    <canvas ref={chartRef}></canvas>
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </div>
+            );
+        };
+        
+        // Workouts Component
+        const Workouts = ({ user, isClientView, showError, showSuccess }) => {
+            const [workouts, setWorkouts] = useState([]);
+            const [selectedClient, setSelectedClient] = useState(isClientView ? user._id : null);
+            const [clients, setClients] = useState([]);
+            const [showForm, setShowForm] = useState(false);
+            const [executingWorkout, setExecutingWorkout] = useState(null);
+            const [formData, setFormData] = useState({
+                name: '',
+                scheduledDate: '',
+                exercises: [],
+                restBetweenSets: 60,
+                restBetweenExercises: 90
+            });
+            
+            useEffect(() => {
+               if (!isClientView && (user.roles?.includes('specialist') || user.roles?.includes('admin') || user.roles?.includes('owner'))) {
+                    fetchClients();
+                }
+                if (selectedClient) {
+                    fetchWorkouts();
+                }
+            }, [selectedClient, isClientView]);
+            
+            const fetchClients = async () => {
+                try {
+                    const data = await API_CONFIG.request('/users?role=client');
+                    setClients(data.data || []);
+                } catch (error) {
+                    console.error('Error fetching clients:', error);
+                }
+            };
+            
+            const fetchWorkouts = async () => {
+                try {
+                    const data = await API_CONFIG.request(`/workouts/client/${selectedClient}`);
+                    setWorkouts(Array.isArray(data) ? data : (data.data || []));
+                } catch (error) {
+                    console.error('Error fetching workouts:', error);
+                }
+            };
+            
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                try {
+                    await API_CONFIG.request(`/workouts/client/${selectedClient}`, {
+                        method: 'POST',
+                        body: JSON.stringify(formData)
+                    });
+                    showSuccess('Workout created successfully');
+                    setShowForm(false);
+                    fetchWorkouts();
+                    setFormData({
+                        name: '',
+                        scheduledDate: '',
+                        exercises: [],
+                        restBetweenSets: 60,
+                        restBetweenExercises: 90
+                    });
+                } catch (error) {
+                    showError(error.message);
+                }
+            };
+            
+            const handleComplete = async (workoutId) => {
+    const mood = prompt('How was your workout? Rate 1-5 (1=Bad, 5=Great):');
+    if (!mood || mood < 1 || mood > 5) {
+        showError('Please enter a mood rating between 1-5');
+        return;
+    }
+    
+    try {
+        await API_CONFIG.request(`/workouts/client/${selectedClient}/${workoutId}/complete`, {
+            method: 'POST',
+            body: JSON.stringify({ moodFeedback: parseInt(mood) })
+        });
+        showSuccess('Workout completed!');
+        fetchWorkouts();
+    } catch (error) {
+        showError(error.message);
+    }
+};
+            
+            const addExercise = () => {
+                setFormData({
+                    ...formData,
+                    exercises: [...formData.exercises, {
+                        name: '',
+                        sets: 3,
+                        reps: 10,
+                        weight: 0
+                    }]
+                });
+            };
+            
+            const updateExercise = (index, field, value) => {
+                const exercises = [...formData.exercises];
+                exercises[index][field] = value;
+                setFormData({...formData, exercises});
+            };
+            
+            const removeExercise = (index) => {
+                setFormData({
+                    ...formData,
+                    exercises: formData.exercises.filter((_, i) => i !== index)
+                });
+            };
+            
+            return (
+                <div className="space-y-6">
+                    <div className="coastal-card p-6">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-2xl font-bold">
+                                {isClientView ? 'My Workouts' : 'Workouts'}
+                            </h2>
+                            {!isClientView && selectedClient && (
+                                <button onClick={() => setShowForm(true)} className="coastal-button">
+                                    <i className="fas fa-plus mr-2"></i>
+                                    Add Workout
+                                </button>
+                            )}
+                        </div>
+                        
+                        {!isClientView && (
+                            <select
+                                className="coastal-input"
+                                value={selectedClient || ''}
+                                onChange={(e) => setSelectedClient(e.target.value)}
+                            >
+                                <option value="">Select a client...</option>
+                                {clients.map(client => (
+                                    <option key={client._id} value={client._id}>
+                                        {client.name}
+                                    </option>
+                                ))}
+                            </select>
+                        )}
+                    </div>
+                    
+                    {showForm && (
+                        <div className="coastal-card p-6">
+                            <h3 className="text-xl font-semibold mb-4">Create Workout</h3>
+                            <form onSubmit={handleSubmit}>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Workout Name</label>
+                                        <input
+                                            type="text"
+                                            className="coastal-input"
+                                            value={formData.name}
+                                            onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Scheduled Date</label>
+                                        <input
+                                            type="date"
+                                            className="coastal-input"
+                                            value={formData.scheduledDate}
+                                            onChange={(e) => setFormData({...formData, scheduledDate: e.target.value})}
+                                        />
+                                    </div>
+                                </div>
+                                
+                                <div className="mb-4">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <label className="block text-sm font-medium">Exercises</label>
+                                        <button type="button" onClick={addExercise} className="text-blue-500 hover:text-blue-600">
+                                            <i className="fas fa-plus mr-1"></i>
+                                            Add Exercise
+                                        </button>
+                                    </div>
+                                    
+                                    {formData.exercises.map((exercise, index) => (
+                                        <div key={index} className="bg-gray-50 p-3 rounded mb-2">
+                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Exercise name"
+                                                    className="coastal-input"
+                                                    value={exercise.name}
+                                                    onChange={(e) => updateExercise(index, 'name', e.target.value)}
+                                                    required
+                                                />
+                                                <input
+                                                    type="number"
+                                                    placeholder="Sets"
+                                                    className="coastal-input"
+                                                    value={exercise.sets}
+                                                    onChange={(e) => updateExercise(index, 'sets', parseInt(e.target.value))}
+                                                    required
+                                                />
+                                                <input
+                                                    type="number"
+                                                    placeholder="Reps"
+                                                    className="coastal-input"
+                                                    value={exercise.reps}
+                                                    onChange={(e) => updateExercise(index, 'reps', parseInt(e.target.value))}
+                                                    required
+                                                />
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        type="number"
+                                                        placeholder="Weight"
+                                                        className="coastal-input"
+                                                        value={exercise.weight}
+                                                        onChange={(e) => updateExercise(index, 'weight', parseFloat(e.target.value))}
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeExercise(index)}
+                                                        className="text-red-500 hover:text-red-600"
+                                                    >
+                                                        <i className="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                
+                                <div className="flex gap-4">
+                                    <button type="submit" className="coastal-button">
+                                        Create Workout
+                                    </button>
+                                    <button type="button" onClick={() => setShowForm(false)} className="coastal-button bg-gray-500">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    )}
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {workouts.map(workout => (
+                            <div key={workout._id} className="coastal-card p-6">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div>
+                                        <h3 className="text-lg font-semibold">{workout.name}</h3>
+                                        <p className="text-sm text-gray-600">
+                                            {workout.exercises?.length || 0} exercises
+                                        </p>
+                                        {workout.scheduledDate && (
+                                            <p className="text-sm text-blue-600">
+                                                Scheduled: {new Date(workout.scheduledDate).toLocaleDateString()}
+                                            </p>
+                                        )}
+                                    </div>
+                                    {workout.completed ? (
+                                        <span className="bg-green-100 text-green-700 px-3 py-1 rounded text-sm">
+                                            ✓ Complete
+                                        </span>
+                                    ) : (
+                                        <button
+                                            onClick={() => handleComplete(workout._id)}
+                                            className="coastal-button text-sm py-1 px-3"
+                                        >
+                                            Start
+                                        </button>
+                                    )}
+                                </div>
+                                
+                                <div className="space-y-2">
+                                    {workout.exercises?.map((exercise, index) => (
+                                        <div key={index} className="text-sm">
+                                            {exercise.name}: {exercise.sets} × {exercise.reps}
+                                            {exercise.weight > 0 && ` @ ${exercise.weight}lbs`}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+        
+        // Measurements Component
+                // Measurements Component
+        const Measurements = ({ user, isClientView, showError, showSuccess }) => {
+            const [measurements, setMeasurements] = useState([]);
+            const [selectedClient, setSelectedClient] = useState(isClientView ? user._id : null);
+            const [clients, setClients] = useState([]);
+            const [showForm, setShowForm] = useState(false);
+            const [formData, setFormData] = useState({
+                date: new Date().toISOString().split('T')[0],
+                weight: '',
+                bodyFat: '',
+                bmr: '',
+                bloodPressure: ''
+            });
+            
+            useEffect(() => {
+                if (!isClientView && (user.roles?.includes('specialist') || user.roles?.includes('admin') || user.roles?.includes('owner'))) {
+                    fetchClients();
+                }
+                if (selectedClient) {
+                    fetchMeasurements();
+                }
+            }, [selectedClient, isClientView]);
+            
+            const fetchClients = async () => {
+                try {
+                    const data = await API_CONFIG.request('/users?role=client');
+                    setClients(data.data || []);
+                } catch (error) {
+                    console.error('Error fetching clients:', error);
+                }
+            };
+            
+            const fetchMeasurements = async () => {
+                try {
+                    const response = await API_CONFIG.request(`/measurements/client/${selectedClient}`);
+                    const measurementsData = Array.isArray(response) ? response : (response.data || []);
+                    setMeasurements(measurementsData);
+                } catch (error) {
+                    console.error('Error fetching measurements:', error);
+                    setMeasurements([]);
+                }
+            };
+            
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                if (!selectedClient) {
+                    showError('Please select a client first');
+                    return;
+                }
+                
+                try {
+                    await API_CONFIG.request(`/measurements/client/${selectedClient}`, {
+                        method: 'POST',
+                        body: JSON.stringify(formData)
+                    });
+                    showSuccess('Measurement saved successfully');
+                    setShowForm(false);
+                    await fetchMeasurements();
+                    setFormData({
+                        date: new Date().toISOString().split('T')[0],
+                        weight: '',
+                        bodyFat: '',
+                        bmr: '',
+                        bloodPressure: ''
+                    });
+                } catch (error) {
+                    showError(error.message);
+                }
+            };
+            
+            return (
+                <div className="space-y-6">
+                    <div className="coastal-card p-6">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-2xl font-bold">
+                                {isClientView ? 'My Measurements' : 'Measurements'}
+                            </h2>
+                            {selectedClient && (
+                                <button onClick={() => setShowForm(true)} className="coastal-button">
+                                    <i className="fas fa-plus mr-2"></i>
+                                    Add Measurement
+                                </button>
+                            )}
+                        </div>
+                        
+                        {!isClientView && (
+                            <select
+                                className="coastal-input"
+                                value={selectedClient || ''}
+                                onChange={(e) => setSelectedClient(e.target.value)}
+                            >
+                                <option value="">Select a client...</option>
+                                {clients.map(client => (
+                                    <option key={client._id} value={client._id}>
+                                        {client.name}
+                                    </option>
+                                ))}
+                            </select>
+                        )}
+                    </div>
+                    
+                    {showForm && (
+                        <div className="coastal-card p-6">
+                            <h3 className="text-xl font-semibold mb-4">Add Measurement</h3>
+                            <form onSubmit={handleSubmit}>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Date</label>
+                                        <input
+                                            type="date"
+                                            className="coastal-input"
+                                            value={formData.date}
+                                            onChange={(e) => setFormData({...formData, date: e.target.value})}
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Weight (lbs)</label>
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            className="coastal-input"
+                                            value={formData.weight}
+                                            onChange={(e) => setFormData({...formData, weight: e.target.value})}
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Body Fat %</label>
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            className="coastal-input"
+                                            value={formData.bodyFat}
+                                            onChange={(e) => setFormData({...formData, bodyFat: e.target.value})}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Blood Pressure</label>
+                                        <input
+                                            type="text"
+                                            className="coastal-input"
+                                            placeholder="120/80"
+                                            value={formData.bloodPressure}
+                                            onChange={(e) => setFormData({...formData, bloodPressure: e.target.value})}
+                                        />
+                                    </div>
+                                </div>
+                                
+                                <div className="flex gap-4">
+                                    <button type="submit" className="coastal-button">
+                                        Save Measurement
+                                    </button>
+                                    <button type="button" onClick={() => setShowForm(false)} className="coastal-button bg-gray-500">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    )}
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {measurements.length > 0 ? (
+                            measurements.map(measurement => (
+                                <div key={measurement._id} className="coastal-card p-6">
+                                    <h3 className="text-lg font-semibold mb-2">
+                                        {new Date(measurement.date).toLocaleDateString()}
+                                    </h3>
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-600">Weight:</span>
+                                            <span className="font-medium">{measurement.weight} lbs</span>
+                                        </div>
+                                        {measurement.bodyFat && (
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-600">Body Fat:</span>
+                                                <span className="font-medium">{measurement.bodyFat}%</span>
+                                            </div>
+                                        )}
+                                        {measurement.bloodPressure && (
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-600">BP:</span>
+                                                <span className="font-medium">{measurement.bloodPressure}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            selectedClient && (
+                                <div className="col-span-full text-center text-gray-500 py-8">
+                                    No measurements recorded yet. Click "Add Measurement" to get started.
+                                </div>
+                            )
+                        )}
+                    </div>
+                </div>
+            );
+        };
+        
+        // Nutrition Component
+        const Nutrition = ({ user, isClientView, showError, showSuccess }) => {
+            const [nutrition, setNutrition] = useState(null);
+            const [selectedClient, setSelectedClient] = useState(isClientView ? user._id : null);
+            const [clients, setClients] = useState([]);
+            const [showForm, setShowForm] = useState(false);
+            const [formData, setFormData] = useState({
+                protein: { target: 0, current: 0 },
+                carbs: { target: 0, current: 0 },
+                fat: { target: 0, current: 0 },
+                calories: { target: 0, current: 0 }
+            });
+            
+            useEffect(() => {
+               if (!isClientView && (user.roles?.includes('specialist') || user.roles?.includes('admin') || user.roles?.includes('owner'))) {
+                    fetchClients();
+                }
+                if (selectedClient) {
+                    fetchNutrition();
+                }
+            }, [selectedClient, isClientView]);
+            
+            const fetchClients = async () => {
+                try {
+                    const data = await API_CONFIG.request('/users?role=client');
+                    setClients(data.data || []);
+                } catch (error) {
+                    console.error('Error fetching clients:', error);
+                }
+            };
+            
+            const fetchNutrition = async () => {
+                try {
+                    const data = await API_CONFIG.request(`/nutrition/client/${selectedClient}`);
+                    setNutrition(Array.isArray(data) ? data[0] : data.data);
+                } catch (error) {
+                    console.error('Error fetching nutrition:', error);
+                }
+            };
+            
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                try {
+                    const method = nutrition ? 'PUT' : 'POST';
+                    await API_CONFIG.request(`/nutrition/client/${selectedClient}`, {
+                        method,
+                        body: JSON.stringify(formData)
+                    });
+                    showSuccess('Nutrition plan saved successfully');
+                    setShowForm(false);
+                    fetchNutrition();
+                } catch (error) {
+                    showError(error.message);
+                }
+            };
+            
+            const handleLog = async () => {
+                const logData = {
+                    protein: prompt('Protein (g):'),
+                    carbs: prompt('Carbs (g):'),
+                    fat: prompt('Fat (g):')
+                };
+                
+                if (logData.protein && logData.carbs && logData.fat) {
+                    try {
+                        await API_CONFIG.request(`/nutrition/client/${selectedClient}/log`, {
+                            method: 'POST',
+                            body: JSON.stringify(logData)
+                        });
+                        showSuccess('Daily log saved');
+                        fetchNutrition();
+                    } catch (error) {
+                        showError(error.message);
+                    }
+                }
+            };
+            
+            return (
+                <div className="space-y-6">
+                    <div className="coastal-card p-6">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-2xl font-bold">
+                                {isClientView ? 'My Nutrition' : 'Nutrition Plans'}
+                            </h2>
+                            {selectedClient && (
+                                <div className="flex gap-2">
+                                    {isClientView && (
+                                        <button onClick={handleLog} className="coastal-button bg-green-500">
+                                            Log Today
+                                        </button>
+                                    )}
+                                    {!isClientView && (
+                                        <button onClick={() => setShowForm(true)} className="coastal-button">
+                                            {nutrition ? 'Edit Plan' : 'Create Plan'}
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                        
+                        {!isClientView && (
+                            <select
+                                className="coastal-input"
+                                value={selectedClient || ''}
+                                onChange={(e) => setSelectedClient(e.target.value)}
+                            >
+                                <option value="">Select a client...</option>
+                                {clients.map(client => (
+                                    <option key={client._id} value={client._id}>
+                                        {client.name}
+                                    </option>
+                                ))}
+                            </select>
+                        )}
+                    </div>
+                    
+                    {showForm && (
+                        <div className="coastal-card p-6">
+                            <h3 className="text-xl font-semibold mb-4">Nutrition Plan</h3>
+                            <form onSubmit={handleSubmit}>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Protein Target (g)</label>
+                                        <input
+                                            type="number"
+                                            className="coastal-input"
+                                            value={formData.protein.target}
+                                            onChange={(e) => setFormData({
+                                                ...formData,
+                                                protein: {...formData.protein, target: parseInt(e.target.value)}
+                                            })}
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Carbs Target (g)</label>
+                                        <input
+                                            type="number"
+                                            className="coastal-input"
+                                            value={formData.carbs.target}
+                                            onChange={(e) => setFormData({
+                                                ...formData,
+                                                carbs: {...formData.carbs, target: parseInt(e.target.value)}
+                                            })}
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Fat Target (g)</label>
+                                        <input
+                                            type="number"
+                                            className="coastal-input"
+                                            value={formData.fat.target}
+                                            onChange={(e) => setFormData({
+                                                ...formData,
+                                                fat: {...formData.fat, target: parseInt(e.target.value)}
+                                            })}
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Calories Target</label>
+                                        <input
+                                            type="number"
+                                            className="coastal-input"
+                                            value={formData.calories.target}
+                                            onChange={(e) => setFormData({
+                                                ...formData,
+                                                calories: {...formData.calories, target: parseInt(e.target.value)}
+                                            })}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                                
+                                <div className="flex gap-4">
+                                    <button type="submit" className="coastal-button">
+                                        Save Plan
+                                    </button>
+                                    <button type="button" onClick={() => setShowForm(false)} className="coastal-button bg-gray-500">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    )}
+                    
+                    {nutrition && (
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div className="coastal-card p-6">
+                                <h4 className="font-semibold mb-2">Protein</h4>
+                                <p className="text-2xl font-bold">{nutrition.protein?.current || 0}g</p>
+                                <p className="text-sm text-gray-600">Target: {nutrition.protein?.target || 0}g</p>
+                                <div className="mt-2 bg-gray-200 rounded-full h-2">
+                                    <div 
+                                        className="bg-blue-500 h-2 rounded-full"
+                                        style={{width: `${Math.min((nutrition.protein?.current / nutrition.protein?.target) * 100, 100)}%`}}
+                                    ></div>
+                                </div>
+                            </div>
+                            
+                            <div className="coastal-card p-6">
+                                <h4 className="font-semibold mb-2">Carbs</h4>
+                                <p className="text-2xl font-bold">{nutrition.carbs?.current || 0}g</p>
+                                <p className="text-sm text-gray-600">Target: {nutrition.carbs?.target || 0}g</p>
+                                <div className="mt-2 bg-gray-200 rounded-full h-2">
+                                    <div 
+                                        className="bg-yellow-500 h-2 rounded-full"
+                                        style={{width: `${Math.min((nutrition.carbs?.current / nutrition.carbs?.target) * 100, 100)}%`}}
+                                    ></div>
+                                </div>
+                            </div>
+                            
+                            <div className="coastal-card p-6">
+                                <h4 className="font-semibold mb-2">Fat</h4>
+                                <p className="text-2xl font-bold">{nutrition.fat?.current || 0}g</p>
+                                <p className="text-sm text-gray-600">Target: {nutrition.fat?.target || 0}g</p>
+                                <div className="mt-2 bg-gray-200 rounded-full h-2">
+                                    <div 
+                                        className="bg-green-500 h-2 rounded-full"
+                                        style={{width: `${Math.min((nutrition.fat?.current / nutrition.fat?.target) * 100, 100)}%`}}
+                                    ></div>
+                                </div>
+                            </div>
+                            
+                            <div className="coastal-card p-6">
+                                <h4 className="font-semibold mb-2">Calories</h4>
+                                <p className="text-2xl font-bold">{nutrition.calories?.current || 0}</p>
+                                <p className="text-sm text-gray-600">Target: {nutrition.calories?.target || 0}</p>
+                                <div className="mt-2 bg-gray-200 rounded-full h-2">
+                                    <div 
+                                        className="bg-purple-500 h-2 rounded-full"
+                                        style={{width: `${Math.min((nutrition.calories?.current / nutrition.calories?.target) * 100, 100)}%`}}
+                                    ></div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+        
+        // Goals Component
+        const Goals = ({ user, isClientView, showError, showSuccess }) => {
+            const [goals, setGoals] = useState([]);
+            const [selectedClient, setSelectedClient] = useState(isClientView ? user._id : null);
+            const [clients, setClients] = useState([]);
+            const [showForm, setShowForm] = useState(false);
+            const [formData, setFormData] = useState({
+                name: '',
+                target: '',
+                current: '',
+                deadline: ''
+            });
+            
+            useEffect(() => {
+               if (!isClientView && (user.roles?.includes('specialist') || user.roles?.includes('admin') || user.roles?.includes('owner'))) {
+                    fetchClients();
+                }
+                if (selectedClient) {
+                    fetchGoals();
+                }
+            }, [selectedClient, isClientView]);
+            
+            const fetchClients = async () => {
+                try {
+                    const data = await API_CONFIG.request('/users?role=client');
+                    setClients(data.data || []);
+                } catch (error) {
+                    console.error('Error fetching clients:', error);
+                }
+            };
+            
+            const fetchGoals = async () => {
+                try {
+                    const data = await API_CONFIG.request(`/goals/client/${selectedClient}`);
+                    setGoals(Array.isArray(data) ? data : (data.data || []));
+                } catch (error) {
+                    console.error('Error fetching goals:', error);
+                }
+            };
+            
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                try {
+                    await API_CONFIG.request(`/goals/client/${selectedClient}`, {
+                        method: 'POST',
+                        body: JSON.stringify(formData)
+                    });
+                    showSuccess('Goal created successfully');
+                    setShowForm(false);
+                    fetchGoals();
+                    setFormData({
+                        name: '',
+                        target: '',
+                        current: '',
+                        deadline: ''
+                    });
+                } catch (error) {
+                    showError(error.message);
+                }
+            };
+            
+            const handleUpdateProgress = async (goalId, newCurrent) => {
+                try {
+                    await API_CONFIG.request(`/goals/client/${selectedClient}/${goalId}`, {
+                        method: 'PUT',
+                        body: JSON.stringify({ current: parseFloat(newCurrent) })
+                    });
+                    showSuccess('Progress updated');
+                    fetchGoals();
+                } catch (error) {
+                    showError(error.message);
+                }
+            };
+            
+            return (
+                <div className="space-y-6">
+                    <div className="coastal-card p-6">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-2xl font-bold">
+                                {isClientView ? 'My Goals' : 'Goals'}
+                            </h2>
+                            {selectedClient && (
+                                <button onClick={() => setShowForm(true)} className="coastal-button">
+                                    <i className="fas fa-plus mr-2"></i>
+                                    Add Goal
+                                </button>
+                            )}
+                        </div>
+                        
+                        {!isClientView && (
+                            <select
+                                className="coastal-input"
+                                value={selectedClient || ''}
+                                onChange={(e) => setSelectedClient(e.target.value)}
+                            >
+                                <option value="">Select a client...</option>
+                                {clients.map(client => (
+                                    <option key={client._id} value={client._id}>
+                                        {client.name}
+                                    </option>
+                                ))}
+                            </select>
+                        )}
+                    </div>
+                    
+                    {showForm && (
+                        <div className="coastal-card p-6">
+                            <h3 className="text-xl font-semibold mb-4">Create Goal</h3>
+                            <form onSubmit={handleSubmit}>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Goal Name</label>
+                                        <input
+                                            type="text"
+                                            className="coastal-input"
+                                            value={formData.name}
+                                            onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Deadline</label>
+                                        <input
+                                            type="date"
+                                            className="coastal-input"
+                                            value={formData.deadline}
+                                            onChange={(e) => setFormData({...formData, deadline: e.target.value})}
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Target Value</label>
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            className="coastal-input"
+                                            value={formData.target}
+                                            onChange={(e) => setFormData({...formData, target: e.target.value})}
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Current Value</label>
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            className="coastal-input"
+                                            value={formData.current}
+                                            onChange={(e) => setFormData({...formData, current: e.target.value})}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                                
+                                <div className="flex gap-4">
+                                    <button type="submit" className="coastal-button">
+                                        Create Goal
+                                    </button>
+                                    <button type="button" onClick={() => setShowForm(false)} className="coastal-button bg-gray-500">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    )}
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {goals.map(goal => {
+                            const progress = Math.round((goal.current / goal.target) * 100);
+                            const isCompleted = goal.completed || goal.current >= goal.target;
+                            
+                            return (
+                                <div key={goal._id} className="coastal-card p-6">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div>
+                                            <h3 className="text-lg font-semibold">{goal.name}</h3>
+                                            <p className="text-sm text-gray-600">
+                                                Deadline: {new Date(goal.deadline).toLocaleDateString()}
+                                            </p>
+                                        </div>
+                                        {isCompleted && (
+                                            <span className="bg-green-100 text-green-700 px-3 py-1 rounded text-sm">
+                                                ✓ Achieved
+                                            </span>
+                                        )}
+                                    </div>
+                                    
+                                    <div className="mb-4">
+                                        <div className="flex justify-between mb-2">
+                                            <span className="text-2xl font-bold">{goal.current}</span>
+                                            <span className="text-sm text-gray-600">Target: {goal.target}</span>
+                                        </div>
+                                        <div className="bg-gray-200 rounded-full h-3">
+                                            <div 
+                                                className="bg-blue-500 h-3 rounded-full"
+                                                style={{width: `${Math.min(progress, 100)}%`}}
+                                            ></div>
+                                        </div>
+                                        <p className="text-sm text-gray-600 mt-1">{progress}% Complete</p>
+                                    </div>
+                                    
+                                    {isClientView && !isCompleted && (
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="number"
+                                                step="0.1"
+                                                placeholder="Update progress"
+                                                className="coastal-input text-sm"
+                                                onKeyPress={(e) => {
+                                                    if (e.key === 'Enter' && e.target.value) {
+                                                        handleUpdateProgress(goal._id, e.target.value);
+                                                        e.target.value = '';
+                                                    }
+                                                }}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            );
+        };
+        
+        // Messages Component
+        const Messages = ({ user, socket, showError }) => {
+            const [conversations, setConversations] = useState([]);
+            const [activeChat, setActiveChat] = useState(null);
+            const [messages, setMessages] = useState([]);
+            const [newMessage, setNewMessage] = useState('');
+            const messagesEndRef = useRef(null);
+            
+            useEffect(() => {
+                fetchConversations();
+            }, []);
+            
+            useEffect(() => {
+                if (socket) {
+                    socket.on('new-message', (message) => {
+                        if (activeChat && (message.sender === activeChat._id || message.recipient === activeChat._id)) {
+                            setMessages(prev => [...prev, message]);
+                        }
+                        fetchConversations();
+                    });
+                }
+                
+                return () => {
+                    if (socket) {
+                        socket.off('new-message');
+                    }
+                };
+            }, [socket, activeChat]);
+            
+            useEffect(() => {
+                scrollToBottom();
+            }, [messages]);
+            
+            const fetchConversations = async () => {
+                try {
+                    const data = await API_CONFIG.request('/messages');
+                    setConversations(data.conversations || []);
+                } catch (error) {
+                    console.error('Error fetching conversations:', error);
+                }
+            };
+            
+            const fetchMessages = async (otherUserId) => {
+                try {
+                    const data = await API_CONFIG.request(`/messages?otherUser=${otherUserId}`);
+                    setMessages(data.messages || []);
+                } catch (error) {
+                    console.error('Error fetching messages:', error);
+                }
+            };
+            
+            const sendMessage = async (e) => {
+                e.preventDefault();
+                if (!newMessage.trim() || !activeChat) return;
+                
+                try {
+                    const message = {
+                        recipient: activeChat._id,
+                        text: newMessage
+                    };
+                    
+                    await API_CONFIG.request('/messages', {
+                        method: 'POST',
+                        body: JSON.stringify(message)
+                    });
+                    
+                    setNewMessage('');
+                    
+                    if (socket) {
+                        socket.emit('send-message', message);
+                    }
+                } catch (error) {
+                    showError(error.message);
+                }
+            };
+            
+            const scrollToBottom = () => {
+                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            };
+            
+            return (
+                <div className="coastal-card p-0 overflow-hidden">
+                    <div className="chat-container">
+                        <div className="chat-sidebar">
+                            <div className="p-4 border-b">
+                                <h3 className="text-lg font-semibold">Messages</h3>
+                            </div>
+                            <div className="overflow-y-auto">
+                                {conversations.map(conv => (
+                                    <div
+                                        key={conv.user._id}
+                                        onClick={() => {
+                                            setActiveChat(conv.user);
+                                            fetchMessages(conv.user._id);
+                                        }}
+                                        className={`p-4 border-b cursor-pointer hover:bg-gray-50 ${
+                                            activeChat?._id === conv.user._id ? 'bg-gray-100' : ''
+                                        }`}
+                                    >
+                                        <div className="font-semibold">{conv.user.name}</div>
+                                        {conv.lastMessage && (
+                                            <div className="text-sm text-gray-600 truncate">
+                                                {conv.lastMessage.text}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        
+                        <div className="flex-1 flex flex-col">
+                            {activeChat ? (
+                                <>
+                                    <div className="p-4 border-b">
+                                        <h3 className="font-semibold">{activeChat.name}</h3>
+                                    </div>
+                                    
+                                    <div className="chat-messages">
+                                        {messages.map(msg => (
+                                            <div
+                                                key={msg._id}
+                                                className={`mb-2 ${
+                                                    msg.sender === user._id ? 'text-right' : ''
+                                                }`}
+                                            >
+                                                <div className={`message-bubble inline-block ${
+                                                    msg.sender === user._id ? 'message-sent' : 'message-received'
+                                                }`}>
+                                                    {msg.text}
+                                                </div>
+                                                <div className="text-xs text-gray-500 mt-1">
+                                                    {new Date(msg.timestamp).toLocaleTimeString()}
+                                                </div>
+                                            </div>
+                                        ))}
+                                        <div ref={messagesEndRef} />
+                                    </div>
+                                    
+                                    <form onSubmit={sendMessage} className="p-4 border-t">
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                className="coastal-input"
+                                                placeholder="Type a message..."
+                                                value={newMessage}
+                                                onChange={(e) => setNewMessage(e.target.value)}
+                                            />
+                                            <button type="submit" className="coastal-button">
+                                                Send
+                                            </button>
+                                        </div>
+                                    </form>
+                                </>
+                            ) : (
+                                <div className="flex-1 flex items-center justify-center text-gray-500">
+                                    Select a conversation to start messaging
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+        
+        // Reports Component
+        const Reports = ({ user, isClientView, showSuccess }) => {
+            const [selectedClient, setSelectedClient] = useState(isClientView ? user._id : null);
+            const [clients, setClients] = useState([]);
+            
+            useEffect(() => {
+               if (!isClientView && (user.roles?.includes('specialist') || user.roles?.includes('admin') || user.roles?.includes('owner'))) {
+                    fetchClients();
+                }
+            }, [isClientView]);
+            
+            const fetchClients = async () => {
+                try {
+                    const data = await API_CONFIG.request('/users?role=client');
+                    setClients(data.data || []);
+                } catch (error) {
+                    console.error('Error fetching clients:', error);
+                }
+            };
+            
+            const generateReport = async () => {
+                if (!selectedClient) return;
+                
+                try {
+                    const [workouts, measurements, goals, nutrition] = await Promise.all([
+                        API_CONFIG.request(`/workouts/client/${selectedClient}`),
+                        API_CONFIG.request(`/measurements/client/${selectedClient}`),
+                        API_CONFIG.request(`/goals/client/${selectedClient}`),
+                        API_CONFIG.request(`/nutrition/client/${selectedClient}`)
+                    ]);
+                    
+                    const clientName = isClientView ? user.name : clients.find(c => c._id === selectedClient)?.name;
+                    
+                    let report = `COASTAL FITNESS PROGRESS REPORT\n`;
+                    report += `================================\n\n`;
+                    report += `Client: ${clientName}\n`;
+                    report += `Date: ${new Date().toLocaleDateString()}\n\n`;
+                    
+                    report += `WORKOUTS\n--------\n`;
+                    report += `Total: ${workouts.data?.length || 0}\n`;
+                    report += `Completed: ${workouts.data?.filter(w => w.completed).length || 0}\n\n`;
+                    
+                    report += `MEASUREMENTS\n------------\n`;
+                    if (measurements.data?.length > 0) {
+                        const latest = measurements.data[measurements.data.length - 1];
+                        report += `Latest Weight: ${latest.weight} lbs\n`;
+                        report += `Body Fat: ${latest.bodyFat || 'N/A'}%\n\n`;
+                    }
+                    
+                    report += `GOALS\n-----\n`;
+                    goals.data?.forEach(goal => {
+                        const progress = Math.round((goal.current / goal.target) * 100);
+                        report += `${goal.name}: ${progress}% complete\n`;
+                    });
+                    
+                    // Download report
+                    const blob = new Blob([report], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `report-${clientName}-${new Date().toISOString().split('T')[0]}.txt`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    
+                    showSuccess('Report generated successfully');
+                } catch (error) {
+                    console.error('Error generating report:', error);
+                }
+            };
+            
+            return (
+                <div className="space-y-6">
+                    <div className="coastal-card p-6">
+                        <h2 className="text-2xl font-bold mb-4">
+                            {isClientView ? 'My Reports' : 'Generate Reports'}
+                        </h2>
+                        
+                        {!isClientView && (
+                            <select
+                                className="coastal-input mb-4"
+                                value={selectedClient || ''}
+                                onChange={(e) => setSelectedClient(e.target.value)}
+                            >
+                                <option value="">Select a client...</option>
+                                {clients.map(client => (
+                                    <option key={client._id} value={client._id}>
+                                        {client.name}
+                                    </option>
+                                ))}
+                            </select>
+                        )}
+                        
+                        <button 
+                            onClick={generateReport}
+                            className="coastal-button"
+                            disabled={!selectedClient}
+                        >
+                            <i className="fas fa-download mr-2"></i>
+                            Generate Report
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+        
+        // Tests Component
+        const Tests = ({ user, showError, showSuccess }) => {
+            const [tests, setTests] = useState([]);
+            const [selectedClient, setSelectedClient] = useState(null);
+            const [clients, setClients] = useState([]);
+            const [showForm, setShowForm] = useState(false);
+            const [formData, setFormData] = useState({
+                name: '',
+                category: 'body-composition',
+                results: '',
+                notes: ''
+            });
+            
+            useEffect(() => {
+                fetchClients();
+                if (selectedClient) {
+                    fetchTests();
+                }
+            }, [selectedClient]);
+            
+            const fetchClients = async () => {
+                try {
+                    const data = await API_CONFIG.request('/users?role=client');
+                    setClients(data.data || []);
+                } catch (error) {
+                    console.error('Error fetching clients:', error);
+                }
+            };
+            
+            const fetchTests = async () => {
+                try {
+                    const data = await API_CONFIG.request(`/tests/client/${selectedClient}`);
+                    setTests(data.data || []);
+                } catch (error) {
+                    console.error('Error fetching tests:', error);
+                }
+            };
+            
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                try {
+                    await API_CONFIG.request(`/tests/client/${selectedClient}`, {
+                        method: 'POST',
+                        body: JSON.stringify(formData)
+                    });
+                    showSuccess('Test recorded successfully');
+                    setShowForm(false);
+                    fetchTests();
+                    setFormData({
+                        name: '',
+                        category: 'body-composition',
+                        results: '',
+                        notes: ''
+                    });
+                } catch (error) {
+                    showError(error.message);
+                }
+            };
+            
+            return (
+                <div className="space-y-6">
+                    <div className="coastal-card p-6">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-2xl font-bold">Tests & Assessments</h2>
+                            {selectedClient && (
+                                <button onClick={() => setShowForm(true)} className="coastal-button">
+                                    <i className="fas fa-plus mr-2"></i>
+                                    Add Test
+                                </button>
+                            )}
+                        </div>
+                        
+                        <select
+                            className="coastal-input"
+                            value={selectedClient || ''}
+                            onChange={(e) => setSelectedClient(e.target.value)}
+                        >
+                            <option value="">Select a client...</option>
+                            {clients.map(client => (
+                                <option key={client._id} value={client._id}>
+                                    {client.name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    
+                    {showForm && (
+                        <div className="coastal-card p-6">
+                            <h3 className="text-xl font-semibold mb-4">Record Test</h3>
+                            <form onSubmit={handleSubmit}>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Test Name</label>
+                                        <input
+                                            type="text"
+                                            className="coastal-input"
+                                            value={formData.name}
+                                            onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Category</label>
+                                        <select
+                                            className="coastal-input"
+                                            value={formData.category}
+                                            onChange={(e) => setFormData({...formData, category: e.target.value})}
+                                        >
+                                            <option value="body-composition">Body Composition</option>
+                                            <option value="cardiovascular">Cardiovascular</option>
+                                            <option value="strength">Strength</option>
+                                            <option value="flexibility">Flexibility</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div className="mb-4">
+                                    <label className="block text-sm font-medium mb-2">Results</label>
+                                    <textarea
+                                        className="coastal-input"
+                                        rows="3"
+                                        value={formData.results}
+                                        onChange={(e) => setFormData({...formData, results: e.target.value})}
+                                        required
+                                    ></textarea>
+                                </div>
+                                
+                                <div className="flex gap-4">
+                                    <button type="submit" className="coastal-button">
+                                        Save Test
+                                    </button>
+                                    <button type="button" onClick={() => setShowForm(false)} className="coastal-button bg-gray-500">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    )}
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {tests.map(test => (
+                            <div key={test._id} className="coastal-card p-6">
+                                <h3 className="text-lg font-semibold">{test.name}</h3>
+                                <p className="text-sm text-gray-600 mb-2">
+                                    {test.category} • {new Date(test.createdAt).toLocaleDateString()}
+                                </p>
+                                <p className="text-gray-700">{test.results}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+        
+        // Users Component
+        const Users = ({ user, showError, showSuccess }) => {
+            const [users, setUsers] = useState([]);
+            const [showForm, setShowForm] = useState(false);
+            const [editingUser, setEditingUser] = useState(null);
+            const [formData, setFormData] = useState({
+                name: '',
+                email: '',
+                password: '',
+                roles: []
+            });
+            
+            useEffect(() => {
+                fetchUsers();
+            }, []);
+            
+            const fetchUsers = async () => {
+                try {
+                    const data = await API_CONFIG.request('/users');
+                    setUsers(data.data || []);
+                } catch (error) {
+                    console.error('Error fetching users:', error);
+                }
+            };
+            
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                try {
+                    if (editingUser) {
+                        await API_CONFIG.request(`/users/${editingUser._id}`, {
+                            method: 'PUT',
+                            body: JSON.stringify(formData)
+                        });
+                        showSuccess('User updated successfully');
+                    } else {
+                        await API_CONFIG.request('/auth/register', {
+                            method: 'POST',
+                            body: JSON.stringify(formData)
+                        });
+                        showSuccess('User created successfully');
+                    }
+                    setShowForm(false);
+                    setEditingUser(null);
+                    fetchUsers();
+                    setFormData({
+                        name: '',
+                        email: '',
+                        password: '',
+                        roles: []
+                    });
+                } catch (error) {
+                    showError(error.message);
+                }
+            };
+            
+            const handleEdit = (user) => {
+                setEditingUser(user);
+                setFormData({
+                    name: user.name,
+                    email: user.email,
+                    password: '',
+                    roles: user.roles
+                });
+                setShowForm(true);
+            };
+            
+            const handleDelete = async (userId) => {
+                if (confirm('Are you sure you want to delete this user?')) {
+                    try {
+                        await API_CONFIG.request(`/users/${userId}`, {
+                            method: 'DELETE'
+                        });
+                        showSuccess('User deleted successfully');
+                        fetchUsers();
+                    } catch (error) {
+                        showError(error.message);
+                    }
+                }
+            };
+            
+            return (
+                <div className="space-y-6">
+                    <div className="coastal-card p-6">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-2xl font-bold">User Management</h2>
+                            <button onClick={() => setShowForm(true)} className="coastal-button">
+                                <i className="fas fa-plus mr-2"></i>
+                                Add User
+                            </button>
+                        </div>
+                    </div>
+                    
+                    {showForm && (
+                        <div className="coastal-card p-6">
+                            <h3 className="text-xl font-semibold mb-4">
+                                {editingUser ? 'Edit User' : 'Create User'}
+                            </h3>
+                            <form onSubmit={handleSubmit}>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Name</label>
+                                        <input
+                                            type="text"
+                                            className="coastal-input"
+                                            value={formData.name}
+                                            onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Email</label>
+                                        <input
+                                            type="email"
+                                            className="coastal-input"
+                                            value={formData.email}
+                                            onChange={(e) => setFormData({...formData, email: e.target.value})}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                                
+                                {!editingUser && (
+                                    <div className="mb-4">
+                                        <label className="block text-sm font-medium mb-2">Password</label>
+                                        <input
+                                            type="password"
+                                            className="coastal-input"
+                                            value={formData.password}
+                                            onChange={(e) => setFormData({...formData, password: e.target.value})}
+                                            required
+                                        />
+                                    </div>
+                                )}
+                                
+                                <div className="mb-4">
+                                    <label className="block text-sm font-medium mb-2">Roles</label>
+                                    <div className="flex gap-4">
+                                        {['client', 'specialist', 'admin', 'owner', 'engineer'].map(role => (
+                                            <label key={role} className="flex items-center">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={formData.roles.includes(role)}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setFormData({
+                                                                ...formData,
+                                                                roles: [...formData.roles, role]
+                                                            });
+                                                        } else {
+                                                            setFormData({
+                                                                ...formData,
+                                                                roles: formData.roles.filter(r => r !== role)
+                                                            });
+                                                        }
+                                                    }}
+                                                    className="mr-2"
+                                                />
+                                                {role}
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                                
+                                <div className="flex gap-4">
+                                    <button type="submit" className="coastal-button">
+                                        {editingUser ? 'Update' : 'Create'} User
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => {
+                                            setShowForm(false);
+                                            setEditingUser(null);
+                                            setFormData({
+                                                name: '',
+                                                email: '',
+                                                password: '',
+                                                roles: []
+                                            });
+                                        }} 
+                                        className="coastal-button bg-gray-500"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    )}
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {users.map(u => (
+                            <div key={u._id} className="coastal-card p-4">
+                                <div className="flex justify-between items-start mb-2">
+                                    <div>
+                                        <h3 className="font-semibold">{u.name}</h3>
+                                        <p className="text-sm text-gray-600">{u.email}</p>
+                                    </div>
+                                    <div className="flex gap-1">
+                                        <button
+                                            onClick={() => handleEdit(u)}
+                                            className="text-blue-500 hover:text-blue-600"
+                                        >
+                                            <i className="fas fa-edit"></i>
+                                        </button>
+                                        {u._id !== user._id && (
+                                            <button
+                                                onClick={() => handleDelete(u._id)}
+                                                className="text-red-500 hover:text-red-600"
+                                            >
+                                                <i className="fas fa-trash"></i>
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="flex flex-wrap gap-1">
+                                    {u.roles.map(role => (
+                                        <span key={role} className={`px-2 py-1 rounded text-xs font-semibold badge-${role}`}>
+                                            {role}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+        
+        // Render the app
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>

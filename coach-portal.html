@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Coach Portal - Coastal Fitness">
+    <title>Coach Portal - Coastal Fitness</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --coastal-blue: #244398;
+            --coastal-cyan: #60E0E0;
+            --coastal-dark: #1a2f6f;
+        }
+        * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        .coastal-gradient { background: linear-gradient(135deg, #244398 0%, #60E0E0 100%); }
+        .coastal-button { background: var(--coastal-blue); transition: all 0.3s ease; }
+        .coastal-button:hover { background: var(--coastal-dark); }
+        .coastal-input { border: 2px solid #e5e7eb; transition: all 0.3s ease; }
+        .coastal-input:focus { border-color: var(--coastal-blue); box-shadow: 0 0 0 3px rgba(36,67,152,0.1); outline: none; }
+        .tab-active { border-bottom: 2px solid var(--coastal-blue); color: var(--coastal-blue); }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div id="root"></div>
+    <script type="text/babel">
+        const API_URL = 'https://coastal-fitness-backend-production.up.railway.app';
+
+        function CoachPortal() {
+            const [user, setUser] = React.useState(null);
+            const [profile, setProfile] = React.useState(null);
+            const [stats, setStats] = React.useState(null);
+            const [programs, setPrograms] = React.useState([]);
+            const [clients, setClients] = React.useState([]);
+            const [loading, setLoading] = React.useState(true);
+            const [activeTab, setActiveTab] = React.useState('overview');
+            const [stripeStatus, setStripeStatus] = React.useState(null);
+
+            const token = localStorage.getItem('token');
+
+            React.useEffect(() => {
+                if (!token) {
+                    window.location.href = '/login.html?redirect=/coach-portal';
+                    return;
+                }
+
+                // Check for Stripe callback
+                const params = new URLSearchParams(window.location.search);
+                if (params.get('stripe') === 'success') {
+                    window.history.replaceState({}, '', '/coach-portal');
+                }
+
+                fetchData();
+            }, []);
+
+            const fetchData = async () => {
+                try {
+                    const headers = { 'Authorization': `Bearer ${token}` };
+
+                    const [statsRes, profileRes, programsRes, clientsRes, stripeRes] = await Promise.all([
+                        fetch(`${API_URL}/api/coaches/portal/stats`, { headers }).then(r => r.json()),
+                        fetch(`${API_URL}/api/coaches/portal/profile`, { headers }).then(r => r.json()),
+                        fetch(`${API_URL}/api/coaches/portal/programs`, { headers }).then(r => r.json()),
+                        fetch(`${API_URL}/api/coaches/portal/clients`, { headers }).then(r => r.json()),
+                        fetch(`${API_URL}/api/coaches/portal/stripe/status`, { headers }).then(r => r.json())
+                    ]);
+
+                    setStats(statsRes);
+                    setProfile(profileRes);
+                    setPrograms(programsRes || []);
+                    setClients(clientsRes || []);
+                    setStripeStatus(stripeRes);
+                } catch (error) {
+                    console.error('Error fetching data:', error);
+                }
+                setLoading(false);
+            };
+
+            const handleStripeConnect = async () => {
+                try {
+                    const response = await fetch(`${API_URL}/api/coaches/portal/stripe/connect`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    const data = await response.json();
+                    if (data.url) {
+                        window.location.href = data.url;
+                    }
+                } catch (error) {
+                    alert('Error connecting Stripe');
+                }
+            };
+
+            const handleStripeDashboard = async () => {
+                try {
+                    const response = await fetch(`${API_URL}/api/coaches/portal/stripe/dashboard`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    const data = await response.json();
+                    if (data.url) {
+                        window.open(data.url, '_blank');
+                    }
+                } catch (error) {
+                    alert('Error opening dashboard');
+                }
+            };
+
+            const saveProfile = async (updates) => {
+                try {
+                    const response = await fetch(`${API_URL}/api/coaches/portal/profile`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify(updates)
+                    });
+                    const data = await response.json();
+                    setProfile(data);
+                    return true;
+                } catch (error) {
+                    return false;
+                }
+            };
+
+            const createProgram = async (programData) => {
+                try {
+                    const response = await fetch(`${API_URL}/api/coaches/portal/programs`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify(programData)
+                    });
+                    const data = await response.json();
+                    setPrograms([...programs, data]);
+                    return true;
+                } catch (error) {
+                    return false;
+                }
+            };
+
+            if (loading) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                    </div>
+                );
+            }
+
+            const tabs = [
+                { id: 'overview', label: 'Overview', icon: 'fa-chart-line' },
+                { id: 'profile', label: 'Profile', icon: 'fa-user' },
+                { id: 'programs', label: 'Programs', icon: 'fa-box' },
+                { id: 'clients', label: 'Clients', icon: 'fa-users' },
+                { id: 'revenue', label: 'Revenue', icon: 'fa-dollar-sign' },
+                { id: 'settings', label: 'Settings', icon: 'fa-cog' }
+            ];
+
+            return (
+                <div className="min-h-screen bg-gray-50">
+                    {/* Header */}
+                    <div className="coastal-gradient text-white py-6 px-4">
+                        <div className="max-w-6xl mx-auto flex items-center justify-between">
+                            <div>
+                                <h1 className="text-2xl font-bold">Coach Portal</h1>
+                                <p className="opacity-80">Welcome back, {profile?.displayName}</p>
+                            </div>
+                            <a href="/coaches" className="text-white hover:opacity-80">
+                                <i className="fas fa-external-link mr-2"></i>View Public Profile
+                            </a>
+                        </div>
+                    </div>
+
+                    {/* Tabs */}
+                    <div className="bg-white border-b sticky top-0 z-10">
+                        <div className="max-w-6xl mx-auto px-4 flex overflow-x-auto">
+                            {tabs.map(tab => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`px-4 py-4 font-medium whitespace-nowrap ${activeTab === tab.id ? 'tab-active' : 'text-gray-500 hover:text-gray-700'}`}
+                                >
+                                    <i className={`fas ${tab.icon} mr-2`}></i>{tab.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="max-w-6xl mx-auto px-4 py-8">
+                        {/* Overview Tab */}
+                        {activeTab === 'overview' && (
+                            <div className="space-y-6">
+                                {/* Quick Stats */}
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                    <div className="bg-white rounded-xl shadow p-6">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-gray-500 text-sm">Active Clients</p>
+                                                <p className="text-3xl font-bold">{stats?.activeClients || 0}</p>
+                                            </div>
+                                            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                                                <i className="fas fa-users text-blue-600"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="bg-white rounded-xl shadow p-6">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-gray-500 text-sm">Total Revenue</p>
+                                                <p className="text-3xl font-bold">${((stats?.totalRevenue || 0) / 100).toFixed(0)}</p>
+                                            </div>
+                                            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                                                <i className="fas fa-dollar-sign text-green-600"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="bg-white rounded-xl shadow p-6">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-gray-500 text-sm">Rating</p>
+                                                <p className="text-3xl font-bold">{(stats?.averageRating || 0).toFixed(1)}</p>
+                                            </div>
+                                            <div className="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center">
+                                                <i className="fas fa-star text-yellow-600"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="bg-white rounded-xl shadow p-6">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-gray-500 text-sm">Reviews</p>
+                                                <p className="text-3xl font-bold">{stats?.totalReviews || 0}</p>
+                                            </div>
+                                            <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                                                <i className="fas fa-comment text-purple-600"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Setup Checklist */}
+                                {(!stripeStatus?.onboardingComplete || !profile?.calcomUsername) && (
+                                    <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6">
+                                        <h3 className="font-bold text-lg mb-4"><i className="fas fa-clipboard-check mr-2"></i>Complete Your Setup</h3>
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-3">
+                                                {stripeStatus?.onboardingComplete ? (
+                                                    <i className="fas fa-check-circle text-green-500"></i>
+                                                ) : (
+                                                    <i className="fas fa-circle text-gray-300"></i>
+                                                )}
+                                                <span>Connect Stripe to accept payments</span>
+                                                {!stripeStatus?.onboardingComplete && (
+                                                    <button onClick={handleStripeConnect} className="ml-auto text-blue-600 hover:underline text-sm">
+                                                        Connect Now
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                {profile?.calcomUsername ? (
+                                                    <i className="fas fa-check-circle text-green-500"></i>
+                                                ) : (
+                                                    <i className="fas fa-circle text-gray-300"></i>
+                                                )}
+                                                <span>Add your Cal.com username for bookings</span>
+                                                {!profile?.calcomUsername && (
+                                                    <button onClick={() => setActiveTab('settings')} className="ml-auto text-blue-600 hover:underline text-sm">
+                                                        Add Now
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                {programs.length > 0 ? (
+                                                    <i className="fas fa-check-circle text-green-500"></i>
+                                                ) : (
+                                                    <i className="fas fa-circle text-gray-300"></i>
+                                                )}
+                                                <span>Create your first program</span>
+                                                {programs.length === 0 && (
+                                                    <button onClick={() => setActiveTab('programs')} className="ml-auto text-blue-600 hover:underline text-sm">
+                                                        Create Now
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Recent Clients */}
+                                <div className="bg-white rounded-xl shadow p-6">
+                                    <h3 className="font-bold text-lg mb-4">Recent Clients</h3>
+                                    {clients.length === 0 ? (
+                                        <p className="text-gray-500 text-center py-8">No clients yet. Share your profile to get started!</p>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            {clients.slice(0, 5).map(client => (
+                                                <div key={client._id} className="flex items-center justify-between py-2 border-b last:border-0">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                                                            {client.clientId?.name?.charAt(0)}
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-medium">{client.clientId?.name}</p>
+                                                            <p className="text-sm text-gray-500">{client.programId?.title}</p>
+                                                        </div>
+                                                    </div>
+                                                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                                        client.status === 'active' ? 'bg-green-100 text-green-700' :
+                                                        client.status === 'trialing' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
+                                                    }`}>
+                                                        {client.status}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Profile Tab */}
+                        {activeTab === 'profile' && <ProfileEditor profile={profile} onSave={saveProfile} />}
+
+                        {/* Programs Tab */}
+                        {activeTab === 'programs' && <ProgramsManager programs={programs} onCreate={createProgram} stripeConnected={stripeStatus?.onboardingComplete} />}
+
+                        {/* Clients Tab */}
+                        {activeTab === 'clients' && <ClientsList clients={clients} />}
+
+                        {/* Revenue Tab */}
+                        {activeTab === 'revenue' && <RevenueView stats={stats} stripeStatus={stripeStatus} onDashboard={handleStripeDashboard} />}
+
+                        {/* Settings Tab */}
+                        {activeTab === 'settings' && <SettingsView profile={profile} stripeStatus={stripeStatus} onStripeConnect={handleStripeConnect} onSave={saveProfile} />}
+                    </div>
+                </div>
+            );
+        }
+
+        function ProfileEditor({ profile, onSave }) {
+            const [form, setForm] = React.useState(profile || {});
+            const [saving, setSaving] = React.useState(false);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setSaving(true);
+                await onSave(form);
+                setSaving(false);
+                alert('Profile saved!');
+            };
+
+            return (
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="bg-white rounded-xl shadow p-6">
+                        <h3 className="font-bold text-lg mb-4">Public Profile</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Display Name</label>
+                                <input
+                                    type="text"
+                                    value={form.displayName || ''}
+                                    onChange={(e) => setForm({ ...form, displayName: e.target.value })}
+                                    className="coastal-input px-4 py-2 rounded-lg w-full"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Tagline</label>
+                                <input
+                                    type="text"
+                                    value={form.tagline || ''}
+                                    onChange={(e) => setForm({ ...form, tagline: e.target.value })}
+                                    className="coastal-input px-4 py-2 rounded-lg w-full"
+                                    placeholder="e.g., Certified Strength Coach"
+                                />
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-medium mb-1">Bio</label>
+                                <textarea
+                                    rows="4"
+                                    value={form.bio || ''}
+                                    onChange={(e) => setForm({ ...form, bio: e.target.value })}
+                                    className="coastal-input px-4 py-2 rounded-lg w-full"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Profile Image URL</label>
+                                <input
+                                    type="url"
+                                    value={form.profileImage || ''}
+                                    onChange={(e) => setForm({ ...form, profileImage: e.target.value })}
+                                    className="coastal-input px-4 py-2 rounded-lg w-full"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Contact Email</label>
+                                <input
+                                    type="email"
+                                    value={form.contactEmail || ''}
+                                    onChange={(e) => setForm({ ...form, contactEmail: e.target.value })}
+                                    className="coastal-input px-4 py-2 rounded-lg w-full"
+                                />
+                            </div>
+                        </div>
+                        <div className="mt-4">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={form.isAcceptingClients !== false}
+                                    onChange={(e) => setForm({ ...form, isAcceptingClients: e.target.checked })}
+                                />
+                                <span>Accepting new clients</span>
+                            </label>
+                        </div>
+                    </div>
+                    <button type="submit" disabled={saving} className="coastal-button text-white px-6 py-3 rounded-lg">
+                        {saving ? 'Saving...' : 'Save Profile'}
+                    </button>
+                </form>
+            );
+        }
+
+        function ProgramsManager({ programs, onCreate, stripeConnected }) {
+            const [showForm, setShowForm] = React.useState(false);
+            const [form, setForm] = React.useState({
+                title: '', description: '', type: 'one_on_one',
+                pricing: { amount: '', billingPeriod: 'monthly' },
+                trial: { enabled: false, days: 7 },
+                features: ['']
+            });
+            const [creating, setCreating] = React.useState(false);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setCreating(true);
+                const success = await onCreate({
+                    ...form,
+                    pricing: { ...form.pricing, amount: parseInt(form.pricing.amount) * 100 },
+                    features: form.features.filter(f => f)
+                });
+                if (success) {
+                    setShowForm(false);
+                    setForm({ title: '', description: '', type: 'one_on_one', pricing: { amount: '', billingPeriod: 'monthly' }, trial: { enabled: false, days: 7 }, features: [''] });
+                }
+                setCreating(false);
+            };
+
+            return (
+                <div className="space-y-6">
+                    {!stripeConnected && (
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                            <i className="fas fa-exclamation-triangle text-yellow-600 mr-2"></i>
+                            Connect Stripe in Settings to enable payments for your programs.
+                        </div>
+                    )}
+
+                    <div className="flex justify-between items-center">
+                        <h3 className="font-bold text-lg">Your Programs ({programs.length})</h3>
+                        <button onClick={() => setShowForm(true)} className="coastal-button text-white px-4 py-2 rounded-lg">
+                            <i className="fas fa-plus mr-2"></i>New Program
+                        </button>
+                    </div>
+
+                    {showForm && (
+                        <div className="bg-white rounded-xl shadow p-6">
+                            <form onSubmit={handleSubmit} className="space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Program Title</label>
+                                        <input
+                                            type="text"
+                                            value={form.title}
+                                            onChange={(e) => setForm({ ...form, title: e.target.value })}
+                                            className="coastal-input px-4 py-2 rounded-lg w-full"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Type</label>
+                                        <select
+                                            value={form.type}
+                                            onChange={(e) => setForm({ ...form, type: e.target.value })}
+                                            className="coastal-input px-4 py-2 rounded-lg w-full"
+                                        >
+                                            <option value="one_on_one">1:1 Coaching</option>
+                                            <option value="group">Group Coaching</option>
+                                            <option value="program">Digital Program</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Description</label>
+                                    <textarea
+                                        rows="3"
+                                        value={form.description}
+                                        onChange={(e) => setForm({ ...form, description: e.target.value })}
+                                        className="coastal-input px-4 py-2 rounded-lg w-full"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Price ($)</label>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            value={form.pricing.amount}
+                                            onChange={(e) => setForm({ ...form, pricing: { ...form.pricing, amount: e.target.value } })}
+                                            className="coastal-input px-4 py-2 rounded-lg w-full"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Billing</label>
+                                        <select
+                                            value={form.pricing.billingPeriod}
+                                            onChange={(e) => setForm({ ...form, pricing: { ...form.pricing, billingPeriod: e.target.value } })}
+                                            className="coastal-input px-4 py-2 rounded-lg w-full"
+                                        >
+                                            <option value="monthly">Monthly</option>
+                                            <option value="weekly">Weekly</option>
+                                            <option value="one_time">One Time</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Free Trial</label>
+                                        <select
+                                            value={form.trial.enabled ? form.trial.days : '0'}
+                                            onChange={(e) => setForm({ ...form, trial: { enabled: e.target.value !== '0', days: parseInt(e.target.value) || 7 } })}
+                                            className="coastal-input px-4 py-2 rounded-lg w-full"
+                                        >
+                                            <option value="0">No Trial</option>
+                                            <option value="3">3 Days</option>
+                                            <option value="7">7 Days</option>
+                                            <option value="14">14 Days</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button type="submit" disabled={creating} className="coastal-button text-white px-6 py-2 rounded-lg">
+                                        {creating ? 'Creating...' : 'Create Program'}
+                                    </button>
+                                    <button type="button" onClick={() => setShowForm(false)} className="px-6 py-2 rounded-lg border hover:bg-gray-50">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {programs.map(program => (
+                            <div key={program._id} className="bg-white rounded-xl shadow p-5">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <h4 className="font-bold">{program.title}</h4>
+                                        <p className="text-sm text-gray-500 capitalize">{program.type.replace('_', ' ')}</p>
+                                    </div>
+                                    <span className="text-xl font-bold text-blue-600">
+                                        ${(program.pricing.amount / 100).toFixed(0)}
+                                        {program.pricing.billingPeriod !== 'one_time' && `/${program.pricing.billingPeriod === 'monthly' ? 'mo' : 'wk'}`}
+                                    </span>
+                                </div>
+                                <p className="text-gray-600 text-sm mt-2 line-clamp-2">{program.description}</p>
+                                <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                                    <span className="text-sm text-gray-500">{program.currentClients || 0} clients</span>
+                                    <span className={`px-2 py-1 rounded text-xs ${program.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
+                                        {program.isActive ? 'Active' : 'Inactive'}
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        function ClientsList({ clients }) {
+            return (
+                <div className="bg-white rounded-xl shadow">
+                    <div className="p-6 border-b">
+                        <h3 className="font-bold text-lg">Active Clients ({clients.length})</h3>
+                    </div>
+                    {clients.length === 0 ? (
+                        <div className="p-12 text-center text-gray-500">
+                            <i className="fas fa-users text-4xl mb-4 text-gray-300"></i>
+                            <p>No clients yet. Share your profile to get started!</p>
+                        </div>
+                    ) : (
+                        <div className="divide-y">
+                            {clients.map(client => (
+                                <div key={client._id} className="p-4 flex items-center justify-between hover:bg-gray-50">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center text-lg font-bold">
+                                            {client.clientId?.name?.charAt(0)}
+                                        </div>
+                                        <div>
+                                            <p className="font-medium">{client.clientId?.name}</p>
+                                            <p className="text-sm text-gray-500">{client.clientId?.email}</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="font-medium">{client.programId?.title}</p>
+                                        <span className={`text-xs px-2 py-1 rounded ${
+                                            client.status === 'active' ? 'bg-green-100 text-green-700' :
+                                            client.status === 'trialing' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100'
+                                        }`}>
+                                            {client.status}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        function RevenueView({ stats, stripeStatus, onDashboard }) {
+            return (
+                <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="bg-white rounded-xl shadow p-6">
+                            <p className="text-gray-500 text-sm">Total Revenue</p>
+                            <p className="text-3xl font-bold">${((stats?.totalRevenue || 0) / 100).toFixed(2)}</p>
+                        </div>
+                        <div className="bg-white rounded-xl shadow p-6">
+                            <p className="text-gray-500 text-sm">Your Earnings (80%)</p>
+                            <p className="text-3xl font-bold text-green-600">${(((stats?.totalRevenue || 0) * 0.8) / 100).toFixed(2)}</p>
+                        </div>
+                        <div className="bg-white rounded-xl shadow p-6">
+                            <p className="text-gray-500 text-sm">Platform Fee (20%)</p>
+                            <p className="text-3xl font-bold text-gray-400">${(((stats?.totalRevenue || 0) * 0.2) / 100).toFixed(2)}</p>
+                        </div>
+                    </div>
+                    {stripeStatus?.onboardingComplete && (
+                        <div className="bg-white rounded-xl shadow p-6">
+                            <h3 className="font-bold mb-4">Stripe Dashboard</h3>
+                            <p className="text-gray-600 mb-4">View detailed analytics, manage payouts, and more in your Stripe dashboard.</p>
+                            <button onClick={onDashboard} className="coastal-button text-white px-6 py-2 rounded-lg">
+                                <i className="fab fa-stripe mr-2"></i>Open Stripe Dashboard
+                            </button>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        function SettingsView({ profile, stripeStatus, onStripeConnect, onSave }) {
+            const [calcom, setCalcom] = React.useState(profile?.calcomUsername || '');
+            const [saving, setSaving] = React.useState(false);
+
+            const saveCalcom = async () => {
+                setSaving(true);
+                await onSave({ calcomUsername: calcom });
+                setSaving(false);
+                alert('Cal.com username saved!');
+            };
+
+            return (
+                <div className="space-y-6">
+                    {/* Stripe Connect */}
+                    <div className="bg-white rounded-xl shadow p-6">
+                        <h3 className="font-bold text-lg mb-4"><i className="fab fa-stripe mr-2"></i>Stripe Connect</h3>
+                        {stripeStatus?.onboardingComplete ? (
+                            <div className="flex items-center gap-2 text-green-600">
+                                <i className="fas fa-check-circle"></i>
+                                <span>Connected and ready to accept payments</span>
+                            </div>
+                        ) : (
+                            <div>
+                                <p className="text-gray-600 mb-4">Connect your Stripe account to accept payments from clients. You'll receive 80% of each payment.</p>
+                                <button onClick={onStripeConnect} className="coastal-button text-white px-6 py-2 rounded-lg">
+                                    {stripeStatus?.connected ? 'Complete Setup' : 'Connect Stripe'}
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Cal.com */}
+                    <div className="bg-white rounded-xl shadow p-6">
+                        <h3 className="font-bold text-lg mb-4"><i className="fas fa-calendar mr-2"></i>Cal.com Integration</h3>
+                        <p className="text-gray-600 mb-4">Add your Cal.com username to let clients book consultations directly from your profile.</p>
+                        <div className="flex gap-2">
+                            <div className="flex-1 flex items-center border rounded-lg overflow-hidden">
+                                <span className="bg-gray-100 px-3 py-2 text-gray-500">cal.com/</span>
+                                <input
+                                    type="text"
+                                    value={calcom}
+                                    onChange={(e) => setCalcom(e.target.value)}
+                                    placeholder="yourusername"
+                                    className="flex-1 px-3 py-2 outline-none"
+                                />
+                            </div>
+                            <button onClick={saveCalcom} disabled={saving} className="coastal-button text-white px-6 py-2 rounded-lg">
+                                {saving ? 'Saving...' : 'Save'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<CoachPortal />);
+    </script>
+</body>
+</html>

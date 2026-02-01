@@ -1,0 +1,17 @@
+{
+  "name": "coastal-fitness-frontend",
+  "version": "1.0.0",
+  "description": "Coastal Fitness & Correction - Revolutionary Health Platform",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve public -l 3000",
+    "build": "echo 'No build needed for static site'",
+    "deploy": "vercel --prod"
+  },
+  "keywords": ["fitness", "health", "medical", "wellness"],
+  "author": "Dr. Josh Lerner",
+  "license": "MIT",
+  "devDependencies": {
+    "serve": "^14.2.0"
+  }
+}
