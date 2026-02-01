@@ -24,6 +24,10 @@
       "destination": "/influencer.html"
     },
     {
+      "source": "/about",
+      "destination": "/about.html"
+    },
+    {
       "source": "/coaches",
       "destination": "/coaches.html"
     },

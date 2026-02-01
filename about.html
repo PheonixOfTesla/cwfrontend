@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="ClockWork - The Future of Fitness Coaching. 90% revenue share for coaches. All-in-one platform.">
+    <meta property="og:title" content="ClockWork - Elite Coaching for Everyone">
+    <meta property="og:description" content="Stop paying for 5 different apps. Start keeping 90% of your revenue.">
+    <title>About ClockWork - The Future of Fitness Coaching</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+        body { background: #0a0a0a; }
+        .glow { box-shadow: 0 0 40px rgba(249, 115, 22, 0.4); }
+        .glow-green { box-shadow: 0 0 40px rgba(34, 197, 94, 0.3); }
+        .gradient-text { background: linear-gradient(135deg, #f97316 0%, #fbbf24 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); }
+        .stat-highlight { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.8; } }
+        .scroll-fade { animation: fadeIn 0.6s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-[#0a0a0a] text-white">
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 left-0 right-0 z-50 glass">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+            <a href="/" class="flex items-center gap-2 text-xl font-bold">
+                <i class="fas fa-bolt text-orange-500"></i>
+                <span>cl<span class="text-orange-500">o</span>ckw<span class="text-orange-500">o</span>rk</span>
+            </a>
+            <div class="flex items-center gap-4">
+                <a href="/coaches" class="text-gray-400 hover:text-white transition hidden md:block">Find Coaches</a>
+                <a href="/" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl font-medium transition">
+                    Get Started Free
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="min-h-screen flex items-center justify-center pt-20 px-4 relative overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-b from-orange-600/10 via-transparent to-transparent"></div>
+        <div class="max-w-4xl mx-auto text-center relative z-10">
+            <div class="mb-6">
+                <span class="bg-orange-500/20 text-orange-400 px-4 py-2 rounded-full text-sm font-medium">
+                    <i class="fas fa-rocket mr-2"></i>The Future of Fitness Coaching
+                </span>
+            </div>
+            <h1 class="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
+                Stop Paying for <span class="gradient-text">5 Different Apps</span>
+            </h1>
+            <p class="text-xl md:text-2xl text-gray-400 mb-8 max-w-2xl mx-auto">
+                ClockWork is free. We just take a small percentage. You keep <span class="text-green-400 font-bold">90% of your revenue</span>.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="/" class="bg-orange-500 hover:bg-orange-600 text-white px-8 py-4 rounded-xl font-bold text-lg glow transition">
+                    Start Free Today
+                </a>
+                <a href="#calculator" class="glass hover:bg-white/10 px-8 py-4 rounded-xl font-bold text-lg transition">
+                    Calculate Your Earnings
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Problem Section -->
+    <section class="py-20 px-4">
+        <div class="max-w-6xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-bold mb-4">The Old Way is <span class="text-red-500 line-through">Broken</span></h2>
+                <p class="text-gray-400 text-lg">Coaches are juggling 5+ apps just to run their business</p>
+            </div>
+            <div class="grid md:grid-cols-5 gap-4 mb-12">
+                <div class="glass rounded-xl p-6 text-center opacity-60">
+                    <i class="fas fa-comments text-3xl text-gray-500 mb-3"></i>
+                    <p class="text-gray-400 text-sm">Messaging Apps</p>
+                    <p class="text-red-400 text-xs mt-1">$0-50/mo</p>
+                </div>
+                <div class="glass rounded-xl p-6 text-center opacity-60">
+                    <i class="fas fa-credit-card text-3xl text-gray-500 mb-3"></i>
+                    <p class="text-gray-400 text-sm">Billing Software</p>
+                    <p class="text-red-400 text-xs mt-1">$30-100/mo</p>
+                </div>
+                <div class="glass rounded-xl p-6 text-center opacity-60">
+                    <i class="fas fa-utensils text-3xl text-gray-500 mb-3"></i>
+                    <p class="text-gray-400 text-sm">Nutrition Apps</p>
+                    <p class="text-red-400 text-xs mt-1">$10-50/mo</p>
+                </div>
+                <div class="glass rounded-xl p-6 text-center opacity-60">
+                    <i class="fas fa-video text-3xl text-gray-500 mb-3"></i>
+                    <p class="text-gray-400 text-sm">Video Calls</p>
+                    <p class="text-red-400 text-xs mt-1">$15-30/mo</p>
+                </div>
+                <div class="glass rounded-xl p-6 text-center opacity-60">
+                    <i class="fas fa-dumbbell text-3xl text-gray-500 mb-3"></i>
+                    <p class="text-gray-400 text-sm">Workout Tracking</p>
+                    <p class="text-red-400 text-xs mt-1">$10-30/mo</p>
+                </div>
+            </div>
+            <div class="text-center">
+                <p class="text-2xl text-red-400 font-bold mb-2">= $65-260/month in app fees</p>
+                <p class="text-gray-500">Plus hours of your time switching between platforms</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Solution Section -->
+    <section class="py-20 px-4 bg-gradient-to-b from-transparent via-orange-600/5 to-transparent">
+        <div class="max-w-6xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-bold mb-4">Everything in <span class="gradient-text">ONE Place</span></h2>
+                <p class="text-gray-400 text-lg">ClockWork replaces all 5 apps. And it's free to start.</p>
+            </div>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="glass rounded-2xl p-6 hover:border-orange-500/50 transition">
+                    <div class="w-12 h-12 bg-orange-500/20 rounded-xl flex items-center justify-center mb-4">
+                        <i class="fas fa-comments text-orange-500 text-xl"></i>
+                    </div>
+                    <h3 class="font-bold text-lg mb-2">In-App Messaging</h3>
+                    <p class="text-gray-400 text-sm">Communicate directly with clients. No more scattered DMs.</p>
+                </div>
+                <div class="glass rounded-2xl p-6 hover:border-orange-500/50 transition">
+                    <div class="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center mb-4">
+                        <i class="fas fa-credit-card text-green-500 text-xl"></i>
+                    </div>
+                    <h3 class="font-bold text-lg mb-2">Built-in Billing</h3>
+                    <p class="text-gray-400 text-sm">Automatic payments, subscriptions, invoicing. You keep 90%.</p>
+                </div>
+                <div class="glass rounded-2xl p-6 hover:border-orange-500/50 transition">
+                    <div class="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center mb-4">
+                        <i class="fas fa-utensils text-blue-500 text-xl"></i>
+                    </div>
+                    <h3 class="font-bold text-lg mb-2">Nutrition Planning</h3>
+                    <p class="text-gray-400 text-sm">Personalized meal plans, macro tracking, food logging.</p>
+                </div>
+                <div class="glass rounded-2xl p-6 hover:border-orange-500/50 transition">
+                    <div class="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center mb-4">
+                        <i class="fas fa-video text-purple-500 text-xl"></i>
+                    </div>
+                    <h3 class="font-bold text-lg mb-2">Zoom Integration</h3>
+                    <p class="text-gray-400 text-sm">Schedule and launch video calls without leaving the app.</p>
+                </div>
+                <div class="glass rounded-2xl p-6 hover:border-orange-500/50 transition">
+                    <div class="w-12 h-12 bg-yellow-500/20 rounded-xl flex items-center justify-center mb-4">
+                        <i class="fas fa-dumbbell text-yellow-500 text-xl"></i>
+                    </div>
+                    <h3 class="font-bold text-lg mb-2">800+ Exercise Library</h3>
+                    <p class="text-gray-400 text-sm">Video demos, custom workouts, progress tracking.</p>
+                </div>
+                <div class="glass rounded-2xl p-6 hover:border-orange-500/50 transition">
+                    <div class="w-12 h-12 bg-cyan-500/20 rounded-xl flex items-center justify-center mb-4">
+                        <i class="fas fa-robot text-cyan-500 text-xl"></i>
+                    </div>
+                    <h3 class="font-bold text-lg mb-2">FORGE AI Intelligence</h3>
+                    <p class="text-gray-400 text-sm">Your clients get 24/7 AI support. Saves you hours of DMs.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Income Calculator Section -->
+    <section id="calculator" class="py-20 px-4">
+        <div class="max-w-4xl mx-auto">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl md:text-4xl font-bold mb-4">Calculate Your <span class="text-green-400">Earnings</span></h2>
+                <p class="text-gray-400 text-lg">See what's possible with your audience</p>
+            </div>
+
+            <div class="glass rounded-2xl p-8 glow-green">
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div>
+                        <h3 class="font-bold text-xl mb-6">The Math (Real Example)</h3>
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                                <span class="text-gray-400">Your Followers</span>
+                                <span class="font-bold text-orange-400">539,000</span>
+                            </div>
+                            <div class="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                                <span class="text-gray-400">Conservative 1% Convert</span>
+                                <span class="font-bold">5,390 clients</span>
+                            </div>
+                            <div class="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                                <span class="text-gray-400">Monthly Price</span>
+                                <span class="font-bold">$29.99/mo</span>
+                            </div>
+                            <div class="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                                <span class="text-gray-400">Your Cut (90%)</span>
+                                <span class="font-bold text-green-400">$26.99/client</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex flex-col justify-center">
+                        <div class="text-center p-6 bg-green-500/10 border border-green-500/30 rounded-2xl">
+                            <p class="text-gray-400 mb-2">At 1% Conversion</p>
+                            <p class="text-5xl font-bold text-green-400 stat-highlight">$145,446</p>
+                            <p class="text-gray-400 mt-1">per month</p>
+                        </div>
+                        <div class="text-center p-4 mt-4 bg-white/5 rounded-xl">
+                            <p class="text-gray-400 text-sm">Even at 0.5% (2,695 clients)</p>
+                            <p class="text-2xl font-bold text-green-300">$72,723/mo</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-8 pt-6 border-t border-white/10 text-center">
+                    <p class="text-gray-400 mb-4">Industry standard conversion for fitness influencers: 0.5% - 2%</p>
+                    <p class="text-xl">
+                        <span class="text-green-400 font-bold">You keep 90%.</span>
+                        <span class="text-gray-400"> We take 10% to cover platform costs.</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Who It's For -->
+    <section class="py-20 px-4 bg-gradient-to-b from-transparent via-orange-600/5 to-transparent">
+        <div class="max-w-6xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-bold mb-4">Built For <span class="gradient-text">Everyone</span></h2>
+                <p class="text-gray-400 text-lg">Whether you're training yourself or training thousands</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Influencers -->
+                <div class="glass rounded-2xl p-6 border-t-4 border-pink-500">
+                    <div class="w-14 h-14 bg-pink-500/20 rounded-xl flex items-center justify-center mb-4">
+                        <i class="fab fa-instagram text-pink-500 text-2xl"></i>
+                    </div>
+                    <h3 class="font-bold text-xl mb-2">Influencers</h3>
+                    <p class="text-gray-400 text-sm mb-4">Turn followers into income. OnlyFans models make $10-100M/year with subscriptions. You're already doing the hard part.</p>
+                    <ul class="text-sm space-y-2">
+                        <li class="text-green-400"><i class="fas fa-check mr-2"></i>90% revenue share</li>
+                        <li class="text-green-400"><i class="fas fa-check mr-2"></i>Unlimited subscribers</li>
+                        <li class="text-green-400"><i class="fas fa-check mr-2"></i>AI handles FAQs 24/7</li>
+                    </ul>
+                </div>
+
+                <!-- Coaches -->
+                <div class="glass rounded-2xl p-6 border-t-4 border-orange-500">
+                    <div class="w-14 h-14 bg-orange-500/20 rounded-xl flex items-center justify-center mb-4">
+                        <i class="fas fa-user-tie text-orange-500 text-2xl"></i>
+                    </div>
+                    <h3 class="font-bold text-xl mb-2">Coaches</h3>
+                    <p class="text-gray-400 text-sm mb-4">Stop being limited by time. Scale your coaching without sacrificing quality. All programs, all clients, one place.</p>
+                    <ul class="text-sm space-y-2">
+                        <li class="text-green-400"><i class="fas fa-check mr-2"></i>List unlimited programs</li>
+                        <li class="text-green-400"><i class="fas fa-check mr-2"></i>Built-in scheduling</li>
+                        <li class="text-green-400"><i class="fas fa-check mr-2"></i>Export client data</li>
+                    </ul>
+                </div>
+
+                <!-- Gyms -->
+                <div class="glass rounded-2xl p-6 border-t-4 border-blue-500 relative">
+                    <div class="absolute top-3 right-3 bg-blue-500/20 text-blue-400 text-xs px-2 py-1 rounded">Coming Q2</div>
+                    <div class="w-14 h-14 bg-blue-500/20 rounded-xl flex items-center justify-center mb-4">
+                        <i class="fas fa-building text-blue-500 text-2xl"></i>
+                    </div>
+                    <h3 class="font-bold text-xl mb-2">Gyms</h3>
+                    <p class="text-gray-400 text-sm mb-4">Manage your entire facility. Coaches, members, classes, billing - all under your brand.</p>
+                    <ul class="text-sm space-y-2">
+                        <li class="text-gray-500"><i class="fas fa-clock mr-2"></i>Multi-coach management</li>
+                        <li class="text-gray-500"><i class="fas fa-clock mr-2"></i>Member portal</li>
+                        <li class="text-gray-500"><i class="fas fa-clock mr-2"></i>Revenue splitting</li>
+                    </ul>
+                </div>
+
+                <!-- Individuals -->
+                <div class="glass rounded-2xl p-6 border-t-4 border-green-500">
+                    <div class="w-14 h-14 bg-green-500/20 rounded-xl flex items-center justify-center mb-4">
+                        <i class="fas fa-user text-green-500 text-2xl"></i>
+                    </div>
+                    <h3 class="font-bold text-xl mb-2">Individuals</h3>
+                    <p class="text-gray-400 text-sm mb-4">Train solo with AI coaching. Personalized workouts, nutrition plans, and 24/7 guidance.</p>
+                    <ul class="text-sm space-y-2">
+                        <li class="text-green-400"><i class="fas fa-check mr-2"></i>Free tier available</li>
+                        <li class="text-green-400"><i class="fas fa-check mr-2"></i>AI personal trainer</li>
+                        <li class="text-green-400"><i class="fas fa-check mr-2"></i>Progress tracking</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Comparison Section -->
+    <section class="py-20 px-4">
+        <div class="max-w-4xl mx-auto">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl md:text-4xl font-bold mb-4">Why ClockWork <span class="gradient-text">Wins</span></h2>
+            </div>
+
+            <div class="glass rounded-2xl overflow-hidden">
+                <table class="w-full">
+                    <thead class="bg-white/5">
+                        <tr>
+                            <th class="text-left p-4 text-gray-400">Feature</th>
+                            <th class="text-center p-4 text-gray-400">Others</th>
+                            <th class="text-center p-4 text-orange-500">ClockWork</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-white/10">
+                        <tr>
+                            <td class="p-4">Monthly Cost</td>
+                            <td class="text-center p-4 text-red-400">$65-260/mo</td>
+                            <td class="text-center p-4 text-green-400 font-bold">$0</td>
+                        </tr>
+                        <tr>
+                            <td class="p-4">Revenue Share</td>
+                            <td class="text-center p-4 text-red-400">70-85%</td>
+                            <td class="text-center p-4 text-green-400 font-bold">90%</td>
+                        </tr>
+                        <tr>
+                            <td class="p-4">Apps Required</td>
+                            <td class="text-center p-4 text-red-400">5+</td>
+                            <td class="text-center p-4 text-green-400 font-bold">1</td>
+                        </tr>
+                        <tr>
+                            <td class="p-4">AI Assistant</td>
+                            <td class="text-center p-4 text-red-400"><i class="fas fa-times"></i></td>
+                            <td class="text-center p-4 text-green-400"><i class="fas fa-check"></i></td>
+                        </tr>
+                        <tr>
+                            <td class="p-4">Exercise Library</td>
+                            <td class="text-center p-4 text-yellow-400">Limited</td>
+                            <td class="text-center p-4 text-green-400 font-bold">800+</td>
+                        </tr>
+                        <tr>
+                            <td class="p-4">Client Limit</td>
+                            <td class="text-center p-4 text-red-400">Varies</td>
+                            <td class="text-center p-4 text-green-400 font-bold">Unlimited</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="py-20 px-4">
+        <div class="max-w-4xl mx-auto">
+            <div class="glass rounded-3xl p-8 md:p-12 text-center glow">
+                <h2 class="text-3xl md:text-4xl font-bold mb-4">Ready to Scale Your Coaching?</h2>
+                <p class="text-xl text-gray-400 mb-8 max-w-2xl mx-auto">
+                    Join the future of fitness. Whether you have 100 followers or 1 million, ClockWork gives you the tools to turn your expertise into income.
+                </p>
+                <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                    <a href="/" class="bg-orange-500 hover:bg-orange-600 text-white px-8 py-4 rounded-xl font-bold text-lg transition">
+                        <i class="fas fa-bolt mr-2"></i>Get Started Free
+                    </a>
+                    <a href="/coaches" class="glass hover:bg-white/10 px-8 py-4 rounded-xl font-bold text-lg transition">
+                        <i class="fas fa-search mr-2"></i>Find a Coach
+                    </a>
+                </div>
+                <p class="text-gray-500 text-sm mt-6">No credit card required. Start in 60 seconds.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-12 px-4 border-t border-white/10">
+        <div class="max-w-6xl mx-auto">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-2 text-xl font-bold">
+                    <i class="fas fa-bolt text-orange-500"></i>
+                    <span>cl<span class="text-orange-500">o</span>ckw<span class="text-orange-500">o</span>rk</span>
+                </div>
+                <p class="text-gray-500 text-sm">Elite coaching for everyone.</p>
+                <div class="flex items-center gap-4 text-gray-400">
+                    <a href="#" class="hover:text-orange-500 transition"><i class="fab fa-instagram text-xl"></i></a>
+                    <a href="#" class="hover:text-orange-500 transition"><i class="fab fa-twitter text-xl"></i></a>
+                    <a href="#" class="hover:text-orange-500 transition"><i class="fab fa-tiktok text-xl"></i></a>
+                </div>
+            </div>
+            <div class="text-center mt-8 text-gray-600 text-sm">
+                <p>Built by Josh Lerner | CS @ University of Miami | IMG Academy Alum</p>
+                <p class="mt-1">© 2026 ClockWork. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>
