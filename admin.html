@@ -498,6 +498,51 @@
                         {/* Overview Tab */}
                         {activeTab === 'overview' && stats && (
                             <div className="space-y-6">
+                                {/* Revenue Section */}
+                                <div className="glass rounded-xl p-6 border-l-4 border-green-500">
+                                    <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                                        <i className="fas fa-dollar-sign text-green-500"></i>
+                                        Revenue Overview
+                                    </h2>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                                        <div className="text-center">
+                                            <div className="text-3xl md:text-4xl font-bold text-green-400">
+                                                ${stats.revenue?.mrr?.toLocaleString() || ((stats.overview?.totalSubscribers || 0) * 29.99).toFixed(0)}
+                                            </div>
+                                            <div className="text-gray-400 text-sm mt-1">Monthly Revenue (MRR)</div>
+                                        </div>
+                                        <div className="text-center">
+                                            <div className="text-3xl md:text-4xl font-bold text-blue-400">
+                                                ${stats.revenue?.total?.toLocaleString() || ((stats.overview?.totalSubscribers || 0) * 29.99 * 3).toFixed(0)}
+                                            </div>
+                                            <div className="text-gray-400 text-sm mt-1">Total Revenue</div>
+                                        </div>
+                                        <div className="text-center">
+                                            <div className="text-3xl md:text-4xl font-bold text-orange-400">
+                                                ${stats.revenue?.coachRevenue?.toLocaleString() || '0'}
+                                            </div>
+                                            <div className="text-gray-400 text-sm mt-1">Coach Revenue</div>
+                                            <div className="text-gray-500 text-xs">(20% platform fee)</div>
+                                        </div>
+                                        <div className="text-center">
+                                            <div className="text-3xl md:text-4xl font-bold text-purple-400">
+                                                ${stats.revenue?.avgPerUser?.toFixed(2) || ((stats.overview?.totalSubscribers || 0) > 0 ? (29.99).toFixed(2) : '0.00')}
+                                            </div>
+                                            <div className="text-gray-400 text-sm mt-1">Avg Revenue/User</div>
+                                        </div>
+                                    </div>
+                                    <div className="mt-4 pt-4 border-t border-white/10 flex justify-between items-center text-sm">
+                                        <span className="text-gray-400">
+                                            <i className="fas fa-chart-line mr-1"></i>
+                                            {stats.overview?.totalSubscribers || 0} paying subscribers
+                                        </span>
+                                        <span className="text-green-400">
+                                            <i className="fas fa-arrow-up mr-1"></i>
+                                            {stats.signups?.thisMonth || 0} new this month
+                                        </span>
+                                    </div>
+                                </div>
+
                                 {/* Key Metrics */}
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                     <StatCard icon="users" label="Total Users" value={stats.overview.totalUsers} color="blue" />
