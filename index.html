@@ -664,7 +664,8 @@ window.ClientManager = ClientManager;
             const [formData, setFormData] = useState({
                 name: '',
                 email: '',
-                password: ''
+                password: '',
+                accountType: 'client'
             });
             const [loading, setLoading] = useState(false);
             const [isResetting, setIsResetting] = useState(false);
@@ -688,7 +689,8 @@ const [resetEmail, setResetEmail] = useState('');
     name: formData.name?.trim(),
     email: formData.email?.toLowerCase().trim(),
     password: formData.password,
-    roles: ['client']  // Add this line
+    accountType: formData.accountType,
+    roles: [formData.accountType]
 })
         });
         
@@ -809,6 +811,7 @@ const [resetEmail, setResetEmail] = useState('');
                     )}
                         <form onSubmit={handleSubmit}>
                           {!isResetting && isSignup && (
+                    <>
                     <div className="mb-4">
                         <label className="block text-sm font-medium mb-2">Name</label>
                         <input
@@ -819,6 +822,53 @@ const [resetEmail, setResetEmail] = useState('');
                             required
                         />
                     </div>
+
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium mb-2">I am a:</label>
+                        <div className="space-y-2 p-3 bg-gray-50 rounded-lg border">
+                            {/* Gym - Coming Soon */}
+                            <label className="flex items-center justify-between p-2 rounded cursor-not-allowed opacity-60">
+                                <div className="flex items-center">
+                                    <input type="radio" disabled className="mr-3 opacity-50" />
+                                    <span className="line-through text-gray-400">Gym Owner - I run a fitness facility</span>
+                                </div>
+                                <span className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded">Coming Soon</span>
+                            </label>
+
+                            {/* Coach */}
+                            <label className={`flex items-center p-2 rounded cursor-pointer transition ${formData.accountType === 'coach' ? 'bg-blue-50 border border-blue-300' : 'hover:bg-gray-100'}`}>
+                                <input
+                                    type="radio"
+                                    name="accountType"
+                                    value="coach"
+                                    checked={formData.accountType === 'coach'}
+                                    onChange={(e) => setFormData({...formData, accountType: e.target.value})}
+                                    className="mr-3"
+                                />
+                                <div>
+                                    <span className="font-medium">Coach - I train clients</span>
+                                    <p className="text-xs text-gray-500">Create programs, accept payments, manage clients</p>
+                                </div>
+                            </label>
+
+                            {/* Client/Individual */}
+                            <label className={`flex items-center p-2 rounded cursor-pointer transition ${formData.accountType === 'client' ? 'bg-blue-50 border border-blue-300' : 'hover:bg-gray-100'}`}>
+                                <input
+                                    type="radio"
+                                    name="accountType"
+                                    value="client"
+                                    checked={formData.accountType === 'client'}
+                                    onChange={(e) => setFormData({...formData, accountType: e.target.value})}
+                                    className="mr-3"
+                                />
+                                <div>
+                                    <span className="font-medium">Individual - I want to train</span>
+                                    <p className="text-xs text-gray-500">Find coaches, track workouts, AI assistance</p>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    </>
                 )}
                 
                 {!isResetting && (
