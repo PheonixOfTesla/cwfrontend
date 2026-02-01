@@ -606,10 +606,16 @@
                     <div class="mb-5">
                         <p class="text-sm text-gray-300 mb-3">${section.moodQuestion}</p>
                         <div class="flex justify-between gap-2">
-                            ${['😫', '😕', '😐', '🙂', '😍'].map((emoji, i) => `
+                            ${[
+                                { icon: 'fa-tired', color: 'text-red-400' },
+                                { icon: 'fa-frown', color: 'text-yellow-400' },
+                                { icon: 'fa-meh', color: 'text-gray-400' },
+                                { icon: 'fa-smile', color: 'text-green-400' },
+                                { icon: 'fa-grin-hearts', color: 'text-pink-400' }
+                            ].map((item, i) => `
                                 <button class="mood-btn ${sectionMood === i + 1 ? 'selected' : ''}"
                                     onclick="setMood('${section.id}', ${i + 1})">
-                                    ${emoji}
+                                    <i class="fas ${item.icon} ${item.color}"></i>
                                 </button>
                             `).join('')}
                         </div>
@@ -667,7 +673,9 @@
         function renderCompletion(name) {
             return `
                 <div class="glass rounded-2xl p-6 mb-6 text-center border-2 border-green-500 celebrate" style="box-shadow: 0 0 30px rgba(34, 197, 94, 0.3);">
-                    <div class="text-5xl mb-4">🎉</div>
+                    <div class="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-check-circle text-green-500 text-4xl"></i>
+                    </div>
                     <h2 class="text-2xl font-bold text-green-400 mb-2">
                         You're amazing, ${escapeHtml(name)}!
                     </h2>

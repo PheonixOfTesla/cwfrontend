@@ -15,6 +15,7 @@
         body { background: #0a0a0a; }
         .glow { box-shadow: 0 0 20px rgba(249, 115, 22, 0.3); }
         .tab-active { border-bottom: 2px solid #f97316; color: #f97316; }
+        .glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(10px); }
     </style>
 </head>
 <body class="bg-[#0a0a0a] min-h-screen text-white">
@@ -25,10 +26,14 @@
         function CoachPortal() {
             const [user, setUser] = React.useState(null);
             const [clients, setClients] = React.useState([]);
+            const [products, setProducts] = React.useState([]);
+            const [messages, setMessages] = React.useState([]);
             const [stats, setStats] = React.useState({});
             const [loading, setLoading] = React.useState(true);
             const [activeTab, setActiveTab] = React.useState('overview');
             const [profile, setProfile] = React.useState({});
+            const [showProductModal, setShowProductModal] = React.useState(false);
+            const [editingProduct, setEditingProduct] = React.useState(null);
 
             const token = localStorage.getItem('token');
 
@@ -44,9 +49,10 @@
                 try {
                     const headers = { 'Authorization': `Bearer ${token}` };
 
-                    const [userRes, clientsRes] = await Promise.all([
+                    const [userRes, clientsRes, productsRes] = await Promise.all([
                         fetch(`${API_URL}/api/users/profile`, { headers }).then(r => r.json()),
-                        fetch(`${API_URL}/api/coach/clients`, { headers }).then(r => r.json()).catch(() => [])
+                        fetch(`${API_URL}/api/coach/clients`, { headers }).then(r => r.json()).catch(() => ({ clients: [] })),
+                        fetch(`${API_URL}/api/coach/products`, { headers }).then(r => r.json()).catch(() => ({ products: [] }))
                     ]);
 
                     if (userRes.userType !== 'coach') {
@@ -57,10 +63,20 @@
 
                     setUser(userRes);
                     setProfile(userRes.coachProfile || {});
-                    setClients(clientsRes.clients || clientsRes || []);
+                    const clientList = clientsRes.clients || clientsRes || [];
+                    setClients(clientList);
+                    setProducts(productsRes.products || productsRes || []);
+
+                    // Calculate stats
+                    const activeClients = clientList.filter(c => c.isActive !== false);
+                    const monthlyRevenue = activeClients.reduce((sum, c) => sum + (c.monthlyRate || 0), 0);
+
                     setStats({
-                        totalClients: (clientsRes.clients || clientsRes || []).length,
-                        activeClients: (clientsRes.clients || clientsRes || []).filter(c => c.isActive !== false).length
+                        totalClients: clientList.length,
+                        activeClients: activeClients.length,
+                        monthlyRevenue: monthlyRevenue,
+                        totalRevenue: userRes.coachProfile?.totalRevenue || 0,
+                        pendingRequests: clientList.filter(c => c.status === 'pending').length
                     });
                 } catch (error) {
                     console.error('Error:', error);
@@ -70,7 +86,7 @@
 
             const saveProfile = async (updates) => {
                 try {
-                    await fetch(`${API_URL}/api/coach/profile`, {
+                    const res = await fetch(`${API_URL}/api/coach/profile`, {
                         method: 'PUT',
                         headers: {
                             'Authorization': `Bearer ${token}`,
@@ -78,10 +94,67 @@
                         },
                         body: JSON.stringify(updates)
                     });
-                    setProfile({ ...profile, ...updates });
-                    return true;
+                    if (res.ok) {
+                        setProfile({ ...profile, ...updates });
+                        return true;
+                    }
+                    return false;
                 } catch (error) {
                     return false;
+                }
+            };
+
+            const saveProduct = async (product) => {
+                try {
+                    const method = product._id ? 'PUT' : 'POST';
+                    const url = product._id
+                        ? `${API_URL}/api/coach/products/${product._id}`
+                        : `${API_URL}/api/coach/products`;
+
+                    const res = await fetch(url, {
+                        method,
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(product)
+                    });
+
+                    if (res.ok) {
+                        fetchData();
+                        return true;
+                    }
+                    return false;
+                } catch (error) {
+                    return false;
+                }
+            };
+
+            const deleteProduct = async (productId) => {
+                if (!confirm('Delete this product?')) return;
+                try {
+                    await fetch(`${API_URL}/api/coach/products/${productId}`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    fetchData();
+                } catch (error) {
+                    console.error('Error:', error);
+                }
+            };
+
+            const connectStripe = async () => {
+                try {
+                    const res = await fetch(`${API_URL}/api/coach/stripe/connect`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    const data = await res.json();
+                    if (data.url) {
+                        window.location.href = data.url;
+                    }
+                } catch (error) {
+                    alert('Error connecting to Stripe');
                 }
             };
 
@@ -95,39 +168,55 @@
 
             const tabs = [
                 { id: 'overview', label: 'Overview', icon: 'fa-chart-line' },
+                { id: 'products', label: 'Products', icon: 'fa-box' },
                 { id: 'clients', label: 'Clients', icon: 'fa-users' },
-                { id: 'profile', label: 'Profile', icon: 'fa-user' },
+                { id: 'messages', label: 'Messages', icon: 'fa-comments' },
+                { id: 'calendar', label: 'Calendar', icon: 'fa-calendar' },
+                { id: 'revenue', label: 'Revenue', icon: 'fa-dollar-sign' },
                 { id: 'settings', label: 'Settings', icon: 'fa-cog' }
             ];
+
+            const coachLink = `${window.location.origin}/coach/${user?._id}`;
 
             return (
                 <div className="min-h-screen bg-[#0a0a0a]">
                     {/* Header */}
                     <div className="bg-gradient-to-r from-orange-600/20 to-transparent py-6 px-4 border-b border-white/10">
-                        <div className="max-w-6xl mx-auto flex items-center justify-between">
-                            <div>
-                                <h1 className="text-2xl font-bold">Coach Portal</h1>
-                                <p className="text-gray-400">Welcome, {user?.name}</p>
+                        <div className="max-w-7xl mx-auto flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 bg-orange-500/20 rounded-xl flex items-center justify-center">
+                                    <i className="fas fa-dumbbell text-orange-500 text-xl"></i>
+                                </div>
+                                <div>
+                                    <h1 className="text-2xl font-bold">Coach Portal</h1>
+                                    <p className="text-gray-400">Welcome back, {user?.name}</p>
+                                </div>
                             </div>
                             <div className="flex items-center gap-4">
-                                <a href="/coaches" className="text-gray-400 hover:text-orange-500 transition">
-                                    <i className="fas fa-external-link mr-2"></i>View Marketplace
+                                <button
+                                    onClick={() => navigator.clipboard.writeText(coachLink)}
+                                    className="text-gray-400 hover:text-orange-500 transition text-sm"
+                                >
+                                    <i className="fas fa-link mr-2"></i>Copy Profile Link
+                                </button>
+                                <a href={`/coach/${user?._id}`} target="_blank" className="text-gray-400 hover:text-orange-500 transition text-sm">
+                                    <i className="fas fa-external-link-alt mr-2"></i>View Public Profile
                                 </a>
-                                <a href="/" className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl transition">
-                                    Back to App
+                                <a href="/" className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl transition text-sm">
+                                    <i className="fas fa-arrow-left mr-2"></i>Back to App
                                 </a>
                             </div>
                         </div>
                     </div>
 
                     {/* Tabs */}
-                    <div className="border-b border-white/10">
-                        <div className="max-w-6xl mx-auto px-4 flex overflow-x-auto">
+                    <div className="border-b border-white/10 sticky top-0 bg-[#0a0a0a] z-10">
+                        <div className="max-w-7xl mx-auto px-4 flex overflow-x-auto">
                             {tabs.map(tab => (
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
-                                    className={`px-6 py-4 font-medium whitespace-nowrap transition ${activeTab === tab.id ? 'tab-active' : 'text-gray-400 hover:text-white'}`}
+                                    className={`px-5 py-4 font-medium whitespace-nowrap transition text-sm ${activeTab === tab.id ? 'tab-active' : 'text-gray-400 hover:text-white'}`}
                                 >
                                     <i className={`fas ${tab.icon} mr-2`}></i>{tab.label}
                                 </button>
@@ -136,152 +225,796 @@
                     </div>
 
                     {/* Content */}
-                    <div className="max-w-6xl mx-auto px-4 py-8">
-                        {/* Overview */}
+                    <div className="max-w-7xl mx-auto px-4 py-8">
+
+                        {/* Overview Tab */}
                         {activeTab === 'overview' && (
                             <div className="space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <p className="text-gray-400 text-sm">Total Clients</p>
-                                                <p className="text-3xl font-bold">{stats.totalClients}</p>
-                                            </div>
-                                            <div className="w-12 h-12 bg-orange-500/20 rounded-xl flex items-center justify-center">
-                                                <i className="fas fa-users text-orange-500"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <p className="text-gray-400 text-sm">Active Clients</p>
-                                                <p className="text-3xl font-bold text-green-500">{stats.activeClients}</p>
-                                            </div>
-                                            <div className="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center">
-                                                <i className="fas fa-check text-green-500"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <p className="text-gray-400 text-sm">Session Rate</p>
-                                                <p className="text-3xl font-bold">${profile.scheduling?.sessionPrice || 0}</p>
-                                            </div>
-                                            <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center">
-                                                <i className="fas fa-dollar-sign text-blue-500"></i>
-                                            </div>
-                                        </div>
-                                    </div>
+                                {/* Stats Grid */}
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <StatCard icon="fa-users" label="Active Clients" value={stats.activeClients} color="orange" />
+                                    <StatCard icon="fa-clock" label="Pending Requests" value={stats.pendingRequests} color="yellow" />
+                                    <StatCard icon="fa-dollar-sign" label="Monthly Revenue" value={`$${stats.monthlyRevenue?.toLocaleString() || 0}`} color="green" />
+                                    <StatCard icon="fa-box" label="Active Products" value={products.filter(p => p.isActive).length} color="blue" />
                                 </div>
 
-                                {clients.length === 0 && (
-                                    <div className="bg-orange-500/10 border border-orange-500/30 rounded-2xl p-6 text-center">
-                                        <i className="fas fa-lightbulb text-orange-500 text-3xl mb-4"></i>
-                                        <h3 className="text-white font-bold mb-2">Get Your First Client</h3>
-                                        <p className="text-gray-400 mb-4">Complete your profile and share your link to attract clients.</p>
-                                        <button onClick={() => setActiveTab('profile')} className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-xl transition">
-                                            Complete Profile
-                                        </button>
+                                {/* Quick Actions */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <button
+                                        onClick={() => { setActiveTab('products'); setShowProductModal(true); }}
+                                        className="glass border border-white/10 rounded-2xl p-6 text-left hover:border-orange-500/50 transition group"
+                                    >
+                                        <div className="w-12 h-12 bg-orange-500/20 rounded-xl flex items-center justify-center mb-4 group-hover:bg-orange-500/30 transition">
+                                            <i className="fas fa-plus text-orange-500"></i>
+                                        </div>
+                                        <h3 className="font-bold mb-1">Create Product</h3>
+                                        <p className="text-gray-400 text-sm">Add training programs, meal plans, or digital products</p>
+                                    </button>
+
+                                    <button
+                                        onClick={() => setActiveTab('clients')}
+                                        className="glass border border-white/10 rounded-2xl p-6 text-left hover:border-orange-500/50 transition group"
+                                    >
+                                        <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center mb-4 group-hover:bg-blue-500/30 transition">
+                                            <i className="fas fa-user-plus text-blue-500"></i>
+                                        </div>
+                                        <h3 className="font-bold mb-1">Manage Clients</h3>
+                                        <p className="text-gray-400 text-sm">View client progress, assign programs, send messages</p>
+                                    </button>
+
+                                    <button
+                                        onClick={() => setActiveTab('settings')}
+                                        className="glass border border-white/10 rounded-2xl p-6 text-left hover:border-orange-500/50 transition group"
+                                    >
+                                        <div className="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center mb-4 group-hover:bg-green-500/30 transition">
+                                            <i className="fab fa-stripe-s text-green-500"></i>
+                                        </div>
+                                        <h3 className="font-bold mb-1">Setup Payments</h3>
+                                        <p className="text-gray-400 text-sm">Connect Stripe to accept payments (90% to you)</p>
+                                    </button>
+                                </div>
+
+                                {/* Recent Activity */}
+                                <div className="glass border border-white/10 rounded-2xl">
+                                    <div className="p-6 border-b border-white/10 flex items-center justify-between">
+                                        <h3 className="font-bold">Recent Activity</h3>
+                                        <span className="text-gray-400 text-sm">Last 7 days</span>
                                     </div>
-                                )}
+                                    <div className="p-6">
+                                        {clients.length === 0 && products.length === 0 ? (
+                                            <div className="text-center py-8">
+                                                <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                    <i className="fas fa-rocket text-gray-600 text-2xl"></i>
+                                                </div>
+                                                <h4 className="font-medium mb-2">Get Started</h4>
+                                                <p className="text-gray-400 text-sm mb-4">Create your first product to start attracting clients</p>
+                                                <button
+                                                    onClick={() => { setActiveTab('products'); setShowProductModal(true); }}
+                                                    className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-xl transition text-sm"
+                                                >
+                                                    Create First Product
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-4">
+                                                {clients.slice(0, 5).map((client, i) => (
+                                                    <div key={i} className="flex items-center gap-4 p-3 rounded-xl hover:bg-white/5 transition">
+                                                        <div className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center font-bold">
+                                                            {client.name?.charAt(0)}
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <p className="font-medium text-sm">{client.name}</p>
+                                                            <p className="text-gray-400 text-xs">Joined {new Date(client.createdAt).toLocaleDateString()}</p>
+                                                        </div>
+                                                        <span className={`text-xs px-2 py-1 rounded-full ${client.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
+                                                            {client.status || 'Active'}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                         )}
 
-                        {/* Clients */}
-                        {activeTab === 'clients' && (
-                            <div className="bg-white/5 border border-white/10 rounded-2xl">
-                                <div className="p-6 border-b border-white/10">
-                                    <h3 className="font-bold text-lg">Your Clients ({clients.length})</h3>
-                                </div>
-                                {clients.length === 0 ? (
-                                    <div className="p-12 text-center">
-                                        <i className="fas fa-users text-gray-600 text-4xl mb-4"></i>
-                                        <p className="text-gray-400">No clients yet. Share your profile to get started!</p>
+                        {/* Products Tab */}
+                        {activeTab === 'products' && (
+                            <div className="space-y-6">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h2 className="text-xl font-bold">Your Products</h2>
+                                        <p className="text-gray-400 text-sm">Create offerings like training programs, meal plans, and digital products</p>
                                     </div>
-                                ) : (
-                                    <div className="divide-y divide-white/10">
-                                        {clients.map(client => (
-                                            <div key={client._id} className="p-4 flex items-center justify-between hover:bg-white/5 transition">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center text-lg font-bold">
-                                                        {client.name?.charAt(0)}
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-medium">{client.name}</p>
-                                                        <p className="text-sm text-gray-400">{client.email}</p>
-                                                    </div>
+                                    <button
+                                        onClick={() => { setEditingProduct(null); setShowProductModal(true); }}
+                                        className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-xl transition font-medium"
+                                    >
+                                        <i className="fas fa-plus mr-2"></i>Add Product
+                                    </button>
+                                </div>
+
+                                {/* Product Templates */}
+                                {products.length === 0 && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                        {[
+                                            { name: '1:1 Online Coaching', icon: 'fa-user', desc: 'Personalized training with direct access to you', price: '150', type: 'subscription' },
+                                            { name: 'Custom Meal Plan', icon: 'fa-utensils', desc: 'Tailored nutrition plan based on goals', price: '97', type: 'one-time' },
+                                            { name: '8-Week Transform', icon: 'fa-fire', desc: 'Complete transformation program', price: '297', type: 'one-time' },
+                                            { name: 'Workout Library', icon: 'fa-dumbbell', desc: 'Access to your exercise video library', price: '29', type: 'subscription' }
+                                        ].map((template, i) => (
+                                            <button
+                                                key={i}
+                                                onClick={() => { setEditingProduct({ ...template, isTemplate: true }); setShowProductModal(true); }}
+                                                className="glass border border-dashed border-white/20 rounded-2xl p-6 text-left hover:border-orange-500/50 transition"
+                                            >
+                                                <div className="w-10 h-10 bg-orange-500/20 rounded-xl flex items-center justify-center mb-3">
+                                                    <i className={`fas ${template.icon} text-orange-500`}></i>
                                                 </div>
-                                                <a href={`/?client=${client._id}`} className="text-orange-500 hover:underline text-sm">
-                                                    View Details
-                                                </a>
-                                            </div>
+                                                <h4 className="font-medium text-sm mb-1">{template.name}</h4>
+                                                <p className="text-gray-500 text-xs">{template.desc}</p>
+                                                <p className="text-orange-500 text-sm mt-2">${template.price}{template.type === 'subscription' ? '/mo' : ''}</p>
+                                            </button>
                                         ))}
                                     </div>
                                 )}
-                            </div>
-                        )}
 
-                        {/* Profile */}
-                        {activeTab === 'profile' && (
-                            <ProfileEditor profile={profile} onSave={saveProfile} />
-                        )}
-
-                        {/* Settings */}
-                        {activeTab === 'settings' && (
-                            <div className="space-y-6">
-                                <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
-                                    <h3 className="font-bold text-lg mb-4">Session Pricing</h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm text-gray-400 mb-2">Price per Session ($)</label>
-                                            <input
-                                                type="number"
-                                                value={profile.scheduling?.sessionPrice || ''}
-                                                onChange={(e) => setProfile({
-                                                    ...profile,
-                                                    scheduling: { ...profile.scheduling, sessionPrice: parseInt(e.target.value) || 0 }
-                                                })}
-                                                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-orange-500 outline-none"
-                                            />
+                                {/* Product List */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {products.map(product => (
+                                        <div key={product._id} className="glass border border-white/10 rounded-2xl overflow-hidden">
+                                            {product.image && (
+                                                <img src={product.image} alt={product.name} className="w-full h-40 object-cover" />
+                                            )}
+                                            <div className="p-5">
+                                                <div className="flex items-start justify-between mb-3">
+                                                    <div>
+                                                        <h3 className="font-bold">{product.name}</h3>
+                                                        <p className="text-gray-400 text-sm">{product.description?.slice(0, 60)}...</p>
+                                                    </div>
+                                                    <span className={`text-xs px-2 py-1 rounded-full ${product.isActive ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}`}>
+                                                        {product.isActive ? 'Active' : 'Draft'}
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center justify-between pt-3 border-t border-white/10">
+                                                    <div>
+                                                        <p className="text-2xl font-bold text-orange-500">${product.price}</p>
+                                                        <p className="text-gray-500 text-xs">{product.billingType === 'subscription' ? 'per month' : 'one-time'}</p>
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={() => { setEditingProduct(product); setShowProductModal(true); }}
+                                                            className="w-9 h-9 bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center transition"
+                                                        >
+                                                            <i className="fas fa-edit text-sm"></i>
+                                                        </button>
+                                                        <button
+                                                            onClick={() => deleteProduct(product._id)}
+                                                            className="w-9 h-9 bg-red-500/20 hover:bg-red-500/30 rounded-lg flex items-center justify-center transition"
+                                                        >
+                                                            <i className="fas fa-trash text-red-400 text-sm"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <p className="text-gray-500 text-xs mt-3">
+                                                    <i className="fas fa-users mr-1"></i>{product.purchaseCount || 0} purchases
+                                                </p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <label className="block text-sm text-gray-400 mb-2">Billing Cycle</label>
-                                            <select
-                                                value={profile.scheduling?.billingCycle || 'monthly'}
-                                                onChange={(e) => setProfile({
-                                                    ...profile,
-                                                    scheduling: { ...profile.scheduling, billingCycle: e.target.value }
-                                                })}
-                                                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-orange-500 outline-none"
-                                            >
-                                                <option value="per-session">Per Session</option>
-                                                <option value="weekly">Weekly</option>
-                                                <option value="biweekly">Bi-Weekly</option>
-                                                <option value="monthly">Monthly</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={() => saveProfile({ scheduling: profile.scheduling })}
-                                        className="mt-4 bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-xl transition"
-                                    >
-                                        Save Pricing
-                                    </button>
+                                    ))}
                                 </div>
                             </div>
                         )}
+
+                        {/* Clients Tab */}
+                        {activeTab === 'clients' && (
+                            <div className="space-y-6">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h2 className="text-xl font-bold">Your Clients</h2>
+                                        <p className="text-gray-400 text-sm">{clients.length} total clients</p>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            placeholder="Search clients..."
+                                            className="bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-sm focus:border-orange-500 outline-none"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="glass border border-white/10 rounded-2xl overflow-hidden">
+                                    {clients.length === 0 ? (
+                                        <div className="p-12 text-center">
+                                            <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                <i className="fas fa-users text-gray-600 text-2xl"></i>
+                                            </div>
+                                            <h4 className="font-medium mb-2">No clients yet</h4>
+                                            <p className="text-gray-400 text-sm mb-4">Share your profile link to start getting clients</p>
+                                            <button
+                                                onClick={() => navigator.clipboard.writeText(coachLink)}
+                                                className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-xl transition text-sm"
+                                            >
+                                                <i className="fas fa-copy mr-2"></i>Copy Profile Link
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <table className="w-full">
+                                            <thead className="bg-white/5">
+                                                <tr>
+                                                    <th className="text-left p-4 text-gray-400 text-sm font-medium">Client</th>
+                                                    <th className="text-left p-4 text-gray-400 text-sm font-medium">Program</th>
+                                                    <th className="text-left p-4 text-gray-400 text-sm font-medium">Status</th>
+                                                    <th className="text-left p-4 text-gray-400 text-sm font-medium">Revenue</th>
+                                                    <th className="text-right p-4 text-gray-400 text-sm font-medium">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-white/10">
+                                                {clients.map(client => (
+                                                    <tr key={client._id} className="hover:bg-white/5 transition">
+                                                        <td className="p-4">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center font-bold">
+                                                                    {client.name?.charAt(0)}
+                                                                </div>
+                                                                <div>
+                                                                    <p className="font-medium">{client.name}</p>
+                                                                    <p className="text-gray-400 text-xs">{client.email}</p>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-4 text-sm">{client.program || 'No program'}</td>
+                                                        <td className="p-4">
+                                                            <span className={`text-xs px-2 py-1 rounded-full ${
+                                                                client.status === 'active' ? 'bg-green-500/20 text-green-400' :
+                                                                client.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                                                                'bg-gray-500/20 text-gray-400'
+                                                            }`}>
+                                                                {client.status || 'Active'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="p-4 text-sm">${client.totalPaid || 0}</td>
+                                                        <td className="p-4 text-right">
+                                                            <button className="text-orange-500 hover:underline text-sm mr-3">
+                                                                <i className="fas fa-comment mr-1"></i>Message
+                                                            </button>
+                                                            <button className="text-gray-400 hover:text-white text-sm">
+                                                                <i className="fas fa-ellipsis-v"></i>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Messages Tab */}
+                        {activeTab === 'messages' && (
+                            <div className="space-y-6">
+                                <div>
+                                    <h2 className="text-xl font-bold">Messages</h2>
+                                    <p className="text-gray-400 text-sm">Chat with your clients in real-time</p>
+                                </div>
+
+                                <div className="glass border border-white/10 rounded-2xl overflow-hidden">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 h-[600px]">
+                                        {/* Conversations List */}
+                                        <div className="border-r border-white/10">
+                                            <div className="p-4 border-b border-white/10">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Search conversations..."
+                                                    className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-sm focus:border-orange-500 outline-none"
+                                                />
+                                            </div>
+                                            <div className="overflow-y-auto h-[calc(600px-60px)]">
+                                                {clients.length === 0 ? (
+                                                    <div className="p-8 text-center">
+                                                        <i className="fas fa-comments text-gray-600 text-3xl mb-3"></i>
+                                                        <p className="text-gray-400 text-sm">No conversations yet</p>
+                                                    </div>
+                                                ) : (
+                                                    clients.map(client => (
+                                                        <button key={client._id} className="w-full p-4 flex items-center gap-3 hover:bg-white/5 transition border-b border-white/5">
+                                                            <div className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center font-bold">
+                                                                {client.name?.charAt(0)}
+                                                            </div>
+                                                            <div className="flex-1 text-left">
+                                                                <p className="font-medium text-sm">{client.name}</p>
+                                                                <p className="text-gray-500 text-xs truncate">Click to start chatting...</p>
+                                                            </div>
+                                                        </button>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Chat Area */}
+                                        <div className="col-span-2 flex flex-col">
+                                            <div className="flex-1 flex items-center justify-center">
+                                                <div className="text-center">
+                                                    <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                        <i className="fas fa-comment-dots text-gray-600 text-2xl"></i>
+                                                    </div>
+                                                    <h4 className="font-medium mb-2">Select a conversation</h4>
+                                                    <p className="text-gray-400 text-sm">Choose a client to start messaging</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="glass border border-orange-500/30 rounded-2xl p-4 flex items-center gap-4">
+                                    <div className="w-10 h-10 bg-orange-500/20 rounded-xl flex items-center justify-center">
+                                        <i className="fas fa-bolt text-orange-500"></i>
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="font-medium text-sm">Real-time messaging powered by Stream</p>
+                                        <p className="text-gray-400 text-xs">Messages sync across all devices instantly</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Calendar Tab */}
+                        {activeTab === 'calendar' && (
+                            <div className="space-y-6">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h2 className="text-xl font-bold">Calendar & Scheduling</h2>
+                                        <p className="text-gray-400 text-sm">Manage your availability and bookings</p>
+                                    </div>
+                                </div>
+
+                                {!profile.calcomUsername ? (
+                                    <div className="glass border border-white/10 rounded-2xl p-8 text-center">
+                                        <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                                            <i className="fas fa-calendar-alt text-blue-500 text-2xl"></i>
+                                        </div>
+                                        <h3 className="text-xl font-bold mb-2">Connect Cal.com</h3>
+                                        <p className="text-gray-400 mb-6 max-w-md mx-auto">
+                                            Connect your Cal.com account to let clients book sessions directly from your profile.
+                                            Cal.com handles scheduling, reminders, and calendar sync.
+                                        </p>
+                                        <div className="max-w-sm mx-auto space-y-4">
+                                            <input
+                                                type="text"
+                                                placeholder="Your Cal.com username"
+                                                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 focus:border-orange-500 outline-none"
+                                            />
+                                            <button className="w-full bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-xl transition font-medium">
+                                                Connect Calendar
+                                            </button>
+                                        </div>
+                                        <p className="text-gray-500 text-xs mt-4">
+                                            Don't have Cal.com? <a href="https://cal.com" target="_blank" className="text-orange-500 hover:underline">Create free account</a>
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="glass border border-white/10 rounded-2xl overflow-hidden">
+                                        <div className="p-4 border-b border-white/10 flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <i className="fas fa-calendar-check text-green-500"></i>
+                                                <span className="font-medium">Cal.com Connected</span>
+                                            </div>
+                                            <span className="text-gray-400 text-sm">@{profile.calcomUsername}</span>
+                                        </div>
+                                        <div className="aspect-video bg-white/5">
+                                            <iframe
+                                                src={`https://cal.com/${profile.calcomUsername}?embed=true&theme=dark`}
+                                                className="w-full h-full border-0"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="glass border border-white/10 rounded-2xl p-5">
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <div className="w-10 h-10 bg-green-500/20 rounded-xl flex items-center justify-center">
+                                                <i className="fas fa-check text-green-500"></i>
+                                            </div>
+                                            <span className="font-medium">Upcoming</span>
+                                        </div>
+                                        <p className="text-3xl font-bold">0</p>
+                                        <p className="text-gray-400 text-sm">sessions this week</p>
+                                    </div>
+                                    <div className="glass border border-white/10 rounded-2xl p-5">
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <div className="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center">
+                                                <i className="fas fa-history text-blue-500"></i>
+                                            </div>
+                                            <span className="font-medium">Completed</span>
+                                        </div>
+                                        <p className="text-3xl font-bold">0</p>
+                                        <p className="text-gray-400 text-sm">total sessions</p>
+                                    </div>
+                                    <div className="glass border border-white/10 rounded-2xl p-5">
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <div className="w-10 h-10 bg-orange-500/20 rounded-xl flex items-center justify-center">
+                                                <i className="fas fa-clock text-orange-500"></i>
+                                            </div>
+                                            <span className="font-medium">Avg Duration</span>
+                                        </div>
+                                        <p className="text-3xl font-bold">60</p>
+                                        <p className="text-gray-400 text-sm">minutes</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Revenue Tab */}
+                        {activeTab === 'revenue' && (
+                            <div className="space-y-6">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h2 className="text-xl font-bold">Revenue & Payouts</h2>
+                                        <p className="text-gray-400 text-sm">Track your earnings and manage payouts</p>
+                                    </div>
+                                    {profile.stripeConnected && (
+                                        <button className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl transition text-sm">
+                                            <i className="fab fa-stripe-s mr-2"></i>Open Stripe Dashboard
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* Revenue Stats */}
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <div className="glass border border-white/10 rounded-2xl p-5">
+                                        <p className="text-gray-400 text-sm mb-1">This Month</p>
+                                        <p className="text-3xl font-bold text-green-500">${stats.monthlyRevenue || 0}</p>
+                                        <p className="text-gray-500 text-xs mt-1">+0% from last month</p>
+                                    </div>
+                                    <div className="glass border border-white/10 rounded-2xl p-5">
+                                        <p className="text-gray-400 text-sm mb-1">Total Revenue</p>
+                                        <p className="text-3xl font-bold">${stats.totalRevenue || 0}</p>
+                                        <p className="text-gray-500 text-xs mt-1">All time earnings</p>
+                                    </div>
+                                    <div className="glass border border-white/10 rounded-2xl p-5">
+                                        <p className="text-gray-400 text-sm mb-1">Pending Payout</p>
+                                        <p className="text-3xl font-bold text-orange-500">$0</p>
+                                        <p className="text-gray-500 text-xs mt-1">Available in 2 days</p>
+                                    </div>
+                                    <div className="glass border border-white/10 rounded-2xl p-5">
+                                        <p className="text-gray-400 text-sm mb-1">Your Rate</p>
+                                        <p className="text-3xl font-bold">90%</p>
+                                        <p className="text-gray-500 text-xs mt-1">Platform fee: 10%</p>
+                                    </div>
+                                </div>
+
+                                {/* Revenue Breakdown */}
+                                <div className="glass border border-white/10 rounded-2xl">
+                                    <div className="p-6 border-b border-white/10">
+                                        <h3 className="font-bold">Revenue by Product</h3>
+                                    </div>
+                                    <div className="p-6">
+                                        {products.length === 0 ? (
+                                            <div className="text-center py-8">
+                                                <i className="fas fa-chart-pie text-gray-600 text-3xl mb-3"></i>
+                                                <p className="text-gray-400">Create products to start tracking revenue</p>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-4">
+                                                {products.map(product => (
+                                                    <div key={product._id} className="flex items-center justify-between p-3 rounded-xl hover:bg-white/5">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-10 h-10 bg-orange-500/20 rounded-xl flex items-center justify-center">
+                                                                <i className="fas fa-box text-orange-500"></i>
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-medium text-sm">{product.name}</p>
+                                                                <p className="text-gray-500 text-xs">{product.purchaseCount || 0} sales</p>
+                                                            </div>
+                                                        </div>
+                                                        <p className="font-bold">${(product.price * (product.purchaseCount || 0)).toLocaleString()}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Recent Transactions */}
+                                <div className="glass border border-white/10 rounded-2xl">
+                                    <div className="p-6 border-b border-white/10">
+                                        <h3 className="font-bold">Recent Transactions</h3>
+                                    </div>
+                                    <div className="p-6 text-center py-12">
+                                        <i className="fas fa-receipt text-gray-600 text-3xl mb-3"></i>
+                                        <p className="text-gray-400">No transactions yet</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Settings Tab */}
+                        {activeTab === 'settings' && (
+                            <div className="space-y-6">
+                                <div>
+                                    <h2 className="text-xl font-bold">Settings</h2>
+                                    <p className="text-gray-400 text-sm">Manage your profile, payments, and integrations</p>
+                                </div>
+
+                                {/* Stripe Connect */}
+                                <div className="glass border border-white/10 rounded-2xl">
+                                    <div className="p-6 border-b border-white/10 flex items-center gap-4">
+                                        <div className="w-12 h-12 bg-[#635bff]/20 rounded-xl flex items-center justify-center">
+                                            <i className="fab fa-stripe-s text-[#635bff] text-xl"></i>
+                                        </div>
+                                        <div className="flex-1">
+                                            <h3 className="font-bold">Stripe Connect</h3>
+                                            <p className="text-gray-400 text-sm">Accept payments and get paid directly to your bank</p>
+                                        </div>
+                                        {profile.stripeConnected ? (
+                                            <span className="flex items-center gap-2 text-green-500 text-sm">
+                                                <i className="fas fa-check-circle"></i> Connected
+                                            </span>
+                                        ) : (
+                                            <button
+                                                onClick={connectStripe}
+                                                className="bg-[#635bff] hover:bg-[#5851db] text-white px-6 py-2 rounded-xl transition"
+                                            >
+                                                Connect Stripe
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="p-6">
+                                        <div className="flex items-center gap-8 text-sm">
+                                            <div>
+                                                <p className="text-gray-400">Your earnings</p>
+                                                <p className="font-bold text-green-500 text-lg">90%</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-gray-400">Platform fee</p>
+                                                <p className="font-bold text-lg">10%</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-gray-400">Payout schedule</p>
+                                                <p className="font-bold text-lg">Daily</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Cal.com */}
+                                <div className="glass border border-white/10 rounded-2xl">
+                                    <div className="p-6 border-b border-white/10 flex items-center gap-4">
+                                        <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center">
+                                            <i className="fas fa-calendar-alt text-blue-500 text-xl"></i>
+                                        </div>
+                                        <div className="flex-1">
+                                            <h3 className="font-bold">Cal.com Integration</h3>
+                                            <p className="text-gray-400 text-sm">Let clients book sessions on your calendar</p>
+                                        </div>
+                                    </div>
+                                    <div className="p-6">
+                                        <div className="flex gap-4">
+                                            <input
+                                                type="text"
+                                                value={profile.calcomUsername || ''}
+                                                onChange={(e) => setProfile({ ...profile, calcomUsername: e.target.value })}
+                                                placeholder="Your Cal.com username"
+                                                className="flex-1 bg-white/10 border border-white/20 rounded-xl px-4 py-3 focus:border-orange-500 outline-none"
+                                            />
+                                            <button
+                                                onClick={() => saveProfile({ calcomUsername: profile.calcomUsername })}
+                                                className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-xl transition"
+                                            >
+                                                Save
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Profile Settings */}
+                                <ProfileEditor profile={profile} onSave={saveProfile} user={user} />
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Product Modal */}
+                    {showProductModal && (
+                        <ProductModal
+                            product={editingProduct}
+                            onSave={saveProduct}
+                            onClose={() => { setShowProductModal(false); setEditingProduct(null); }}
+                        />
+                    )}
+                </div>
+            );
+        }
+
+        function StatCard({ icon, label, value, color }) {
+            const colors = {
+                orange: 'bg-orange-500/20 text-orange-500',
+                green: 'bg-green-500/20 text-green-500',
+                blue: 'bg-blue-500/20 text-blue-500',
+                yellow: 'bg-yellow-500/20 text-yellow-500'
+            };
+            return (
+                <div className="glass border border-white/10 rounded-2xl p-5">
+                    <div className="flex items-center gap-3 mb-3">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${colors[color]}`}>
+                            <i className={`fas ${icon}`}></i>
+                        </div>
+                    </div>
+                    <p className="text-2xl font-bold">{value}</p>
+                    <p className="text-gray-400 text-sm">{label}</p>
+                </div>
+            );
+        }
+
+        function ProductModal({ product, onSave, onClose }) {
+            const [form, setForm] = React.useState({
+                name: product?.name || '',
+                description: product?.description || product?.desc || '',
+                price: product?.price || '',
+                billingType: product?.billingType || product?.type || 'one-time',
+                features: product?.features || [''],
+                isActive: product?.isActive ?? true,
+                image: product?.image || ''
+            });
+            const [saving, setSaving] = React.useState(false);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setSaving(true);
+                const success = await onSave({ ...form, _id: product?._id });
+                setSaving(false);
+                if (success) onClose();
+            };
+
+            const addFeature = () => setForm({ ...form, features: [...form.features, ''] });
+            const updateFeature = (i, val) => {
+                const features = [...form.features];
+                features[i] = val;
+                setForm({ ...form, features });
+            };
+            const removeFeature = (i) => setForm({ ...form, features: form.features.filter((_, idx) => idx !== i) });
+
+            return (
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+                    <div className="bg-[#111] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <div className="p-6 border-b border-white/10 flex items-center justify-between sticky top-0 bg-[#111]">
+                            <h3 className="text-xl font-bold">{product?._id ? 'Edit Product' : 'Create Product'}</h3>
+                            <button onClick={onClose} className="w-10 h-10 hover:bg-white/10 rounded-lg flex items-center justify-center transition">
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-2">Product Name</label>
+                                <input
+                                    type="text"
+                                    value={form.name}
+                                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                                    placeholder="e.g., 1:1 Online Coaching"
+                                    className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 focus:border-orange-500 outline-none"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-2">Description</label>
+                                <textarea
+                                    rows="3"
+                                    value={form.description}
+                                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                                    placeholder="Describe what clients get..."
+                                    className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 focus:border-orange-500 outline-none resize-none"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm text-gray-400 mb-2">Price ($)</label>
+                                    <input
+                                        type="number"
+                                        value={form.price}
+                                        onChange={(e) => setForm({ ...form, price: e.target.value })}
+                                        placeholder="99"
+                                        className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 focus:border-orange-500 outline-none"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm text-gray-400 mb-2">Billing Type</label>
+                                    <select
+                                        value={form.billingType}
+                                        onChange={(e) => setForm({ ...form, billingType: e.target.value })}
+                                        className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 focus:border-orange-500 outline-none"
+                                    >
+                                        <option value="one-time">One-time payment</option>
+                                        <option value="subscription">Monthly subscription</option>
+                                        <option value="weekly">Weekly subscription</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-2">Features (what's included)</label>
+                                <div className="space-y-2">
+                                    {form.features.map((feature, i) => (
+                                        <div key={i} className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                value={feature}
+                                                onChange={(e) => updateFeature(i, e.target.value)}
+                                                placeholder="e.g., Weekly check-ins"
+                                                className="flex-1 bg-white/10 border border-white/20 rounded-xl px-4 py-2 focus:border-orange-500 outline-none text-sm"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => removeFeature(i)}
+                                                className="w-10 h-10 bg-red-500/20 hover:bg-red-500/30 rounded-lg flex items-center justify-center transition"
+                                            >
+                                                <i className="fas fa-trash text-red-400 text-sm"></i>
+                                            </button>
+                                        </div>
+                                    ))}
+                                    <button
+                                        type="button"
+                                        onClick={addFeature}
+                                        className="text-orange-500 text-sm hover:underline"
+                                    >
+                                        <i className="fas fa-plus mr-1"></i>Add feature
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-2">Cover Image URL (optional)</label>
+                                <input
+                                    type="url"
+                                    value={form.image}
+                                    onChange={(e) => setForm({ ...form, image: e.target.value })}
+                                    placeholder="https://..."
+                                    className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 focus:border-orange-500 outline-none"
+                                />
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                                <input
+                                    type="checkbox"
+                                    id="isActive"
+                                    checked={form.isActive}
+                                    onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+                                    className="w-5 h-5 rounded"
+                                />
+                                <label htmlFor="isActive" className="text-sm">Publish product (visible on your profile)</label>
+                            </div>
+
+                            <div className="flex gap-3 pt-4">
+                                <button
+                                    type="button"
+                                    onClick={onClose}
+                                    className="flex-1 bg-white/10 hover:bg-white/20 px-6 py-3 rounded-xl transition"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={saving}
+                                    className="flex-1 bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-xl transition font-medium disabled:opacity-50"
+                                >
+                                    {saving ? 'Saving...' : (product?._id ? 'Update Product' : 'Create Product')}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             );
         }
 
-        function ProfileEditor({ profile, onSave }) {
+        function ProfileEditor({ profile, onSave, user }) {
             const [form, setForm] = React.useState({
-                specialty: profile.specialty || '',
-                bio: profile.bio || '',
-                experienceYears: profile.experienceYears || ''
+                specialty: profile?.specialty || '',
+                bio: profile?.bio || '',
+                experienceYears: profile?.experienceYears || '',
+                profilePicture: profile?.profilePicture || ''
             });
             const [saving, setSaving] = React.useState(false);
 
@@ -294,44 +1027,61 @@
             };
 
             return (
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
-                        <h3 className="font-bold text-lg mb-4">Public Profile</h3>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm text-gray-400 mb-2">Specialty</label>
-                                <input
-                                    type="text"
-                                    value={form.specialty}
-                                    onChange={(e) => setForm({ ...form, specialty: e.target.value })}
-                                    placeholder="e.g., Strength Training, Weight Loss"
-                                    className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-orange-500 outline-none"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm text-gray-400 mb-2">Years of Experience</label>
-                                <input
-                                    type="number"
-                                    value={form.experienceYears}
-                                    onChange={(e) => setForm({ ...form, experienceYears: parseInt(e.target.value) || 0 })}
-                                    className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-orange-500 outline-none"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm text-gray-400 mb-2">Bio</label>
-                                <textarea
-                                    rows="4"
-                                    value={form.bio}
-                                    onChange={(e) => setForm({ ...form, bio: e.target.value })}
-                                    placeholder="Tell clients about yourself..."
-                                    className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-orange-500 outline-none resize-none"
-                                />
-                            </div>
+                <form onSubmit={handleSubmit} className="glass border border-white/10 rounded-2xl">
+                    <div className="p-6 border-b border-white/10">
+                        <h3 className="font-bold">Public Profile</h3>
+                        <p className="text-gray-400 text-sm">This info appears on your public coach page</p>
+                    </div>
+                    <div className="p-6 space-y-4">
+                        <div>
+                            <label className="block text-sm text-gray-400 mb-2">Profile Picture URL</label>
+                            <input
+                                type="url"
+                                value={form.profilePicture}
+                                onChange={(e) => setForm({ ...form, profilePicture: e.target.value })}
+                                placeholder="https://..."
+                                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 focus:border-orange-500 outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm text-gray-400 mb-2">Specialty</label>
+                            <input
+                                type="text"
+                                value={form.specialty}
+                                onChange={(e) => setForm({ ...form, specialty: e.target.value })}
+                                placeholder="e.g., Strength Training, Weight Loss, Bodybuilding"
+                                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 focus:border-orange-500 outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm text-gray-400 mb-2">Years of Experience</label>
+                            <input
+                                type="number"
+                                value={form.experienceYears}
+                                onChange={(e) => setForm({ ...form, experienceYears: parseInt(e.target.value) || 0 })}
+                                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 focus:border-orange-500 outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm text-gray-400 mb-2">Bio</label>
+                            <textarea
+                                rows="4"
+                                value={form.bio}
+                                onChange={(e) => setForm({ ...form, bio: e.target.value })}
+                                placeholder="Tell potential clients about yourself, your approach, and what makes you unique..."
+                                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 focus:border-orange-500 outline-none resize-none"
+                            />
                         </div>
                     </div>
-                    <button type="submit" disabled={saving} className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-xl font-bold transition disabled:opacity-50">
-                        {saving ? 'Saving...' : 'Save Profile'}
-                    </button>
+                    <div className="p-6 border-t border-white/10">
+                        <button
+                            type="submit"
+                            disabled={saving}
+                            className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-xl font-medium transition disabled:opacity-50"
+                        >
+                            {saving ? 'Saving...' : 'Save Profile'}
+                        </button>
+                    </div>
                 </form>
             );
         }
