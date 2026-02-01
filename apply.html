@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClockWork - Influencer Application</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        clockwork: { orange: '#f97316', dark: '#0a0a0a', darker: '#050505' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.08); }
+        .glow { box-shadow: 0 0 30px rgba(249, 115, 22, 0.3); }
+    </style>
+</head>
+<body class="text-white">
+    <div class="min-h-screen flex flex-col items-center justify-center p-4">
+        <div class="w-full max-w-lg">
+            <div class="text-center mb-8">
+                <i class="fas fa-bolt text-5xl text-orange-500"></i>
+                <h1 class="text-3xl font-bold text-white mt-4">Partner with ClockWork</h1>
+                <p class="text-gray-400">Apply to become a ClockWork influencer and earn recurring commissions.</p>
+            </div>
+
+            <div id="application-form-container" class="glass rounded-3xl p-8">
+                <form id="influencer-application-form" class="space-y-4">
+                    <div>
+                        <label for="name" class="block text-sm font-medium text-gray-300">Full Name</label>
+                        <input type="text" id="name" name="name" required
+                            class="mt-1 w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-gray-300">Email Address</label>
+                        <input type="email" id="email" name="email" required
+                            class="mt-1 w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label for="platform" class="block text-sm font-medium text-gray-300">Primary Platform</label>
+                        <select id="platform" name="platform" required
+                            class="mt-1 w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:outline-none">
+                            <option value="" disabled selected>Select your platform</option>
+                            <option value="TikTok">TikTok</option>
+                            <option value="Instagram">Instagram</option>
+                            <option value="YouTube">YouTube</option>
+                            <option value="Twitter/X">Twitter/X</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="followerCount" class="block text-sm font-medium text-gray-300">Follower Count</label>
+                            <input type="number" id="followerCount" name="followerCount" required min="10000"
+                                class="mt-1 w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label for="engagementRate" class="block text-sm font-medium text-gray-300">Engagement Rate (%)
+                            </label>
+                            <input type="number" id="engagementRate" name="engagementRate" step="0.1"
+                                class="mt-1 w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="videoLinks" class="block text-sm font-medium text-gray-300">Content Examples (Links)</label>
+                        <textarea id="videoLinks" name="videoLinks" rows="3"
+                            placeholder="Link to 1-3 videos showcasing your content"
+                            class="mt-1 w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none"></textarea>
+                    </div>
+
+                    <div>
+                        <button type="submit" id="submit-button"
+                            class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl transition-all glow">
+                            Submit Application
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
+            <div id="success-message" class="hidden text-center glass rounded-3xl p-8">
+                <div class="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mb-4 mx-auto">
+                    <i class="fas fa-check text-green-500 text-2xl"></i>
+                </div>
+                <h2 class="text-xl font-bold text-white">Application Received</h2>
+                <p class="text-gray-400 mt-2">Thanks for your interest in partnering with ClockWork. We've received your application and will review it within 2-3 business days. If you're a good fit, you'll hear from us via email.</p>
+                <a href="index.html" class="mt-6 inline-block text-orange-400 hover:text-orange-300 transition-colors">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to ClockWork
+                </a>
+            </div>
+
+            <div id="error-message" class="hidden text-center glass rounded-3xl p-8">
+                <div class="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mb-4 mx-auto">
+                    <i class="fas fa-times text-red-500 text-2xl"></i>
+                </div>
+                <h2 class="text-xl font-bold text-white">Something Went Wrong</h2>
+                <p id="error-text" class="text-gray-400 mt-2">Could not submit application. Please try again later.</p>
+                 <button id="try-again-button" class="mt-6 inline-block bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-6 rounded-xl transition-all">
+                    Try Again
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://cwbackend-production-314e.up.railway.app/api';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('influencer-application-form');
+            const formContainer = document.getElementById('application-form-container');
+            const successMessage = document.getElementById('success-message');
+            const errorMessage = document.getElementById('error-message');
+            const errorText = document.getElementById('error-text');
+            const submitButton = document.getElementById('submit-button');
+            const tryAgainButton = document.getElementById('try-again-button');
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                submitButton.disabled = true;
+                submitButton.textContent = 'Submitting...';
+
+                const formData = new FormData(form);
+                const videoLinks = formData.get('videoLinks').split('\n').filter(link => link.trim() !== '');
+
+                const data = {
+                    name: formData.get('name'),
+                    email: formData.get('email'),
+                    platform: formData.get('platform'),
+                    followerCount: parseInt(formData.get('followerCount'), 10),
+                    engagementRate: parseFloat(formData.get('engagementRate')),
+                    videoLinks: videoLinks,
+                };
+
+                try {
+                    const response = await fetch(`${API_URL}/influencers/apply`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(data),
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.message || 'An unknown error occurred.');
+                    }
+
+                    formContainer.classList.add('hidden');
+                    successMessage.classList.remove('hidden');
+
+                } catch (error) {
+                    errorText.textContent = error.message;
+                    formContainer.classList.add('hidden');
+                    errorMessage.classList.remove('hidden');
+                } finally {
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Submit Application';
+                }
+            });
+            
+            tryAgainButton.addEventListener('click', () => {
+                errorMessage.classList.add('hidden');
+                formContainer.classList.remove('hidden');
+            });
+        });
+    </script>
+</body>
+</html>

@@ -12,6 +12,14 @@
     {
       "source": "/test",
       "destination": "/test.html"
+    },
+    {
+      "source": "/apply",
+      "destination": "/apply.html"
+    },
+    {
+      "source": "/influencer",
+      "destination": "/influencer.html"
     }
   ]
 }

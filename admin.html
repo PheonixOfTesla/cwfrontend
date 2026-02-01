@@ -252,12 +252,55 @@
             );
         }
 
+        function InfluencerApplicationRow({ app, onApprove, onDeny }) {
+            const getEngagementColor = (rate) => {
+                if (rate < 3) return 'text-red-400';
+                if (rate >= 5) return 'text-green-400';
+                return 'text-yellow-400';
+            };
+
+            return (
+                <tr className="border-b border-white/5 hover:bg-white/5">
+                    <td className="py-3 px-4">
+                        <div className="font-medium">{app.name}</div>
+                        <div className="text-gray-500 text-sm">{app.email}</div>
+                    </td>
+                    <td className="py-3 px-4">{app.platform}</td>
+                    <td className="py-3 px-4">{(app.followerCount || 0).toLocaleString()}</td>
+                    <td className={`py-3 px-4 font-bold ${getEngagementColor(app.engagementRate)}`}>
+                        {app.engagementRate ? `${app.engagementRate}%` : 'N/A'}
+                    </td>
+                    <td className="py-3 px-4">
+                        {app.videoLinks && app.videoLinks.length > 0 ? (
+                            app.videoLinks.map((link, i) => (
+                                <a key={i} href={link} target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:underline text-sm block">
+                                    Link {i + 1} <i className="fas fa-external-link-alt ml-1"></i>
+                                </a>
+                            ))
+                        ) : (
+                            <span className="text-gray-500 text-sm">No links</span>
+                        )}
+                    </td>
+                    <td className="py-3 px-4 text-gray-400 text-sm">{new Date(app.createdAt).toLocaleDateString()}</td>
+                    <td className="py-3 px-4">
+                        <div className="flex gap-2">
+                            <button onClick={() => onApprove(app._id)} className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg text-sm">Approve</button>
+                            <button onClick={() => onDeny(app._id)} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-sm">Deny</button>
+                        </div>
+                    </td>
+                </tr>
+            );
+        }
+
+
         // Main Dashboard Component
         function AdminDashboard({ user, onLogout }) {
             const [stats, setStats] = useState(null);
             const [users, setUsers] = useState([]);
             const [vipUsers, setVipUsers] = useState([]);
+            const [influencerApps, setInfluencerApps] = useState([]);
             const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
+            const [influencerPagination, setInfluencerPagination] = useState({ page: 1, pages: 1, total: 0 });
             const [loading, setLoading] = useState(true);
             const [activeTab, setActiveTab] = useState('overview');
             const [search, setSearch] = useState('');
@@ -299,10 +342,21 @@
                 }
             }, []);
 
+            const loadInfluencerApplications = useCallback(async (page = 1) => {
+                try {
+                    const params = new URLSearchParams({ page, limit: 10, status: 'pending' });
+                    const res = await api.fetch(`/admin/influencer-applications?${params}`);
+                    setInfluencerApps(res.data.applications);
+                    setInfluencerPagination(res.data.pagination);
+                } catch (err) {
+                    console.error('Failed to load influencer applications:', err);
+                }
+            }, []);
+
             useEffect(() => {
                 const init = async () => {
                     setLoading(true);
-                    await Promise.all([loadStats(), loadUsers(), loadVIPUsers()]);
+                    await Promise.all([loadStats(), loadUsers(), loadVIPUsers(), loadInfluencerApplications()]);
                     setLoading(false);
                 };
                 init();
@@ -356,6 +410,28 @@
                 setNewVIPEmail('');
             };
 
+            const handleApproveApp = async (id) => {
+                if (!confirm('Are you sure you want to approve this influencer?')) return;
+                try {
+                    await api.fetch(`/admin/influencer-applications/${id}/approve`, { method: 'POST' });
+                    showMessage('Influencer approved successfully!');
+                    loadInfluencerApplications(); // Refresh list
+                } catch (err) {
+                    showMessage(err.message, 'error');
+                }
+            };
+
+            const handleDenyApp = async (id) => {
+                if (!confirm('Are you sure you want to deny this influencer?')) return;
+                try {
+                    await api.fetch(`/admin/influencer-applications/${id}/deny`, { method: 'POST' });
+                    showMessage('Influencer denied.');
+                    loadInfluencerApplications(); // Refresh list
+                } catch (err) {
+                    showMessage(err.message, 'error');
+                }
+            };
+
             if (loading) {
                 return (
                     <div className="min-h-screen flex items-center justify-center">
@@ -398,7 +474,7 @@
                     {/* Navigation Tabs */}
                     <div className="max-w-7xl mx-auto px-4 py-4">
                         <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-                            {['overview', 'users', 'vip'].map(tab => (
+                            {['overview', 'users', 'vip', 'influencers'].map(tab => (
                                 <button
                                     key={tab}
                                     onClick={() => setActiveTab(tab)}
@@ -411,6 +487,7 @@
                                     {tab === 'overview' && <><i className="fas fa-chart-line mr-2"></i>Overview</>}
                                     {tab === 'users' && <><i className="fas fa-users mr-2"></i>Users</>}
                                     {tab === 'vip' && <><i className="fas fa-crown mr-2"></i>VIP Management</>}
+                                    {tab === 'influencers' && <><i className="fas fa-bullhorn mr-2"></i>Influencers</>}
                                 </button>
                             ))}
                         </div>
@@ -668,6 +745,66 @@
                                             ))}
                                         </div>
                                     )}
+                                </div>
+                            </div>
+                        )}
+                        
+                        {/* Influencers Tab */}
+                        {activeTab === 'influencers' && (
+                            <div className="space-y-4">
+                                <div className="glass rounded-xl p-6">
+                                     <h2 className="text-lg font-bold mb-4"><i className="fas fa-bullhorn text-orange-500 mr-2"></i>Pending Influencer Applications</h2>
+                                     <div className="overflow-x-auto">
+                                        <table className="w-full">
+                                            <thead className="bg-white/5">
+                                                <tr className="text-left text-gray-400 text-sm">
+                                                    <th className="py-3 px-4">Applicant</th>
+                                                    <th className="py-3 px-4">Platform</th>
+                                                    <th className="py-3 px-4">Followers</th>
+                                                    <th className="py-3 px-4">Eng. Rate</th>
+                                                    <th className="py-3 px-4">Links</th>
+                                                    <th className="py-3 px-4">Date</th>
+                                                    <th className="py-3 px-4">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {influencerApps.map(app => (
+                                                    <InfluencerApplicationRow
+                                                        key={app._id}
+                                                        app={app}
+                                                        onApprove={handleApproveApp}
+                                                        onDeny={handleDenyApp}
+                                                    />
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                     </div>
+                                     {influencerApps.length === 0 && <p className="text-gray-400 text-center py-8">No pending applications.</p>}
+                                     {/* Pagination */}
+                                    <div className="border-t border-white/10 px-4 py-3 flex items-center justify-between text-sm">
+                                        <div className="text-gray-400">
+                                            Showing {influencerApps.length} of {influencerPagination.total} applications
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => loadInfluencerApplications(influencerPagination.page - 1)}
+                                                disabled={influencerPagination.page <= 1}
+                                                className="px-3 py-1 bg-white/5 rounded disabled:opacity-50"
+                                            >
+                                                Previous
+                                            </button>
+                                            <span className="px-3 py-1">
+                                                Page {influencerPagination.page} of {influencerPagination.pages}
+                                            </span>
+                                            <button
+                                                onClick={() => loadInfluencerApplications(influencerPagination.page + 1)}
+                                                disabled={influencerPagination.page >= influencerPagination.pages}
+                                                className="px-3 py-1 bg-white/5 rounded disabled:opacity-50"
+                                            >
+                                                Next
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         )}
