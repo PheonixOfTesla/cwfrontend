@@ -22,6 +22,18 @@
     {
       "source": "/influencer",
       "destination": "/influencer.html"
+    },
+    {
+      "source": "/coaches",
+      "destination": "/coaches.html"
+    },
+    {
+      "source": "/coach-portal",
+      "destination": "/coach-portal.html"
+    },
+    {
+      "source": "/coach/:id",
+      "destination": "/coach.html"
     }
   ]
 }

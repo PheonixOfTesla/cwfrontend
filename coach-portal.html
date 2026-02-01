@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Coach Portal - ClockWork">
+    <title>Coach Portal - ClockWork</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+        body { background: #0a0a0a; }
+        .glow { box-shadow: 0 0 20px rgba(249, 115, 22, 0.3); }
+        .tab-active { border-bottom: 2px solid #f97316; color: #f97316; }
+    </style>
+</head>
+<body class="bg-[#0a0a0a] min-h-screen text-white">
+    <div id="root"></div>
+    <script type="text/babel">
+        const API_URL = 'https://cwbackend-production-314e.up.railway.app';
+
+        function CoachPortal() {
+            const [user, setUser] = React.useState(null);
+            const [clients, setClients] = React.useState([]);
+            const [stats, setStats] = React.useState({});
+            const [loading, setLoading] = React.useState(true);
+            const [activeTab, setActiveTab] = React.useState('overview');
+            const [profile, setProfile] = React.useState({});
+
+            const token = localStorage.getItem('token');
+
+            React.useEffect(() => {
+                if (!token) {
+                    window.location.href = '/';
+                    return;
+                }
+                fetchData();
+            }, []);
+
+            const fetchData = async () => {
+                try {
+                    const headers = { 'Authorization': `Bearer ${token}` };
+
+                    const [userRes, clientsRes] = await Promise.all([
+                        fetch(`${API_URL}/api/users/profile`, { headers }).then(r => r.json()),
+                        fetch(`${API_URL}/api/coach/clients`, { headers }).then(r => r.json()).catch(() => [])
+                    ]);
+
+                    if (userRes.userType !== 'coach') {
+                        alert('Access denied. This portal is for coaches only.');
+                        window.location.href = '/';
+                        return;
+                    }
+
+                    setUser(userRes);
+                    setProfile(userRes.coachProfile || {});
+                    setClients(clientsRes.clients || clientsRes || []);
+                    setStats({
+                        totalClients: (clientsRes.clients || clientsRes || []).length,
+                        activeClients: (clientsRes.clients || clientsRes || []).filter(c => c.isActive !== false).length
+                    });
+                } catch (error) {
+                    console.error('Error:', error);
+                }
+                setLoading(false);
+            };
+
+            const saveProfile = async (updates) => {
+                try {
+                    await fetch(`${API_URL}/api/coach/profile`, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(updates)
+                    });
+                    setProfile({ ...profile, ...updates });
+                    return true;
+                } catch (error) {
+                    return false;
+                }
+            };
+
+            if (loading) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+                    </div>
+                );
+            }
+
+            const tabs = [
+                { id: 'overview', label: 'Overview', icon: 'fa-chart-line' },
+                { id: 'clients', label: 'Clients', icon: 'fa-users' },
+                { id: 'profile', label: 'Profile', icon: 'fa-user' },
+                { id: 'settings', label: 'Settings', icon: 'fa-cog' }
+            ];
+
+            return (
+                <div className="min-h-screen bg-[#0a0a0a]">
+                    {/* Header */}
+                    <div className="bg-gradient-to-r from-orange-600/20 to-transparent py-6 px-4 border-b border-white/10">
+                        <div className="max-w-6xl mx-auto flex items-center justify-between">
+                            <div>
+                                <h1 className="text-2xl font-bold">Coach Portal</h1>
+                                <p className="text-gray-400">Welcome, {user?.name}</p>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <a href="/coaches" className="text-gray-400 hover:text-orange-500 transition">
+                                    <i className="fas fa-external-link mr-2"></i>View Marketplace
+                                </a>
+                                <a href="/" className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl transition">
+                                    Back to App
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Tabs */}
+                    <div className="border-b border-white/10">
+                        <div className="max-w-6xl mx-auto px-4 flex overflow-x-auto">
+                            {tabs.map(tab => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`px-6 py-4 font-medium whitespace-nowrap transition ${activeTab === tab.id ? 'tab-active' : 'text-gray-400 hover:text-white'}`}
+                                >
+                                    <i className={`fas ${tab.icon} mr-2`}></i>{tab.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="max-w-6xl mx-auto px-4 py-8">
+                        {/* Overview */}
+                        {activeTab === 'overview' && (
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-gray-400 text-sm">Total Clients</p>
+                                                <p className="text-3xl font-bold">{stats.totalClients}</p>
+                                            </div>
+                                            <div className="w-12 h-12 bg-orange-500/20 rounded-xl flex items-center justify-center">
+                                                <i className="fas fa-users text-orange-500"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-gray-400 text-sm">Active Clients</p>
+                                                <p className="text-3xl font-bold text-green-500">{stats.activeClients}</p>
+                                            </div>
+                                            <div className="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center">
+                                                <i className="fas fa-check text-green-500"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-gray-400 text-sm">Session Rate</p>
+                                                <p className="text-3xl font-bold">${profile.scheduling?.sessionPrice || 0}</p>
+                                            </div>
+                                            <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center">
+                                                <i className="fas fa-dollar-sign text-blue-500"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {clients.length === 0 && (
+                                    <div className="bg-orange-500/10 border border-orange-500/30 rounded-2xl p-6 text-center">
+                                        <i className="fas fa-lightbulb text-orange-500 text-3xl mb-4"></i>
+                                        <h3 className="text-white font-bold mb-2">Get Your First Client</h3>
+                                        <p className="text-gray-400 mb-4">Complete your profile and share your link to attract clients.</p>
+                                        <button onClick={() => setActiveTab('profile')} className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-xl transition">
+                                            Complete Profile
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Clients */}
+                        {activeTab === 'clients' && (
+                            <div className="bg-white/5 border border-white/10 rounded-2xl">
+                                <div className="p-6 border-b border-white/10">
+                                    <h3 className="font-bold text-lg">Your Clients ({clients.length})</h3>
+                                </div>
+                                {clients.length === 0 ? (
+                                    <div className="p-12 text-center">
+                                        <i className="fas fa-users text-gray-600 text-4xl mb-4"></i>
+                                        <p className="text-gray-400">No clients yet. Share your profile to get started!</p>
+                                    </div>
+                                ) : (
+                                    <div className="divide-y divide-white/10">
+                                        {clients.map(client => (
+                                            <div key={client._id} className="p-4 flex items-center justify-between hover:bg-white/5 transition">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center text-lg font-bold">
+                                                        {client.name?.charAt(0)}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-medium">{client.name}</p>
+                                                        <p className="text-sm text-gray-400">{client.email}</p>
+                                                    </div>
+                                                </div>
+                                                <a href={`/?client=${client._id}`} className="text-orange-500 hover:underline text-sm">
+                                                    View Details
+                                                </a>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Profile */}
+                        {activeTab === 'profile' && (
+                            <ProfileEditor profile={profile} onSave={saveProfile} />
+                        )}
+
+                        {/* Settings */}
+                        {activeTab === 'settings' && (
+                            <div className="space-y-6">
+                                <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                                    <h3 className="font-bold text-lg mb-4">Session Pricing</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm text-gray-400 mb-2">Price per Session ($)</label>
+                                            <input
+                                                type="number"
+                                                value={profile.scheduling?.sessionPrice || ''}
+                                                onChange={(e) => setProfile({
+                                                    ...profile,
+                                                    scheduling: { ...profile.scheduling, sessionPrice: parseInt(e.target.value) || 0 }
+                                                })}
+                                                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-orange-500 outline-none"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm text-gray-400 mb-2">Billing Cycle</label>
+                                            <select
+                                                value={profile.scheduling?.billingCycle || 'monthly'}
+                                                onChange={(e) => setProfile({
+                                                    ...profile,
+                                                    scheduling: { ...profile.scheduling, billingCycle: e.target.value }
+                                                })}
+                                                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-orange-500 outline-none"
+                                            >
+                                                <option value="per-session">Per Session</option>
+                                                <option value="weekly">Weekly</option>
+                                                <option value="biweekly">Bi-Weekly</option>
+                                                <option value="monthly">Monthly</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => saveProfile({ scheduling: profile.scheduling })}
+                                        className="mt-4 bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-xl transition"
+                                    >
+                                        Save Pricing
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        function ProfileEditor({ profile, onSave }) {
+            const [form, setForm] = React.useState({
+                specialty: profile.specialty || '',
+                bio: profile.bio || '',
+                experienceYears: profile.experienceYears || ''
+            });
+            const [saving, setSaving] = React.useState(false);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setSaving(true);
+                const success = await onSave(form);
+                setSaving(false);
+                if (success) alert('Profile saved!');
+            };
+
+            return (
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                        <h3 className="font-bold text-lg mb-4">Public Profile</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-2">Specialty</label>
+                                <input
+                                    type="text"
+                                    value={form.specialty}
+                                    onChange={(e) => setForm({ ...form, specialty: e.target.value })}
+                                    placeholder="e.g., Strength Training, Weight Loss"
+                                    className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-orange-500 outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-2">Years of Experience</label>
+                                <input
+                                    type="number"
+                                    value={form.experienceYears}
+                                    onChange={(e) => setForm({ ...form, experienceYears: parseInt(e.target.value) || 0 })}
+                                    className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-orange-500 outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-2">Bio</label>
+                                <textarea
+                                    rows="4"
+                                    value={form.bio}
+                                    onChange={(e) => setForm({ ...form, bio: e.target.value })}
+                                    placeholder="Tell clients about yourself..."
+                                    className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-orange-500 outline-none resize-none"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" disabled={saving} className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-xl font-bold transition disabled:opacity-50">
+                        {saving ? 'Saving...' : 'Save Profile'}
+                    </button>
+                </form>
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<CoachPortal />);
+    </script>
+</body>
+</html>

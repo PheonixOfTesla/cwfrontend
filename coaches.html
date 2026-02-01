@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Find your perfect coach on ClockWork">
+    <title>Coach Marketplace - ClockWork</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+        body { background: #0a0a0a; }
+        .glow { box-shadow: 0 0 20px rgba(249, 115, 22, 0.3); }
+        .coach-card { transition: all 0.3s ease; }
+        .coach-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(249, 115, 22, 0.2); }
+    </style>
+</head>
+<body class="bg-[#0a0a0a] min-h-screen text-white">
+    <div id="root"></div>
+    <script type="text/babel">
+        const API_URL = 'https://cwbackend-production-314e.up.railway.app';
+
+        function CoachMarketplace() {
+            const [coaches, setCoaches] = React.useState([]);
+            const [loading, setLoading] = React.useState(true);
+            const [filters, setFilters] = React.useState({
+                specialty: '',
+                sort: 'rating'
+            });
+
+            const specialties = [
+                'Strength Training', 'Weight Loss', 'Bodybuilding', 'CrossFit',
+                'Powerlifting', 'Olympic Lifting', 'HIIT', 'Nutrition', 'Sports Performance'
+            ];
+
+            React.useEffect(() => {
+                fetchCoaches();
+            }, [filters]);
+
+            const fetchCoaches = async () => {
+                setLoading(true);
+                try {
+                    const response = await fetch(`${API_URL}/api/coach/list`);
+                    const data = await response.json();
+                    setCoaches(data.coaches || data || []);
+                } catch (error) {
+                    console.error('Error fetching coaches:', error);
+                }
+                setLoading(false);
+            };
+
+            const StarRating = ({ rating }) => (
+                <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map(star => (
+                        <i key={star} className={`fas fa-star text-sm ${star <= rating ? 'text-orange-500' : 'text-gray-600'}`}></i>
+                    ))}
+                </div>
+            );
+
+            const CoachCard = ({ coach }) => (
+                <a href={`/coach/${coach._id}`} className="coach-card bg-white/5 border border-white/10 rounded-2xl overflow-hidden block hover:border-orange-500/50">
+                    <div className="h-32 bg-gradient-to-r from-orange-600 to-orange-400 relative">
+                        {coach.coachProfile?.profilePicture && (
+                            <img src={coach.coachProfile.profilePicture} alt="" className="w-full h-full object-cover opacity-50" />
+                        )}
+                    </div>
+                    <div className="p-5 relative">
+                        <div className="absolute -top-10 left-5">
+                            <div className="w-20 h-20 rounded-full border-4 border-[#0a0a0a] bg-gray-800 overflow-hidden">
+                                {coach.coachProfile?.profilePicture ? (
+                                    <img src={coach.coachProfile.profilePicture} alt={coach.name} className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-orange-500/20 text-orange-500 text-2xl font-bold">
+                                        {coach.name?.charAt(0)}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div className="pt-10">
+                            <h3 className="font-bold text-lg text-white">{coach.name}</h3>
+                            {coach.coachProfile?.specialty && (
+                                <p className="text-orange-400 text-sm mt-1">{coach.coachProfile.specialty}</p>
+                            )}
+                            <div className="mt-3">
+                                <StarRating rating={coach.coachProfile?.rating || 5} />
+                            </div>
+                            {coach.coachProfile?.bio && (
+                                <p className="text-gray-400 text-sm mt-3 line-clamp-2">{coach.coachProfile.bio}</p>
+                            )}
+                            <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/10">
+                                <div className="flex items-center gap-1 text-sm text-gray-400">
+                                    <i className="fas fa-users"></i>
+                                    <span>{coach.coachProfile?.experienceYears || 0}+ years</span>
+                                </div>
+                                {coach.coachProfile?.scheduling?.sessionPrice > 0 && (
+                                    <span className="text-orange-500 font-bold">${coach.coachProfile.scheduling.sessionPrice}/session</span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            );
+
+            return (
+                <div className="min-h-screen bg-[#0a0a0a]">
+                    {/* Header */}
+                    <div className="bg-gradient-to-b from-orange-600/20 to-transparent py-16 px-4">
+                        <div className="max-w-6xl mx-auto">
+                            <div className="flex items-center justify-between mb-8">
+                                <a href="/" className="text-white hover:text-orange-400 transition">
+                                    <i className="fas fa-arrow-left mr-2"></i>Back to App
+                                </a>
+                                <a href="/coach-portal" className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl font-medium transition">
+                                    Coach Portal
+                                </a>
+                            </div>
+                            <div className="text-center">
+                                <h1 className="text-4xl md:text-5xl font-bold mb-4">
+                                    <span className="text-orange-500">Find</span> Your Perfect Coach
+                                </h1>
+                                <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+                                    Browse elite coaches ready to help you achieve your fitness goals
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Filters */}
+                    <div className="max-w-6xl mx-auto px-4 -mt-4">
+                        <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-wrap gap-4 items-center">
+                            <select
+                                value={filters.specialty}
+                                onChange={(e) => setFilters(f => ({ ...f, specialty: e.target.value }))}
+                                className="bg-white/10 border border-white/20 text-white rounded-xl px-4 py-2 focus:border-orange-500 outline-none"
+                            >
+                                <option value="">All Specialties</option>
+                                {specialties.map(s => (
+                                    <option key={s} value={s}>{s}</option>
+                                ))}
+                            </select>
+                            <select
+                                value={filters.sort}
+                                onChange={(e) => setFilters(f => ({ ...f, sort: e.target.value }))}
+                                className="bg-white/10 border border-white/20 text-white rounded-xl px-4 py-2 focus:border-orange-500 outline-none"
+                            >
+                                <option value="rating">Highest Rated</option>
+                                <option value="experience">Most Experienced</option>
+                                <option value="price">Price: Low to High</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* Results */}
+                    <div className="max-w-6xl mx-auto px-4 py-8">
+                        {loading ? (
+                            <div className="text-center py-16">
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto"></div>
+                                <p className="mt-4 text-gray-400">Loading coaches...</p>
+                            </div>
+                        ) : coaches.length === 0 ? (
+                            <div className="text-center py-16">
+                                <i className="fas fa-user-slash text-gray-600 text-5xl mb-4"></i>
+                                <h3 className="text-xl font-semibold text-white">No coaches found</h3>
+                                <p className="text-gray-400 mt-2">Check back soon for new coaches!</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {coaches.map(coach => (
+                                    <CoachCard key={coach._id} coach={coach} />
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<CoachMarketplace />);
+    </script>
+</body>
+</html>
