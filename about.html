@@ -33,6 +33,8 @@
             </a>
             <div class="flex items-center gap-4">
                 <a href="/coaches" class="text-gray-400 hover:text-white transition hidden md:block">Find Coaches</a>
+                <a href="/apply" class="text-gray-400 hover:text-white transition hidden md:block">For Coaches</a>
+                <a href="/apply" class="text-pink-400 hover:text-pink-300 transition hidden md:block">For Influencers</a>
                 <a href="/" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl font-medium transition">
                     Get Started Free
                 </a>
@@ -55,14 +57,18 @@
             <p class="text-xl md:text-2xl text-gray-400 mb-8 max-w-2xl mx-auto">
                 ClockWork is free. We just take a small percentage. You keep <span class="text-green-400 font-bold">90% of your revenue</span>.
             </p>
-            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            <div class="flex flex-col sm:flex-row gap-4 justify-center mb-6">
                 <a href="/" class="bg-orange-500 hover:bg-orange-600 text-white px-8 py-4 rounded-xl font-bold text-lg glow transition">
-                    Start Free Today
+                    Start Training <i class="fas fa-arrow-right ml-2"></i>
                 </a>
-                <a href="#calculator" class="glass hover:bg-white/10 px-8 py-4 rounded-xl font-bold text-lg transition">
-                    Calculate Your Earnings
+                <a href="/apply" class="glass hover:bg-white/10 px-8 py-4 rounded-xl font-bold text-lg transition">
+                    <i class="fas fa-user-tie mr-2"></i> For Coaches
+                </a>
+                <a href="/apply" class="glass hover:bg-pink-500/20 border-pink-500/50 px-8 py-4 rounded-xl font-bold text-lg transition text-pink-400">
+                    <i class="fab fa-instagram mr-2"></i> For Influencers
                 </a>
             </div>
+            <p class="text-gray-500 text-sm">24-hour free trial • $9.99/mo • Coaches keep 90%</p>
         </div>
     </section>
 
@@ -166,54 +172,108 @@
         <div class="max-w-4xl mx-auto">
             <div class="text-center mb-12">
                 <h2 class="text-3xl md:text-4xl font-bold mb-4">Calculate Your <span class="text-green-400">Earnings</span></h2>
-                <p class="text-gray-400 text-lg">See what's possible with your audience</p>
+                <p class="text-gray-400 text-lg">Enter your follower count and see your potential</p>
             </div>
 
             <div class="glass rounded-2xl p-8 glow-green">
                 <div class="grid md:grid-cols-2 gap-8">
                     <div>
-                        <h3 class="font-bold text-xl mb-6">The Math (Real Example)</h3>
+                        <h3 class="font-bold text-xl mb-6">Your Numbers</h3>
                         <div class="space-y-4">
-                            <div class="flex items-center justify-between p-3 bg-white/5 rounded-lg">
-                                <span class="text-gray-400">Your Followers</span>
-                                <span class="font-bold text-orange-400">539,000</span>
+                            <div class="p-4 bg-white/5 rounded-lg">
+                                <label class="text-gray-400 text-sm block mb-2">Your Followers</label>
+                                <input type="number" id="calc-followers" value="20000" min="1000"
+                                    class="w-full bg-white/10 border border-orange-500/50 rounded-lg px-4 py-3 text-2xl font-bold text-orange-400 focus:outline-none focus:border-orange-500"
+                                    onchange="updateCalculator()" oninput="updateCalculator()">
                             </div>
-                            <div class="flex items-center justify-between p-3 bg-white/5 rounded-lg">
-                                <span class="text-gray-400">Conservative 1% Convert</span>
-                                <span class="font-bold">5,390 clients</span>
+                            <div class="p-4 bg-white/5 rounded-lg">
+                                <label class="text-gray-400 text-sm block mb-2">Monthly Price</label>
+                                <select id="calc-price" class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-xl font-bold focus:outline-none" onchange="updateCalculator()">
+                                    <option value="9.99">$9.99/mo (Content)</option>
+                                    <option value="29.99" selected>$29.99/mo (Coaching)</option>
+                                    <option value="49.99">$49.99/mo (Premium)</option>
+                                    <option value="99.99">$99.99/mo (Elite)</option>
+                                    <option value="149.99">$149.99/mo (VIP)</option>
+                                </select>
                             </div>
-                            <div class="flex items-center justify-between p-3 bg-white/5 rounded-lg">
-                                <span class="text-gray-400">Monthly Price</span>
-                                <span class="font-bold">$29.99/mo</span>
-                            </div>
-                            <div class="flex items-center justify-between p-3 bg-white/5 rounded-lg">
-                                <span class="text-gray-400">Your Cut (90%)</span>
-                                <span class="font-bold text-green-400">$26.99/client</span>
+                            <div class="p-4 bg-white/5 rounded-lg">
+                                <label class="text-gray-400 text-sm block mb-2">Conversion Rate</label>
+                                <div class="flex gap-2">
+                                    <button onclick="setConversion(0.5)" class="conv-btn flex-1 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition text-sm">0.5%</button>
+                                    <button onclick="setConversion(1)" class="conv-btn flex-1 py-2 rounded-lg bg-orange-500 text-white text-sm">1%</button>
+                                    <button onclick="setConversion(1.5)" class="conv-btn flex-1 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition text-sm">1.5%</button>
+                                    <button onclick="setConversion(2)" class="conv-btn flex-1 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition text-sm">2%</button>
+                                </div>
+                                <input type="hidden" id="calc-conversion" value="1">
                             </div>
                         </div>
                     </div>
                     <div class="flex flex-col justify-center">
-                        <div class="text-center p-6 bg-green-500/10 border border-green-500/30 rounded-2xl">
-                            <p class="text-gray-400 mb-2">At 1% Conversion</p>
-                            <p class="text-5xl font-bold text-green-400 stat-highlight">$145,446</p>
+                        <div class="text-center p-6 bg-green-500/10 border border-green-500/30 rounded-2xl mb-4">
+                            <p class="text-gray-400 mb-2">You Keep (90%)</p>
+                            <p id="calc-result" class="text-5xl font-bold text-green-400 stat-highlight">$5,398</p>
                             <p class="text-gray-400 mt-1">per month</p>
                         </div>
-                        <div class="text-center p-4 mt-4 bg-white/5 rounded-xl">
-                            <p class="text-gray-400 text-sm">Even at 0.5% (2,695 clients)</p>
-                            <p class="text-2xl font-bold text-green-300">$72,723/mo</p>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="text-center p-4 bg-white/5 rounded-xl">
+                                <p class="text-gray-500 text-xs">Subscribers</p>
+                                <p id="calc-subs" class="text-xl font-bold text-white">200</p>
+                            </div>
+                            <div class="text-center p-4 bg-white/5 rounded-xl">
+                                <p class="text-gray-500 text-xs">Yearly</p>
+                                <p id="calc-yearly" class="text-xl font-bold text-green-300">$64,776</p>
+                            </div>
+                        </div>
+                        <div class="text-center p-3 mt-4 bg-orange-500/10 border border-orange-500/30 rounded-xl">
+                            <p class="text-orange-400 text-sm">ClockWork takes only <span id="calc-platform" class="font-bold">$600</span>/mo (10%)</p>
                         </div>
                     </div>
                 </div>
                 <div class="mt-8 pt-6 border-t border-white/10 text-center">
-                    <p class="text-gray-400 mb-4">Industry standard conversion for fitness influencers: 0.5% - 2%</p>
-                    <p class="text-xl">
-                        <span class="text-green-400 font-bold">You keep 90%.</span>
-                        <span class="text-gray-400"> We take 10% to cover platform costs.</span>
-                    </p>
+                    <p class="text-gray-400 mb-4">Industry standard conversion: 0.5% - 2% • Most fitness influencers see 1%</p>
+                    <a href="/apply" class="inline-block bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-xl font-bold transition">
+                        <i class="fas fa-rocket mr-2"></i>Apply Now - Start Earning
+                    </a>
                 </div>
             </div>
         </div>
     </section>
+
+    <script>
+        let conversionRate = 1;
+
+        function setConversion(rate) {
+            conversionRate = rate;
+            document.getElementById('calc-conversion').value = rate;
+            document.querySelectorAll('.conv-btn').forEach(btn => {
+                btn.classList.remove('bg-orange-500', 'text-white');
+                btn.classList.add('bg-white/10');
+            });
+            event.target.classList.remove('bg-white/10');
+            event.target.classList.add('bg-orange-500', 'text-white');
+            updateCalculator();
+        }
+
+        function updateCalculator() {
+            const followers = parseInt(document.getElementById('calc-followers').value) || 0;
+            const price = parseFloat(document.getElementById('calc-price').value);
+            const conversion = conversionRate / 100;
+
+            const subscribers = Math.floor(followers * conversion);
+            const grossMonthly = subscribers * price;
+            const yourCut = grossMonthly * 0.9;
+            const platformCut = grossMonthly * 0.1;
+            const yearly = yourCut * 12;
+
+            document.getElementById('calc-subs').textContent = subscribers.toLocaleString();
+            document.getElementById('calc-result').textContent = '$' + yourCut.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0});
+            document.getElementById('calc-yearly').textContent = '$' + yearly.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0});
+            document.getElementById('calc-platform').textContent = '$' + platformCut.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0});
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', updateCalculator);
+    </script>
 
     <!-- Who It's For -->
     <section class="py-20 px-4 bg-gradient-to-b from-transparent via-orange-600/5 to-transparent">
