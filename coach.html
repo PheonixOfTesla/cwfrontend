@@ -9,71 +9,226 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
         body { background: #0a0a0a; }
         .glow { box-shadow: 0 0 20px rgba(249, 115, 22, 0.3); }
+        .glow-green { box-shadow: 0 0 20px rgba(34, 197, 94, 0.3); }
+        .glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); }
+        .blur-content { filter: blur(8px); pointer-events: none; user-select: none; }
+        .locked-overlay { position: relative; }
+        .locked-overlay::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to bottom, transparent, rgba(10,10,10,0.9));
+            pointer-events: none;
+        }
     </style>
 </head>
 <body class="bg-[#0a0a0a] min-h-screen text-white">
     <div id="root"></div>
     <script type="text/babel">
-        const API_URL = 'https://cwbackend-production-314e.up.railway.app';
+        const { useState, useEffect } = React;
+        const API_URL = 'https://cwbackend-production-314e.up.railway.app/api';
 
+        const api = {
+            async fetch(endpoint, options = {}) {
+                const token = localStorage.getItem('token');
+                const res = await fetch(`${API_URL}${endpoint}`, {
+                    ...options,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token && { 'Authorization': `Bearer ${token}` }),
+                        ...options.headers
+                    }
+                });
+                return res.json();
+            },
+            get: (e) => api.fetch(e),
+            post: (e, body) => api.fetch(e, { method: 'POST', body: JSON.stringify(body) })
+        };
+
+        // Star Rating Component
+        function StarRating({ rating, size = 'md' }) {
+            const sizes = { sm: 'text-xs', md: 'text-sm', lg: 'text-lg' };
+            return (
+                <div className={`flex items-center gap-0.5 ${sizes[size]}`}>
+                    {[1,2,3,4,5].map(star => (
+                        <i key={star} className={`fas fa-star ${star <= rating ? 'text-yellow-400' : 'text-gray-600'}`}></i>
+                    ))}
+                </div>
+            );
+        }
+
+        // Post Card Component
+        function PostCard({ post, isLocked, onSubscribe }) {
+            const [liked, setLiked] = useState(false);
+            const timeAgo = (date) => {
+                const seconds = Math.floor((new Date() - new Date(date)) / 1000);
+                if (seconds < 60) return 'just now';
+                if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+                if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+                return `${Math.floor(seconds / 86400)}d ago`;
+            };
+
+            if (isLocked) {
+                return (
+                    <div className="glass rounded-2xl p-6 relative overflow-hidden">
+                        <div className="blur-content">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-10 h-10 bg-gray-700 rounded-full"></div>
+                                <div className="h-4 bg-gray-700 rounded w-24"></div>
+                            </div>
+                            <div className="h-4 bg-gray-700 rounded w-full mb-2"></div>
+                            <div className="h-4 bg-gray-700 rounded w-3/4"></div>
+                            <div className="h-48 bg-gray-700 rounded-xl mt-4"></div>
+                        </div>
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+                            <div className="text-center p-6">
+                                <i className="fas fa-lock text-4xl text-orange-500 mb-3"></i>
+                                <p className="text-lg font-bold mb-2">Subscriber Only</p>
+                                <button onClick={onSubscribe} className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-xl font-bold transition">
+                                    Subscribe to View
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="glass rounded-2xl p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 bg-orange-500/20 rounded-full flex items-center justify-center">
+                            <i className="fas fa-user text-orange-500"></i>
+                        </div>
+                        <div className="flex-1">
+                            <p className="font-bold">{post.coachId?.name || 'Coach'}</p>
+                            <p className="text-gray-500 text-sm">{timeAgo(post.createdAt)}</p>
+                        </div>
+                        {post.postType && post.postType !== 'general' && (
+                            <span className="bg-orange-500/20 text-orange-400 px-2 py-1 rounded text-xs capitalize">{post.postType}</span>
+                        )}
+                    </div>
+                    <p className="text-gray-200 whitespace-pre-line mb-4">{post.content}</p>
+                    {post.mediaUrl && (
+                        <div className="rounded-xl overflow-hidden mb-4">
+                            {post.mediaType === 'video' ? (
+                                <video src={post.mediaUrl} controls className="w-full" />
+                            ) : (
+                                <img src={post.mediaUrl} alt="" className="w-full" />
+                            )}
+                        </div>
+                    )}
+                    <div className="flex items-center gap-4 text-gray-400">
+                        <button onClick={() => setLiked(!liked)} className={`hover:text-red-400 transition ${liked ? 'text-red-500' : ''}`}>
+                            <i className={`${liked ? 'fas' : 'far'} fa-heart mr-1`}></i>{post.likesCount + (liked ? 1 : 0)}
+                        </button>
+                        <span><i className="far fa-comment mr-1"></i>{post.commentsCount || 0}</span>
+                    </div>
+                </div>
+            );
+        }
+
+        // Review Card Component
+        function ReviewCard({ review }) {
+            return (
+                <div className="glass rounded-xl p-4">
+                    <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center text-sm font-bold">
+                            {review.userId?.name?.charAt(0) || '?'}
+                        </div>
+                        <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                                <span className="font-bold">{review.userId?.name || 'Anonymous'}</span>
+                                {review.verified && <span className="bg-green-500/20 text-green-400 text-xs px-2 py-0.5 rounded">Verified Client</span>}
+                            </div>
+                            <StarRating rating={review.rating} size="sm" />
+                            {review.title && <p className="font-medium mt-2">{review.title}</p>}
+                            <p className="text-gray-400 text-sm mt-1">{review.text}</p>
+                            <p className="text-gray-600 text-xs mt-2">{review.coachingDuration?.replace(/-/g, ' ')}</p>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Main Component
         function CoachProfile() {
-            const [coach, setCoach] = React.useState(null);
-            const [loading, setLoading] = React.useState(true);
-            const [contacting, setContacting] = React.useState(false);
+            const [coach, setCoach] = useState(null);
+            const [posts, setPosts] = useState([]);
+            const [reviews, setReviews] = useState([]);
+            const [reviewSummary, setReviewSummary] = useState(null);
+            const [subscription, setSubscription] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [activeTab, setActiveTab] = useState('posts');
+            const [showSubscribeModal, setShowSubscribeModal] = useState(false);
+            const [selectedTier, setSelectedTier] = useState(null);
 
-            React.useEffect(() => {
-                const pathParts = window.location.pathname.split('/');
-                const coachId = pathParts[pathParts.length - 1];
+            const coachId = window.location.pathname.split('/').pop() || new URLSearchParams(window.location.search).get('id');
 
+            useEffect(() => {
                 if (coachId && coachId !== 'coach') {
-                    fetchCoach(coachId);
+                    Promise.all([
+                        fetchCoach(),
+                        fetchPosts(),
+                        fetchReviews(),
+                        fetchSubscription()
+                    ]).then(() => setLoading(false));
                 } else {
-                    // Try URL param
-                    const params = new URLSearchParams(window.location.search);
-                    const id = params.get('id');
-                    if (id) fetchCoach(id);
-                    else window.location.href = '/coaches';
+                    window.location.href = '/coaches';
                 }
             }, []);
 
-            const fetchCoach = async (id) => {
-                try {
-                    const response = await fetch(`${API_URL}/api/coach/${id}`);
-                    const data = await response.json();
-                    setCoach(data);
-                    document.title = `${data.name} - ClockWork`;
-                } catch (error) {
-                    console.error('Error:', error);
-                }
-                setLoading(false);
+            const fetchCoach = async () => {
+                const data = await api.get(`/coach/${coachId}`);
+                if (data) setCoach(data);
+                document.title = `${data?.name || 'Coach'} - ClockWork`;
             };
 
-            const handleContact = async () => {
+            const fetchPosts = async () => {
+                const data = await api.get(`/coach/${coachId}/feed`);
+                if (data.success) setPosts(data.posts || []);
+            };
+
+            const fetchReviews = async () => {
+                const data = await api.get(`/coach/${coachId}/reviews`);
+                if (data.success) {
+                    setReviews(data.reviews || []);
+                    setReviewSummary(data.summary);
+                }
+            };
+
+            const fetchSubscription = async () => {
+                const token = localStorage.getItem('token');
+                if (token) {
+                    const data = await api.get(`/coach/${coachId}/subscription`);
+                    if (data.success) setSubscription(data);
+                }
+            };
+
+            const handleSubscribe = (tier) => {
                 const token = localStorage.getItem('token');
                 if (!token) {
-                    window.location.href = '/?redirect=' + encodeURIComponent(window.location.pathname);
+                    window.location.href = `/?redirect=${encodeURIComponent(window.location.pathname)}`;
                     return;
                 }
+                setSelectedTier(tier);
+                setShowSubscribeModal(true);
+            };
 
-                setContacting(true);
-                try {
-                    await fetch(`${API_URL}/api/coach/${coach._id}/contact`, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json'
-                        }
-                    });
-                    alert('Contact request sent! The coach will be notified.');
-                } catch (error) {
-                    alert('Error sending request');
+            const confirmSubscribe = async () => {
+                const data = await api.post(`/coach/${coachId}/subscribe`, { tier: selectedTier });
+                if (data.checkoutUrl) {
+                    window.location.href = data.checkoutUrl;
+                } else if (data.success) {
+                    alert('Subscription successful!');
+                    fetchSubscription();
+                    fetchPosts();
                 }
-                setContacting(false);
+                setShowSubscribeModal(false);
             };
 
             if (loading) {
@@ -97,15 +252,30 @@
             }
 
             const profile = coach.coachProfile || {};
+            const isSubscribed = subscription?.isSubscribed;
+            const userTier = subscription?.tier;
+            const contentPrice = profile.pricing?.contentTier || 999;
+            const coachingPrice = profile.pricing?.coachingTier || 2999;
 
             return (
                 <div className="min-h-screen bg-[#0a0a0a]">
+                    {/* Header */}
+                    <nav className="fixed top-0 left-0 right-0 z-50 glass">
+                        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+                            <a href="/" className="flex items-center gap-2 font-bold">
+                                <i className="fas fa-bolt text-orange-500"></i>
+                                <span>cl<span className="text-orange-500">o</span>ckw<span className="text-orange-500">o</span>rk</span>
+                            </a>
+                            <a href="/coaches" className="text-gray-400 hover:text-white transition">
+                                <i className="fas fa-th-large mr-2"></i>Browse
+                            </a>
+                        </div>
+                    </nav>
+
                     {/* Cover & Profile */}
-                    <div className="relative">
-                        <div className="h-48 md:h-64 bg-gradient-to-r from-orange-600 to-orange-400">
-                            {profile.profilePicture && (
-                                <img src={profile.profilePicture} alt="" className="w-full h-full object-cover opacity-30" />
-                            )}
+                    <div className="relative pt-14">
+                        <div className="h-48 md:h-64 bg-gradient-to-r from-orange-600 to-orange-400 relative overflow-hidden">
+                            {profile.coverImage && <img src={profile.coverImage} alt="" className="w-full h-full object-cover" />}
                         </div>
                         <div className="max-w-4xl mx-auto px-4">
                             <div className="relative -mt-16 flex flex-col md:flex-row items-start md:items-end gap-4">
@@ -119,42 +289,143 @@
                                     )}
                                 </div>
                                 <div className="flex-1 pb-4">
-                                    <h1 className="text-3xl font-bold text-white">{coach.name}</h1>
-                                    {profile.specialty && (
-                                        <p className="text-orange-400 mt-1">{profile.specialty}</p>
-                                    )}
-                                    <div className="flex items-center gap-4 mt-2 text-gray-400">
+                                    <h1 className="text-3xl font-bold">{coach.name}</h1>
+                                    {profile.specialty && <p className="text-orange-400 mt-1">{profile.specialty}</p>}
+                                    <div className="flex items-center gap-4 mt-2 text-gray-400 text-sm flex-wrap">
                                         <span><i className="fas fa-clock mr-1"></i>{profile.experienceYears || 0}+ years</span>
+                                        {reviewSummary?.totalReviews > 0 && (
+                                            <span className="flex items-center gap-1">
+                                                <StarRating rating={reviewSummary.averageRating} size="sm" />
+                                                <span>({reviewSummary.totalReviews})</span>
+                                            </span>
+                                        )}
                                         {profile.certifications?.length > 0 && (
-                                            <span><i className="fas fa-certificate mr-1"></i>{profile.certifications.length} certifications</span>
+                                            <span><i className="fas fa-certificate mr-1"></i>{profile.certifications.length} certs</span>
                                         )}
                                     </div>
                                 </div>
-                                <button
-                                    onClick={handleContact}
-                                    disabled={contacting}
-                                    className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-xl font-bold glow transition disabled:opacity-50"
-                                >
-                                    {contacting ? 'Sending...' : 'Contact Coach'}
-                                </button>
                             </div>
                         </div>
                     </div>
 
-                    {/* Content */}
-                    <div className="max-w-4xl mx-auto px-4 py-8">
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            {/* Main */}
-                            <div className="lg:col-span-2 space-y-6">
+                    {/* Subscription Tiers */}
+                    <div className="max-w-4xl mx-auto px-4 py-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Content Tier */}
+                            <div className={`glass rounded-2xl p-6 border-2 transition ${userTier === 'content' ? 'border-green-500' : 'border-transparent hover:border-orange-500/50'}`}>
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="font-bold text-lg">Content Access</h3>
+                                    <span className="text-2xl font-bold text-orange-400">${(contentPrice / 100).toFixed(2)}<span className="text-sm text-gray-400">/mo</span></span>
+                                </div>
+                                <ul className="text-gray-400 text-sm space-y-2 mb-4">
+                                    <li><i className="fas fa-check text-green-400 mr-2"></i>Exclusive photos & videos</li>
+                                    <li><i className="fas fa-check text-green-400 mr-2"></i>Training tips & blogs</li>
+                                    <li><i className="fas fa-check text-green-400 mr-2"></i>Behind-the-scenes content</li>
+                                    <li><i className="fas fa-check text-green-400 mr-2"></i>Purchase programs</li>
+                                </ul>
+                                {userTier === 'content' ? (
+                                    <button className="w-full bg-green-500/20 text-green-400 py-3 rounded-xl font-bold cursor-default">
+                                        <i className="fas fa-check mr-2"></i>Subscribed
+                                    </button>
+                                ) : userTier === 'coaching' ? (
+                                    <button className="w-full bg-green-500/20 text-green-400 py-3 rounded-xl font-bold cursor-default">
+                                        <i className="fas fa-check mr-2"></i>Included
+                                    </button>
+                                ) : (
+                                    <button onClick={() => handleSubscribe('content')} className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-xl font-bold transition glow">
+                                        Subscribe
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Coaching Tier */}
+                            <div className={`glass rounded-2xl p-6 border-2 transition relative ${userTier === 'coaching' ? 'border-green-500' : 'border-transparent hover:border-pink-500/50'}`}>
+                                <div className="absolute -top-3 right-4 bg-pink-500 text-white text-xs px-3 py-1 rounded-full font-bold">BEST VALUE</div>
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="font-bold text-lg">1:1 Coaching</h3>
+                                    <span className="text-2xl font-bold text-pink-400">${(coachingPrice / 100).toFixed(2)}<span className="text-sm text-gray-400">/mo</span></span>
+                                </div>
+                                <ul className="text-gray-400 text-sm space-y-2 mb-4">
+                                    <li><i className="fas fa-check text-green-400 mr-2"></i>Everything in Content</li>
+                                    <li><i className="fas fa-check text-pink-400 mr-2"></i>Direct messaging</li>
+                                    <li><i className="fas fa-check text-pink-400 mr-2"></i>Personalized programs</li>
+                                    <li><i className="fas fa-check text-pink-400 mr-2"></i>Weekly check-ins</li>
+                                </ul>
+                                {userTier === 'coaching' ? (
+                                    <button className="w-full bg-green-500/20 text-green-400 py-3 rounded-xl font-bold cursor-default">
+                                        <i className="fas fa-check mr-2"></i>Active Client
+                                    </button>
+                                ) : (
+                                    <button onClick={() => handleSubscribe('coaching')} className="w-full bg-gradient-to-r from-pink-500 to-orange-500 hover:from-pink-600 hover:to-orange-600 text-white py-3 rounded-xl font-bold transition">
+                                        Apply for Coaching
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Tabs */}
+                    <div className="max-w-4xl mx-auto px-4">
+                        <div className="flex gap-1 border-b border-white/10">
+                            {['posts', 'about', 'reviews'].map(tab => (
+                                <button
+                                    key={tab}
+                                    onClick={() => setActiveTab(tab)}
+                                    className={`px-6 py-3 font-medium capitalize transition ${activeTab === tab ? 'text-orange-500 border-b-2 border-orange-500' : 'text-gray-400 hover:text-white'}`}
+                                >
+                                    {tab === 'posts' && <i className="fas fa-th-large mr-2"></i>}
+                                    {tab === 'about' && <i className="fas fa-user mr-2"></i>}
+                                    {tab === 'reviews' && <i className="fas fa-star mr-2"></i>}
+                                    {tab} {tab === 'reviews' && reviewSummary?.totalReviews > 0 && `(${reviewSummary.totalReviews})`}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Tab Content */}
+                    <div className="max-w-4xl mx-auto px-4 py-6">
+                        {/* Posts Tab */}
+                        {activeTab === 'posts' && (
+                            <div className="space-y-4">
+                                {posts.length === 0 ? (
+                                    <div className="glass rounded-2xl p-12 text-center">
+                                        <i className="fas fa-photo-video text-gray-600 text-4xl mb-4"></i>
+                                        <p className="text-gray-400">No posts yet</p>
+                                    </div>
+                                ) : (
+                                    posts.map(post => (
+                                        <PostCard
+                                            key={post._id}
+                                            post={post}
+                                            isLocked={!isSubscribed && post.visibility !== 'public'}
+                                            onSubscribe={() => handleSubscribe('content')}
+                                        />
+                                    ))
+                                )}
+                                {!isSubscribed && posts.length > 0 && (
+                                    <div className="glass rounded-2xl p-8 text-center">
+                                        <i className="fas fa-lock text-orange-500 text-3xl mb-3"></i>
+                                        <p className="text-lg font-bold mb-2">Subscribe to see more</p>
+                                        <p className="text-gray-400 mb-4">Get access to exclusive content, tips, and programs</p>
+                                        <button onClick={() => handleSubscribe('content')} className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-3 rounded-xl font-bold transition glow">
+                                            Subscribe - ${(contentPrice / 100).toFixed(2)}/mo
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* About Tab */}
+                        {activeTab === 'about' && (
+                            <div className="space-y-6">
                                 {profile.bio && (
-                                    <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                                    <div className="glass rounded-2xl p-6">
                                         <h2 className="text-xl font-bold mb-4">About</h2>
                                         <p className="text-gray-300 whitespace-pre-line">{profile.bio}</p>
                                     </div>
                                 )}
-
                                 {profile.certifications?.length > 0 && (
-                                    <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                                    <div className="glass rounded-2xl p-6">
                                         <h2 className="text-xl font-bold mb-4">Certifications</h2>
                                         <div className="space-y-3">
                                             {profile.certifications.map((cert, i) => (
@@ -172,30 +443,75 @@
                                     </div>
                                 )}
                             </div>
+                        )}
 
-                            {/* Sidebar */}
+                        {/* Reviews Tab */}
+                        {activeTab === 'reviews' && (
                             <div className="space-y-6">
-                                <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
-                                    <h3 className="font-bold mb-4">Pricing</h3>
-                                    {profile.scheduling?.sessionPrice > 0 ? (
-                                        <div>
-                                            <p className="text-3xl font-bold text-orange-500">${profile.scheduling.sessionPrice}</p>
-                                            <p className="text-gray-400">per session</p>
-                                            {profile.scheduling?.billingCycle && (
-                                                <p className="text-sm text-gray-500 mt-2 capitalize">Billing: {profile.scheduling.billingCycle}</p>
-                                            )}
+                                {reviewSummary && reviewSummary.totalReviews > 0 && (
+                                    <div className="glass rounded-2xl p-6">
+                                        <div className="flex items-center gap-6">
+                                            <div className="text-center">
+                                                <p className="text-5xl font-bold text-orange-400">{reviewSummary.averageRating}</p>
+                                                <StarRating rating={reviewSummary.averageRating} size="lg" />
+                                                <p className="text-gray-400 text-sm mt-1">{reviewSummary.totalReviews} reviews</p>
+                                            </div>
+                                            <div className="flex-1 space-y-1">
+                                                {[5,4,3,2,1].map(star => (
+                                                    <div key={star} className="flex items-center gap-2">
+                                                        <span className="text-sm text-gray-400 w-3">{star}</span>
+                                                        <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
+                                                            <div
+                                                                className="h-full bg-yellow-400 rounded-full"
+                                                                style={{ width: `${(reviewSummary.distribution[star] / reviewSummary.totalReviews) * 100}%` }}
+                                                            ></div>
+                                                        </div>
+                                                        <span className="text-sm text-gray-500 w-8">{reviewSummary.distribution[star]}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                                <div className="space-y-4">
+                                    {reviews.length === 0 ? (
+                                        <div className="glass rounded-2xl p-12 text-center">
+                                            <i className="fas fa-star text-gray-600 text-4xl mb-4"></i>
+                                            <p className="text-gray-400">No reviews yet</p>
+                                            <p className="text-gray-500 text-sm mt-2">Be the first coaching client to leave a review!</p>
                                         </div>
                                     ) : (
-                                        <p className="text-gray-400">Contact for pricing</p>
+                                        reviews.map(review => <ReviewCard key={review._id} review={review} />)
                                     )}
                                 </div>
+                            </div>
+                        )}
+                    </div>
 
-                                <a href="/coaches" className="block text-center text-orange-500 hover:underline">
-                                    <i className="fas fa-arrow-left mr-2"></i>Back to Browse
-                                </a>
+                    {/* Subscribe Modal */}
+                    {showSubscribeModal && (
+                        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+                            <div className="glass rounded-2xl p-8 max-w-md w-full">
+                                <h3 className="text-2xl font-bold mb-4">
+                                    {selectedTier === 'content' ? 'Subscribe to Content' : 'Apply for Coaching'}
+                                </h3>
+                                <p className="text-gray-400 mb-6">
+                                    {selectedTier === 'content'
+                                        ? `Get instant access to ${coach.name}'s exclusive content for $${(contentPrice / 100).toFixed(2)}/month.`
+                                        : `Apply for 1:1 coaching with ${coach.name}. They will review your application.`
+                                    }
+                                </p>
+                                <div className="flex gap-4">
+                                    <button onClick={() => setShowSubscribeModal(false)} className="flex-1 py-3 rounded-xl font-bold border border-white/20 hover:bg-white/5 transition">
+                                        Cancel
+                                    </button>
+                                    <button onClick={confirmSubscribe} className="flex-1 bg-orange-500 hover:bg-orange-600 py-3 rounded-xl font-bold transition">
+                                        {selectedTier === 'content' ? 'Subscribe' : 'Apply'}
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    )}
                 </div>
             );
         }
