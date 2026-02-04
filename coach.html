@@ -155,6 +155,69 @@
             );
         }
 
+        // Links Panel Component (Linktree replacement)
+        function LinksPanel({ links, affiliateCodes, coach, onApply }) {
+            if (!links?.length && !affiliateCodes?.length) return null;
+
+            return (
+                <div className="space-y-4">
+                    {/* Products & Links */}
+                    {links?.length > 0 && (
+                        <div className="glass rounded-2xl p-5">
+                            <h3 className="font-bold mb-4 flex items-center gap-2">
+                                <i className="fas fa-link text-orange-500"></i> Links & Products
+                            </h3>
+                            <div className="space-y-3">
+                                {links.map((link, i) => (
+                                    <a
+                                        key={i}
+                                        href={link.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-3 p-3 bg-white/5 hover:bg-white/10 rounded-xl transition group"
+                                    >
+                                        <div className="w-10 h-10 bg-orange-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                                            <i className={`fas ${link.icon || 'fa-link'} text-orange-500`}></i>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-medium truncate">{link.title}</p>
+                                            {link.description && <p className="text-gray-500 text-xs truncate">{link.description}</p>}
+                                        </div>
+                                        <i className="fas fa-arrow-right text-gray-600 group-hover:text-orange-500 transition"></i>
+                                    </a>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Affiliate Codes */}
+                    {affiliateCodes?.length > 0 && (
+                        <div className="glass rounded-2xl p-5">
+                            <h3 className="font-bold mb-4 flex items-center gap-2">
+                                <i className="fas fa-tag text-orange-500"></i> Discount Codes
+                            </h3>
+                            <div className="space-y-3">
+                                {affiliateCodes.map((code, i) => (
+                                    <div key={i} className="flex items-center justify-between p-3 bg-white/5 rounded-xl">
+                                        <div>
+                                            <p className="text-gray-400 text-sm">{code.brand}</p>
+                                            <p className="font-bold text-orange-400">{code.code}</p>
+                                        </div>
+                                        <button
+                                            onClick={() => { navigator.clipboard.writeText(code.code); alert('Copied!'); }}
+                                            className="text-gray-400 hover:text-orange-500 transition px-3 py-1"
+                                        >
+                                            <i className="fas fa-copy"></i>
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
         // Main Component
         function CoachProfile() {
             const [coach, setCoach] = useState(null);
@@ -364,10 +427,15 @@
                         </div>
                     </div>
 
+                    {/* Links Panel - Mobile shows as tab, Desktop shows in sidebar */}
+                    <div className="max-w-4xl mx-auto px-4 py-4 md:hidden">
+                        <LinksPanel links={profile.links} affiliateCodes={profile.affiliateCodes} coach={coach} />
+                    </div>
+
                     {/* Tabs */}
                     <div className="max-w-4xl mx-auto px-4">
                         <div className="flex gap-1 border-b border-white/10">
-                            {['posts', 'about', 'reviews'].map(tab => (
+                            {['posts', 'about', 'links', 'reviews'].map(tab => (
                                 <button
                                     key={tab}
                                     onClick={() => setActiveTab(tab)}
@@ -375,6 +443,7 @@
                                 >
                                     {tab === 'posts' && <i className="fas fa-th-large mr-2"></i>}
                                     {tab === 'about' && <i className="fas fa-user mr-2"></i>}
+                                    {tab === 'links' && <i className="fas fa-link mr-2"></i>}
                                     {tab === 'reviews' && <i className="fas fa-star mr-2"></i>}
                                     {tab} {tab === 'reviews' && reviewSummary?.totalReviews > 0 && `(${reviewSummary.totalReviews})`}
                                 </button>
@@ -443,6 +512,11 @@
                                     </div>
                                 )}
                             </div>
+                        )}
+
+                        {/* Links Tab */}
+                        {activeTab === 'links' && (
+                            <LinksPanel links={profile.links} affiliateCodes={profile.affiliateCodes} coach={coach} />
                         )}
 
                         {/* Reviews Tab */}

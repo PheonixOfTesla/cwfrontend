@@ -34,6 +34,8 @@
             const [profile, setProfile] = React.useState({});
             const [showProductModal, setShowProductModal] = React.useState(false);
             const [editingProduct, setEditingProduct] = React.useState(null);
+            const [links, setLinks] = React.useState([]);
+            const [affiliateCodes, setAffiliateCodes] = React.useState([]);
 
             const token = localStorage.getItem('token');
 
@@ -63,6 +65,8 @@
 
                     setUser(userRes);
                     setProfile(userRes.coachProfile || {});
+                    setLinks(userRes.coachProfile?.links || []);
+                    setAffiliateCodes(userRes.coachProfile?.affiliateCodes || []);
                     const clientList = clientsRes.clients || clientsRes || [];
                     setClients(clientList);
                     setProducts(productsRes.products || productsRes || []);
@@ -130,6 +134,46 @@
                 }
             };
 
+            const saveLinks = async (newLinks) => {
+                try {
+                    const res = await fetch(`${API_URL}/api/coach/links`, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ links: newLinks })
+                    });
+                    if (res.ok) {
+                        setLinks(newLinks);
+                        return true;
+                    }
+                    return false;
+                } catch (error) {
+                    return false;
+                }
+            };
+
+            const saveAffiliateCodes = async (newCodes) => {
+                try {
+                    const res = await fetch(`${API_URL}/api/coach/affiliate-codes`, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ affiliateCodes: newCodes })
+                    });
+                    if (res.ok) {
+                        setAffiliateCodes(newCodes);
+                        return true;
+                    }
+                    return false;
+                } catch (error) {
+                    return false;
+                }
+            };
+
             const deleteProduct = async (productId) => {
                 if (!confirm('Delete this product?')) return;
                 try {
@@ -169,6 +213,7 @@
             const tabs = [
                 { id: 'overview', label: 'Overview', icon: 'fa-chart-line' },
                 { id: 'products', label: 'Products', icon: 'fa-box' },
+                { id: 'links', label: 'Links', icon: 'fa-link' },
                 { id: 'clients', label: 'Clients', icon: 'fa-users' },
                 { id: 'messages', label: 'Messages', icon: 'fa-comments' },
                 { id: 'calendar', label: 'Calendar', icon: 'fa-calendar' },
@@ -404,6 +449,16 @@
                                     ))}
                                 </div>
                             </div>
+                        )}
+
+                        {/* Links Tab (Linktree Replacement) */}
+                        {activeTab === 'links' && (
+                            <LinksManager
+                                links={links}
+                                affiliateCodes={affiliateCodes}
+                                onSaveLinks={saveLinks}
+                                onSaveAffiliateCodes={saveAffiliateCodes}
+                            />
                         )}
 
                         {/* Clients Tab */}
@@ -1322,6 +1377,239 @@
                         <div className="flex-1">
                             <p className="font-medium text-sm">Real-time sync with Stream Chat</p>
                             <p className="text-gray-400 text-xs">Messages sync instantly across web, iOS, and Android apps</p>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Links Manager Component (Linktree Replacement)
+        function LinksManager({ links, affiliateCodes, onSaveLinks, onSaveAffiliateCodes }) {
+            const [localLinks, setLocalLinks] = React.useState(links || []);
+            const [localCodes, setLocalCodes] = React.useState(affiliateCodes || []);
+            const [saving, setSaving] = React.useState(false);
+
+            const linkTypes = [
+                { value: 'product', label: 'Product', icon: 'fa-box' },
+                { value: 'app', label: 'App', icon: 'fa-mobile' },
+                { value: 'community', label: 'Community', icon: 'fa-users' },
+                { value: 'social', label: 'Social', icon: 'fa-share-alt' },
+                { value: 'affiliate', label: 'Affiliate', icon: 'fa-tag' },
+                { value: 'other', label: 'Other', icon: 'fa-link' }
+            ];
+
+            const iconOptions = ['fa-link', 'fa-dumbbell', 'fa-mobile', 'fa-book', 'fa-users', 'fa-shopping-cart', 'fa-download', 'fa-play', 'fa-calendar', 'fa-heart', 'fa-star', 'fa-fire'];
+
+            const addLink = () => {
+                setLocalLinks([...localLinks, { title: '', url: '', icon: 'fa-link', type: 'other', description: '', isActive: true, order: localLinks.length }]);
+            };
+
+            const updateLink = (index, field, value) => {
+                const updated = [...localLinks];
+                updated[index] = { ...updated[index], [field]: value };
+                setLocalLinks(updated);
+            };
+
+            const removeLink = (index) => {
+                setLocalLinks(localLinks.filter((_, i) => i !== index));
+            };
+
+            const addCode = () => {
+                setLocalCodes([...localCodes, { brand: '', code: '', url: '', description: '' }]);
+            };
+
+            const updateCode = (index, field, value) => {
+                const updated = [...localCodes];
+                updated[index] = { ...updated[index], [field]: value };
+                setLocalCodes(updated);
+            };
+
+            const removeCode = (index) => {
+                setLocalCodes(localCodes.filter((_, i) => i !== index));
+            };
+
+            const saveAll = async () => {
+                setSaving(true);
+                await Promise.all([
+                    onSaveLinks(localLinks),
+                    onSaveAffiliateCodes(localCodes)
+                ]);
+                setSaving(false);
+                alert('Links saved!');
+            };
+
+            return (
+                <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h2 className="text-xl font-bold">Links & Products</h2>
+                            <p className="text-gray-400 text-sm">Manage your Linktree-style links visible on your profile</p>
+                        </div>
+                        <button onClick={saveAll} disabled={saving} className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-xl font-medium transition disabled:opacity-50">
+                            {saving ? 'Saving...' : 'Save All Changes'}
+                        </button>
+                    </div>
+
+                    {/* Links Section */}
+                    <div className="glass border border-white/10 rounded-2xl">
+                        <div className="p-6 border-b border-white/10 flex items-center justify-between">
+                            <h3 className="font-bold flex items-center gap-2">
+                                <i className="fas fa-link text-orange-500"></i> Your Links
+                            </h3>
+                            <button onClick={addLink} className="text-orange-500 hover:underline text-sm">
+                                <i className="fas fa-plus mr-1"></i>Add Link
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            {localLinks.length === 0 ? (
+                                <div className="text-center py-8">
+                                    <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <i className="fas fa-link text-gray-600 text-2xl"></i>
+                                    </div>
+                                    <p className="text-gray-400 mb-4">No links yet. Add your products, apps, and social links.</p>
+                                    <button onClick={addLink} className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-xl transition text-sm">
+                                        <i className="fas fa-plus mr-2"></i>Add Your First Link
+                                    </button>
+                                </div>
+                            ) : (
+                                localLinks.map((link, i) => (
+                                    <div key={i} className="bg-white/5 rounded-xl p-4 space-y-3">
+                                        <div className="flex items-center gap-3">
+                                            <select
+                                                value={link.icon}
+                                                onChange={(e) => updateLink(i, 'icon', e.target.value)}
+                                                className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm"
+                                            >
+                                                {iconOptions.map(icon => (
+                                                    <option key={icon} value={icon}>{icon.replace('fa-', '')}</option>
+                                                ))}
+                                            </select>
+                                            <input
+                                                type="text"
+                                                value={link.title}
+                                                onChange={(e) => updateLink(i, 'title', e.target.value)}
+                                                placeholder="Link title"
+                                                className="flex-1 bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-sm focus:border-orange-500 outline-none"
+                                            />
+                                            <select
+                                                value={link.type}
+                                                onChange={(e) => updateLink(i, 'type', e.target.value)}
+                                                className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm"
+                                            >
+                                                {linkTypes.map(t => (
+                                                    <option key={t.value} value={t.value}>{t.label}</option>
+                                                ))}
+                                            </select>
+                                            <button onClick={() => removeLink(i)} className="w-9 h-9 bg-red-500/20 hover:bg-red-500/30 rounded-lg flex items-center justify-center transition">
+                                                <i className="fas fa-trash text-red-400 text-sm"></i>
+                                            </button>
+                                        </div>
+                                        <input
+                                            type="url"
+                                            value={link.url}
+                                            onChange={(e) => updateLink(i, 'url', e.target.value)}
+                                            placeholder="https://..."
+                                            className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-sm focus:border-orange-500 outline-none"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={link.description || ''}
+                                            onChange={(e) => updateLink(i, 'description', e.target.value)}
+                                            placeholder="Short description (optional)"
+                                            className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-sm focus:border-orange-500 outline-none"
+                                        />
+                                        <label className="flex items-center gap-2 text-sm">
+                                            <input
+                                                type="checkbox"
+                                                checked={link.isActive}
+                                                onChange={(e) => updateLink(i, 'isActive', e.target.checked)}
+                                                className="w-4 h-4 rounded"
+                                            />
+                                            <span className="text-gray-400">Show on profile</span>
+                                        </label>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Affiliate Codes Section */}
+                    <div className="glass border border-white/10 rounded-2xl">
+                        <div className="p-6 border-b border-white/10 flex items-center justify-between">
+                            <h3 className="font-bold flex items-center gap-2">
+                                <i className="fas fa-tag text-orange-500"></i> Discount Codes
+                            </h3>
+                            <button onClick={addCode} className="text-orange-500 hover:underline text-sm">
+                                <i className="fas fa-plus mr-1"></i>Add Code
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            {localCodes.length === 0 ? (
+                                <div className="text-center py-8">
+                                    <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <i className="fas fa-tag text-gray-600 text-2xl"></i>
+                                    </div>
+                                    <p className="text-gray-400 mb-4">Share your affiliate discount codes with followers.</p>
+                                    <button onClick={addCode} className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-xl transition text-sm">
+                                        <i className="fas fa-plus mr-2"></i>Add Discount Code
+                                    </button>
+                                </div>
+                            ) : (
+                                localCodes.map((code, i) => (
+                                    <div key={i} className="bg-white/5 rounded-xl p-4 flex items-center gap-4">
+                                        <div className="flex-1 grid grid-cols-2 gap-3">
+                                            <input
+                                                type="text"
+                                                value={code.brand}
+                                                onChange={(e) => updateCode(i, 'brand', e.target.value)}
+                                                placeholder="Brand name"
+                                                className="bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-sm focus:border-orange-500 outline-none"
+                                            />
+                                            <input
+                                                type="text"
+                                                value={code.code}
+                                                onChange={(e) => updateCode(i, 'code', e.target.value.toUpperCase())}
+                                                placeholder="CODE"
+                                                className="bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-sm focus:border-orange-500 outline-none font-mono"
+                                            />
+                                        </div>
+                                        <button onClick={() => removeCode(i)} className="w-9 h-9 bg-red-500/20 hover:bg-red-500/30 rounded-lg flex items-center justify-center transition">
+                                            <i className="fas fa-trash text-red-400 text-sm"></i>
+                                        </button>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Preview */}
+                    <div className="glass border border-white/10 rounded-2xl p-6">
+                        <h3 className="font-bold mb-4">Preview</h3>
+                        <p className="text-gray-400 text-sm mb-4">This is how your links appear on your public profile:</p>
+                        <div className="bg-[#0a0a0a] rounded-xl p-4 space-y-3">
+                            {localLinks.filter(l => l.isActive && l.title).map((link, i) => (
+                                <div key={i} className="flex items-center gap-3 p-3 bg-white/5 rounded-lg">
+                                    <div className="w-10 h-10 bg-orange-500/20 rounded-lg flex items-center justify-center">
+                                        <i className={`fas ${link.icon} text-orange-500`}></i>
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="font-medium text-sm">{link.title}</p>
+                                        {link.description && <p className="text-gray-500 text-xs">{link.description}</p>}
+                                    </div>
+                                    <i className="fas fa-arrow-right text-gray-600"></i>
+                                </div>
+                            ))}
+                            {localCodes.filter(c => c.brand && c.code).length > 0 && (
+                                <div className="border-t border-white/10 pt-3 mt-3 space-y-2">
+                                    <p className="text-gray-400 text-xs font-bold uppercase">Discount Codes</p>
+                                    {localCodes.filter(c => c.brand && c.code).map((code, i) => (
+                                        <div key={i} className="flex items-center justify-between p-2 bg-white/5 rounded-lg">
+                                            <span className="text-gray-400 text-sm">{code.brand}</span>
+                                            <span className="text-orange-400 font-bold">{code.code}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
