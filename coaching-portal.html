@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClockWork - Coaching Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --cw-primary: #6366f1;
+            --cw-secondary: #8b5cf6;
+            --cw-dark: #1e1b4b;
+            --cw-light: #f5f3ff;
+            --cw-success: #10b981;
+            --cw-warning: #f59e0b;
+            --cw-danger: #ef4444;
+        }
+        * { font-family: 'Inter', -apple-system, system-ui, sans-serif; }
+        body { background: #f8fafc; }
+        .cw-gradient { background: linear-gradient(135deg, var(--cw-primary) 0%, var(--cw-secondary) 100%); }
+        .tab-btn { transition: all 0.2s ease; }
+        .tab-btn.active { background: var(--cw-primary); color: white; }
+        .tab-btn:not(.active):hover { background: #e0e7ff; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .stat-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+
+    <script>
+    // ═══════════════════════════════════════════════════════════
+    // CLOCKWORK COACHING PORTAL - Vanilla JS
+    // ═══════════════════════════════════════════════════════════
+
+    const API_BASE = 'https://clockwork-backend.up.railway.app/api';
+
+    // State
+    let state = {
+        user: null,
+        activeTab: 'dashboard',
+        clients: [],
+        sessions: [],
+        workouts: [],
+        messages: [],
+        earnings: null,
+        selectedClient: null,
+        loading: true
+    };
+
+    // Tab Configuration with Icons
+    const TABS = [
+        { id: 'dashboard', label: 'Dashboard', icon: 'fa-chart-line' },
+        { id: 'clients', label: 'Clients', icon: 'fa-users' },
+        { id: 'schedule', label: 'Schedule', icon: 'fa-calendar-alt' },
+        { id: 'workouts', label: 'Workouts', icon: 'fa-dumbbell' },
+        { id: 'exercises', label: 'Exercise Library', icon: 'fa-book-open' },
+        { id: 'messages', label: 'Messages', icon: 'fa-comments' },
+        { id: 'revenue', label: 'Revenue', icon: 'fa-dollar-sign' }
+    ];
+
+    // ═══════════════════════════════════════════════════════════
+    // RENDER FUNCTIONS
+    // ═══════════════════════════════════════════════════════════
+
+    function render() {
+        const app = document.getElementById('app');
+
+        if (state.loading) {
+            app.innerHTML = renderLoading();
+            return;
+        }
+
+        if (!state.user) {
+            window.location.href = '/login.html';
+            return;
+        }
+
+        app.innerHTML = `
+            ${renderNavigation()}
+            <main class="max-w-7xl mx-auto px-4 py-6">
+                ${renderActiveTab()}
+            </main>
+        `;
+
+        attachEventListeners();
+    }
+
+    function renderLoading() {
+        return `
+            <div class="min-h-screen flex items-center justify-center cw-gradient">
+                <div class="text-center text-white">
+                    <i class="fas fa-circle-notch fa-spin text-4xl mb-4"></i>
+                    <p class="text-lg">Loading Coaching Portal...</p>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderNavigation() {
+        return `
+            <nav class="bg-white shadow-md sticky top-0 z-50">
+                <div class="max-w-7xl mx-auto px-4">
+                    <!-- Header -->
+                    <div class="flex justify-between items-center py-4 border-b">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 cw-gradient rounded-lg flex items-center justify-center">
+                                <i class="fas fa-bolt text-white text-lg"></i>
+                            </div>
+                            <div>
+                                <h1 class="text-xl font-bold text-gray-900">ClockWork</h1>
+                                <p class="text-xs text-gray-500">Coaching Portal</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <a href="/profile.html" class="text-sm text-indigo-600 hover:text-indigo-800">
+                                <i class="fas fa-user-circle mr-1"></i> My Profile
+                            </a>
+                            <div class="flex items-center gap-2">
+                                <img src="${state.user.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(state.user.name)}"
+                                     class="w-8 h-8 rounded-full">
+                                <span class="text-sm font-medium">${state.user.name}</span>
+                            </div>
+                            <button onclick="logout()" class="text-red-500 hover:text-red-600 text-sm">
+                                <i class="fas fa-sign-out-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tab Navigation -->
+                    <div class="flex gap-1 py-3 overflow-x-auto">
+                        ${TABS.map(tab => `
+                            <button onclick="setTab('${tab.id}')"
+                                    class="tab-btn px-4 py-2 rounded-lg flex items-center gap-2 whitespace-nowrap text-sm font-medium
+                                           ${state.activeTab === tab.id ? 'active' : 'text-gray-600'}">
+                                <i class="fas ${tab.icon}"></i>
+                                <span>${tab.label}</span>
+                                ${tab.id === 'clients' && state.clients.filter(c => c.status === 'pending').length > 0 ?
+                                    `<span class="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">${state.clients.filter(c => c.status === 'pending').length}</span>` : ''}
+                                ${tab.id === 'messages' && state.messages.filter(m => !m.read).length > 0 ?
+                                    `<span class="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">${state.messages.filter(m => !m.read).length}</span>` : ''}
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+            </nav>
+        `;
+    }
+
+    function renderActiveTab() {
+        switch(state.activeTab) {
+            case 'dashboard': return renderDashboard();
+            case 'clients': return renderClients();
+            case 'schedule': return renderSchedule();
+            case 'workouts': return renderWorkouts();
+            case 'exercises': return renderExerciseLibrary();
+            case 'messages': return renderMessages();
+            case 'revenue': return renderRevenue();
+            default: return renderDashboard();
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // DASHBOARD TAB
+    // ═══════════════════════════════════════════════════════════
+
+    function renderDashboard() {
+        const activeClients = state.clients.filter(c => c.status === 'active').length;
+        const pendingClients = state.clients.filter(c => c.status === 'pending').length;
+        const todaySessions = state.sessions.filter(s => isToday(s.scheduledDate)).length;
+        const monthlyRevenue = state.earnings?.coachStats?.monthlyRecurring || 0;
+
+        return `
+            <div class="space-y-6">
+                <!-- Welcome -->
+                <div class="card p-6 cw-gradient text-white">
+                    <h2 class="text-2xl font-bold mb-2">Welcome back, ${state.user.name.split(' ')[0]}!</h2>
+                    <p class="opacity-90">Here's what's happening with your coaching business today.</p>
+                </div>
+
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="card p-4">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-500">Active Clients</p>
+                                <p class="text-2xl font-bold text-gray-900">${activeClients}</p>
+                            </div>
+                            <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                                <i class="fas fa-users text-green-600"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card p-4">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-500">Pending Requests</p>
+                                <p class="text-2xl font-bold text-gray-900">${pendingClients}</p>
+                            </div>
+                            <div class="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
+                                <i class="fas fa-user-clock text-yellow-600"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card p-4">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-500">Today's Sessions</p>
+                                <p class="text-2xl font-bold text-gray-900">${todaySessions}</p>
+                            </div>
+                            <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                                <i class="fas fa-calendar-check text-blue-600"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card p-4">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-500">Monthly Revenue</p>
+                                <p class="text-2xl font-bold text-gray-900">$${(monthlyRevenue / 100).toFixed(0)}</p>
+                            </div>
+                            <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                                <i class="fas fa-dollar-sign text-purple-600"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="grid md:grid-cols-2 gap-6">
+                    <!-- Today's Schedule -->
+                    <div class="card p-6">
+                        <h3 class="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            <i class="fas fa-clock text-indigo-600"></i> Today's Schedule
+                        </h3>
+                        ${state.sessions.filter(s => isToday(s.scheduledDate)).length > 0 ? `
+                            <div class="space-y-3">
+                                ${state.sessions.filter(s => isToday(s.scheduledDate)).slice(0, 5).map(session => `
+                                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
+                                                <i class="fas fa-user text-indigo-600"></i>
+                                            </div>
+                                            <div>
+                                                <p class="font-medium">${session.clientName || 'Client'}</p>
+                                                <p class="text-sm text-gray-500">${formatTime(session.scheduledDate)}</p>
+                                            </div>
+                                        </div>
+                                        <span class="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full">${session.type || 'Session'}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : `
+                            <p class="text-gray-500 text-center py-8">No sessions scheduled for today</p>
+                        `}
+                    </div>
+
+                    <!-- Pending Approvals -->
+                    <div class="card p-6">
+                        <h3 class="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            <i class="fas fa-user-plus text-indigo-600"></i> Pending Approvals
+                        </h3>
+                        ${state.clients.filter(c => c.status === 'pending').length > 0 ? `
+                            <div class="space-y-3">
+                                ${state.clients.filter(c => c.status === 'pending').slice(0, 5).map(client => `
+                                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                        <div class="flex items-center gap-3">
+                                            <img src="${client.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(client.name)}"
+                                                 class="w-10 h-10 rounded-full">
+                                            <div>
+                                                <p class="font-medium">${client.name}</p>
+                                                <p class="text-sm text-gray-500">${client.email}</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex gap-2">
+                                            <button onclick="approveClient('${client._id}')" class="text-green-600 hover:bg-green-100 p-2 rounded">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                            <button onclick="rejectClient('${client._id}')" class="text-red-600 hover:bg-red-100 p-2 rounded">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : `
+                            <p class="text-gray-500 text-center py-8">No pending client requests</p>
+                        `}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // CLIENTS TAB
+    // ═══════════════════════════════════════════════════════════
+
+    function renderClients() {
+        const activeClients = state.clients.filter(c => c.status === 'active');
+        const pendingClients = state.clients.filter(c => c.status === 'pending');
+
+        return `
+            <div class="space-y-6">
+                <!-- Header -->
+                <div class="flex justify-between items-center">
+                    <h2 class="text-2xl font-bold text-gray-900">My Clients</h2>
+                    <button onclick="showInviteModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2">
+                        <i class="fas fa-user-plus"></i> Invite Client
+                    </button>
+                </div>
+
+                <!-- Pending Requests -->
+                ${pendingClients.length > 0 ? `
+                    <div class="card p-6">
+                        <h3 class="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            <span class="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                            Pending Requests (${pendingClients.length})
+                        </h3>
+                        <div class="grid gap-4">
+                            ${pendingClients.map(client => `
+                                <div class="flex items-center justify-between p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                                    <div class="flex items-center gap-4">
+                                        <img src="${client.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(client.name)}"
+                                             class="w-12 h-12 rounded-full">
+                                        <div>
+                                            <p class="font-medium text-gray-900">${client.name}</p>
+                                            <p class="text-sm text-gray-500">${client.email}</p>
+                                            ${client.applicationMessage ? `<p class="text-sm text-gray-600 mt-1">"${client.applicationMessage}"</p>` : ''}
+                                        </div>
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <button onclick="approveClient('${client._id}')"
+                                                class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+                                            <i class="fas fa-check mr-1"></i> Approve
+                                        </button>
+                                        <button onclick="rejectClient('${client._id}')"
+                                                class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700">
+                                            <i class="fas fa-times mr-1"></i> Reject
+                                        </button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+
+                <!-- Active Clients -->
+                <div class="card p-6">
+                    <h3 class="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                        Active Clients (${activeClients.length})
+                    </h3>
+                    ${activeClients.length > 0 ? `
+                        <div class="grid gap-4">
+                            ${activeClients.map(client => `
+                                <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer"
+                                     onclick="viewClient('${client._id}')">
+                                    <div class="flex items-center gap-4">
+                                        <img src="${client.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(client.name)}"
+                                             class="w-12 h-12 rounded-full">
+                                        <div>
+                                            <p class="font-medium text-gray-900">${client.name}</p>
+                                            <p class="text-sm text-gray-500">${client.email}</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-4">
+                                        <div class="text-right">
+                                            <p class="text-sm text-gray-500">Last active</p>
+                                            <p class="text-sm font-medium">${client.lastActive ? formatDate(client.lastActive) : 'Never'}</p>
+                                        </div>
+                                        <i class="fas fa-chevron-right text-gray-400"></i>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : `
+                        <p class="text-gray-500 text-center py-8">No active clients yet. Invite your first client!</p>
+                    `}
+                </div>
+            </div>
+        `;
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // SCHEDULE TAB (iCal Integration)
+    // ═══════════════════════════════════════════════════════════
+
+    function renderSchedule() {
+        return `
+            <div class="space-y-6">
+                <!-- Header -->
+                <div class="flex justify-between items-center">
+                    <h2 class="text-2xl font-bold text-gray-900">Schedule</h2>
+                    <div class="flex gap-2">
+                        <button onclick="syncCalendar()" class="bg-white border px-4 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2">
+                            <i class="fas fa-sync"></i> Sync Calendar
+                        </button>
+                        <button onclick="showNewSessionModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2">
+                            <i class="fas fa-plus"></i> New Session
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Calendar Integration -->
+                <div class="card p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-bold text-gray-900">Calendar Integration</h3>
+                        <span class="text-sm text-green-600 flex items-center gap-1">
+                            <i class="fas fa-check-circle"></i> Connected
+                        </span>
+                    </div>
+
+                    <!-- Embedded Calendar (iCal/Google Calendar iframe would go here) -->
+                    <div class="bg-gray-100 rounded-lg p-8 text-center mb-4">
+                        <i class="fas fa-calendar-alt text-4xl text-gray-400 mb-4"></i>
+                        <p class="text-gray-600 mb-4">Your calendar will be embedded here</p>
+                        <p class="text-sm text-gray-500">Supports Google Calendar, Apple Calendar, Outlook</p>
+                    </div>
+
+                    <!-- Quick Connect Buttons -->
+                    <div class="flex gap-3">
+                        <button onclick="connectGoogle()" class="flex-1 bg-white border-2 border-gray-200 px-4 py-3 rounded-lg hover:border-indigo-300 flex items-center justify-center gap-2">
+                            <img src="https://www.google.com/favicon.ico" class="w-5 h-5">
+                            Google Calendar
+                        </button>
+                        <button onclick="connectZoom()" class="flex-1 bg-white border-2 border-gray-200 px-4 py-3 rounded-lg hover:border-blue-300 flex items-center justify-center gap-2">
+                            <i class="fas fa-video text-blue-500"></i>
+                            Connect Zoom
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Upcoming Sessions -->
+                <div class="card p-6">
+                    <h3 class="font-bold text-gray-900 mb-4">Upcoming Sessions</h3>
+                    ${state.sessions.length > 0 ? `
+                        <div class="space-y-3">
+                            ${state.sessions.slice(0, 10).map(session => `
+                                <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                                    <div class="flex items-center gap-4">
+                                        <div class="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
+                                            <i class="fas fa-${session.type === 'video' ? 'video' : 'user'} text-indigo-600"></i>
+                                        </div>
+                                        <div>
+                                            <p class="font-medium">${session.clientName || 'Client Session'}</p>
+                                            <p class="text-sm text-gray-500">${formatDateTime(session.scheduledDate)}</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-3">
+                                        ${session.type === 'video' ? `
+                                            <button onclick="joinSession('${session._id}')" class="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700">
+                                                <i class="fas fa-video mr-1"></i> Join
+                                            </button>
+                                        ` : ''}
+                                        <button onclick="editSession('${session._id}')" class="text-gray-500 hover:text-gray-700">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : `
+                        <p class="text-gray-500 text-center py-8">No upcoming sessions</p>
+                    `}
+                </div>
+            </div>
+        `;
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // WORKOUTS TAB
+    // ═══════════════════════════════════════════════════════════
+
+    function renderWorkouts() {
+        return `
+            <div class="space-y-6">
+                <!-- Header -->
+                <div class="flex justify-between items-center">
+                    <h2 class="text-2xl font-bold text-gray-900">Workout Builder</h2>
+                    <button onclick="createWorkout()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2">
+                        <i class="fas fa-plus"></i> Create Workout
+                    </button>
+                </div>
+
+                <!-- Client Selector -->
+                <div class="card p-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Select Client</label>
+                    <select onchange="selectClientForWorkout(this.value)" class="w-full md:w-64 border rounded-lg px-3 py-2">
+                        <option value="">-- Select a client --</option>
+                        ${state.clients.filter(c => c.status === 'active').map(client => `
+                            <option value="${client._id}" ${state.selectedClient === client._id ? 'selected' : ''}>
+                                ${client.name}
+                            </option>
+                        `).join('')}
+                    </select>
+                </div>
+
+                ${state.selectedClient ? renderWorkoutBuilder() : `
+                    <div class="card p-8 text-center">
+                        <i class="fas fa-dumbbell text-4xl text-gray-300 mb-4"></i>
+                        <p class="text-gray-500">Select a client to create or view workouts</p>
+                    </div>
+                `}
+
+                <!-- Workout Templates -->
+                <div class="card p-6">
+                    <h3 class="font-bold text-gray-900 mb-4">Workout Templates</h3>
+                    <div class="grid md:grid-cols-3 gap-4">
+                        ${['Push Day', 'Pull Day', 'Leg Day', 'Full Body', 'Upper Body', 'HIIT'].map(template => `
+                            <div class="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer" onclick="useTemplate('${template}')">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-file-alt text-indigo-600"></i>
+                                    </div>
+                                    <div>
+                                        <p class="font-medium">${template}</p>
+                                        <p class="text-sm text-gray-500">Template</p>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderWorkoutBuilder() {
+        const client = state.clients.find(c => c._id === state.selectedClient);
+        return `
+            <div class="card p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center gap-3">
+                        <img src="${client?.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(client?.name || 'Client')}"
+                             class="w-10 h-10 rounded-full">
+                        <div>
+                            <p class="font-medium">${client?.name || 'Client'}</p>
+                            <p class="text-sm text-gray-500">Creating workout</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Workout Stack Builder -->
+                <div id="workout-stack" class="space-y-4 mb-6">
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                        <i class="fas fa-plus-circle text-4xl text-gray-300 mb-2"></i>
+                        <p class="text-gray-500">Drag exercises here or click to add</p>
+                        <button onclick="showExercisePicker()" class="mt-4 text-indigo-600 hover:text-indigo-800">
+                            <i class="fas fa-search mr-1"></i> Browse Exercise Library
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3">
+                    <button onclick="saveAsDraft()" class="px-4 py-2 border rounded-lg hover:bg-gray-50">
+                        Save as Draft
+                    </button>
+                    <button onclick="assignWorkout()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">
+                        <i class="fas fa-paper-plane mr-1"></i> Assign to Client
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // EXERCISE LIBRARY TAB
+    // ═══════════════════════════════════════════════════════════
+
+    function renderExerciseLibrary() {
+        return `
+            <div class="space-y-6">
+                <!-- Header -->
+                <div class="flex justify-between items-center">
+                    <h2 class="text-2xl font-bold text-gray-900">Exercise Library</h2>
+                    <div class="flex gap-2">
+                        <input type="search" id="exercise-search" placeholder="Search exercises..."
+                               class="border rounded-lg px-4 py-2 w-64" oninput="searchExercises(this.value)">
+                    </div>
+                </div>
+
+                <!-- Categories -->
+                <div class="flex gap-2 overflow-x-auto pb-2">
+                    ${['All', 'Chest', 'Back', 'Shoulders', 'Arms', 'Legs', 'Core', 'Cardio'].map(cat => `
+                        <button onclick="filterExercises('${cat}')"
+                                class="px-4 py-2 rounded-full whitespace-nowrap ${cat === 'All' ? 'bg-indigo-600 text-white' : 'bg-gray-100 hover:bg-gray-200'}">
+                            ${cat}
+                        </button>
+                    `).join('')}
+                </div>
+
+                <!-- Exercise Grid -->
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4" id="exercise-grid">
+                    ${renderExerciseCards()}
+                </div>
+            </div>
+        `;
+    }
+
+    function renderExerciseCards() {
+        // Sample exercises - would come from API
+        const exercises = [
+            { id: 1, name: 'Barbell Bench Press', muscle: 'Chest', equipment: 'Barbell', video: true },
+            { id: 2, name: 'Deadlift', muscle: 'Back', equipment: 'Barbell', video: true },
+            { id: 3, name: 'Squat', muscle: 'Legs', equipment: 'Barbell', video: true },
+            { id: 4, name: 'Overhead Press', muscle: 'Shoulders', equipment: 'Barbell', video: true },
+            { id: 5, name: 'Pull-ups', muscle: 'Back', equipment: 'Bodyweight', video: true },
+            { id: 6, name: 'Dumbbell Curl', muscle: 'Arms', equipment: 'Dumbbell', video: true }
+        ];
+
+        return exercises.map(ex => `
+            <div class="card p-4 hover:shadow-md cursor-pointer" onclick="viewExercise(${ex.id})">
+                <div class="aspect-video bg-gray-100 rounded-lg mb-3 flex items-center justify-center">
+                    ${ex.video ? `
+                        <i class="fas fa-play-circle text-4xl text-indigo-500"></i>
+                    ` : `
+                        <i class="fas fa-image text-4xl text-gray-300"></i>
+                    `}
+                </div>
+                <h4 class="font-medium text-gray-900">${ex.name}</h4>
+                <div class="flex gap-2 mt-2">
+                    <span class="text-xs px-2 py-1 bg-indigo-100 text-indigo-700 rounded">${ex.muscle}</span>
+                    <span class="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded">${ex.equipment}</span>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // MESSAGES TAB
+    // ═══════════════════════════════════════════════════════════
+
+    function renderMessages() {
+        return `
+            <div class="space-y-6">
+                <h2 class="text-2xl font-bold text-gray-900">Messages</h2>
+
+                <div class="grid md:grid-cols-3 gap-6 h-[600px]">
+                    <!-- Conversation List -->
+                    <div class="card overflow-hidden">
+                        <div class="p-4 border-b">
+                            <input type="search" placeholder="Search conversations..." class="w-full border rounded-lg px-3 py-2 text-sm">
+                        </div>
+                        <div class="overflow-y-auto h-[calc(100%-60px)]">
+                            ${state.clients.filter(c => c.status === 'active').map(client => `
+                                <div class="p-4 hover:bg-gray-50 cursor-pointer border-b flex items-center gap-3"
+                                     onclick="selectConversation('${client._id}')">
+                                    <img src="${client.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(client.name)}"
+                                         class="w-10 h-10 rounded-full">
+                                    <div class="flex-1 min-w-0">
+                                        <p class="font-medium truncate">${client.name}</p>
+                                        <p class="text-sm text-gray-500 truncate">Last message preview...</p>
+                                    </div>
+                                    <span class="text-xs text-gray-400">2h</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <!-- Chat Area -->
+                    <div class="md:col-span-2 card flex flex-col">
+                        <div class="p-4 border-b flex items-center gap-3">
+                            <img src="https://ui-avatars.com/api/?name=Client" class="w-10 h-10 rounded-full">
+                            <div>
+                                <p class="font-medium">Select a conversation</p>
+                                <p class="text-sm text-gray-500">Choose a client to message</p>
+                            </div>
+                        </div>
+                        <div class="flex-1 p-4 overflow-y-auto bg-gray-50">
+                            <p class="text-center text-gray-500 mt-20">Select a conversation to start messaging</p>
+                        </div>
+                        <div class="p-4 border-t">
+                            <div class="flex gap-2">
+                                <input type="text" placeholder="Type a message..." class="flex-1 border rounded-lg px-4 py-2">
+                                <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // REVENUE TAB
+    // ═══════════════════════════════════════════════════════════
+
+    function renderRevenue() {
+        const earnings = state.earnings || {
+            balance: { available: 0, pending: 0 },
+            lifetime: { total: 0, fromReferrals: 0, fromInfluencer: 0, fromCoaching: 0, paidOut: 0 },
+            stats: { clicks: 0, signups: 0, conversions: 0 },
+            coachStats: { contentSubscribers: 0, coachingClients: 0, monthlyRecurring: 0 },
+            referralCode: 'LOADING'
+        };
+
+        return `
+            <div class="space-y-6">
+                <h2 class="text-2xl font-bold text-gray-900">Revenue Dashboard</h2>
+
+                <!-- Balance Card -->
+                <div class="card p-6 cw-gradient text-white">
+                    <div class="grid md:grid-cols-3 gap-6">
+                        <div>
+                            <p class="text-white/80 text-sm">Available Balance</p>
+                            <p class="text-4xl font-bold">$${(earnings.balance.available / 100).toFixed(2)}</p>
+                            <button onclick="requestPayout()" class="mt-3 bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg text-sm">
+                                <i class="fas fa-wallet mr-1"></i> Request Payout
+                            </button>
+                        </div>
+                        <div>
+                            <p class="text-white/80 text-sm">Pending (30-day hold)</p>
+                            <p class="text-3xl font-bold">$${(earnings.balance.pending / 100).toFixed(2)}</p>
+                        </div>
+                        <div>
+                            <p class="text-white/80 text-sm">Lifetime Earnings</p>
+                            <p class="text-3xl font-bold">$${(earnings.lifetime.total / 100).toFixed(2)}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Revenue Streams -->
+                <div class="grid md:grid-cols-3 gap-4">
+                    <!-- Coaching Revenue -->
+                    <div class="card p-6">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                                <i class="fas fa-user-graduate text-green-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Coaching Revenue</p>
+                                <p class="text-2xl font-bold">$${(earnings.lifetime.fromCoaching / 100).toFixed(2)}</p>
+                            </div>
+                        </div>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">Content Subscribers</span>
+                                <span class="font-medium">${earnings.coachStats.contentSubscribers}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">Coaching Clients</span>
+                                <span class="font-medium">${earnings.coachStats.coachingClients}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">MRR</span>
+                                <span class="font-medium text-green-600">$${(earnings.coachStats.monthlyRecurring / 100).toFixed(2)}/mo</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Referral Revenue -->
+                    <div class="card p-6">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                                <i class="fas fa-share-alt text-blue-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Referral Revenue</p>
+                                <p class="text-2xl font-bold">$${(earnings.lifetime.fromReferrals / 100).toFixed(2)}</p>
+                            </div>
+                        </div>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">Link Clicks</span>
+                                <span class="font-medium">${earnings.stats.clicks}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">Signups</span>
+                                <span class="font-medium">${earnings.stats.signups}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">Conversions</span>
+                                <span class="font-medium">${earnings.stats.conversions}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Influencer Revenue -->
+                    <div class="card p-6">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                                <i class="fas fa-star text-purple-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Influencer Revenue</p>
+                                <p class="text-2xl font-bold">$${(earnings.lifetime.fromInfluencer / 100).toFixed(2)}</p>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-500">Earn 15% lifetime commission on all conversions from your affiliate link.</p>
+                    </div>
+                </div>
+
+                <!-- Referral Code -->
+                <div class="card p-6">
+                    <h3 class="font-bold text-gray-900 mb-4">Your Referral Code</h3>
+                    <div class="flex items-center gap-4">
+                        <div class="flex-1 bg-gray-100 rounded-lg p-4 font-mono text-xl text-center">
+                            ${earnings.referralCode}
+                        </div>
+                        <button onclick="copyReferralCode('${earnings.referralCode}')" class="bg-indigo-600 text-white px-4 py-3 rounded-lg hover:bg-indigo-700">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                    <div class="mt-4 flex gap-3">
+                        <button onclick="copyReferralLink()" class="flex-1 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-sm">
+                            <i class="fas fa-link mr-1"></i> Copy Link
+                        </button>
+                        <button onclick="shareTwitter()" class="flex-1 bg-blue-400 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm">
+                            <i class="fab fa-twitter mr-1"></i> Tweet
+                        </button>
+                        <button onclick="shareInstagram()" class="flex-1 bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg text-sm">
+                            <i class="fab fa-instagram mr-1"></i> Share
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Payout History -->
+                <div class="card p-6">
+                    <h3 class="font-bold text-gray-900 mb-4">Payout History</h3>
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fas fa-receipt text-4xl text-gray-300 mb-2"></i>
+                        <p>No payouts yet</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // UTILITY FUNCTIONS
+    // ═══════════════════════════════════════════════════════════
+
+    function setTab(tabId) {
+        state.activeTab = tabId;
+        render();
+    }
+
+    function isToday(date) {
+        const today = new Date();
+        const d = new Date(date);
+        return d.toDateString() === today.toDateString();
+    }
+
+    function formatDate(date) {
+        return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
+    function formatTime(date) {
+        return new Date(date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    }
+
+    function formatDateTime(date) {
+        return new Date(date).toLocaleString('en-US', {
+            month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+        });
+    }
+
+    function copyReferralCode(code) {
+        navigator.clipboard.writeText(code);
+        alert('Referral code copied!');
+    }
+
+    function attachEventListeners() {
+        // Add any dynamic event listeners here
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // API FUNCTIONS
+    // ═══════════════════════════════════════════════════════════
+
+    async function fetchProfile() {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`${API_BASE}/users/profile`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                state.user = data.data || data;
+                await loadCoachData();
+            } else {
+                localStorage.removeItem('token');
+            }
+        } catch (err) {
+            console.error('Profile fetch error:', err);
+        }
+        state.loading = false;
+        render();
+    }
+
+    async function loadCoachData() {
+        try {
+            const token = localStorage.getItem('token');
+            const headers = { 'Authorization': `Bearer ${token}` };
+
+            // Load clients, sessions, earnings in parallel
+            const [clientsRes, sessionsRes, earningsRes] = await Promise.all([
+                fetch(`${API_BASE}/coach/clients`, { headers }),
+                fetch(`${API_BASE}/coach/sessions`, { headers }),
+                fetch(`${API_BASE}/earnings/summary`, { headers })
+            ]);
+
+            if (clientsRes.ok) {
+                const data = await clientsRes.json();
+                state.clients = data.clients || data.data || [];
+            }
+            if (sessionsRes.ok) {
+                const data = await sessionsRes.json();
+                state.sessions = data.sessions || data.data || [];
+            }
+            if (earningsRes.ok) {
+                const data = await earningsRes.json();
+                state.earnings = data.data || data;
+            }
+        } catch (err) {
+            console.error('Coach data load error:', err);
+        }
+    }
+
+    async function approveClient(clientId) {
+        try {
+            const token = localStorage.getItem('token');
+            await fetch(`${API_BASE}/coach/clients/${clientId}/approve`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            await loadCoachData();
+            render();
+        } catch (err) {
+            console.error('Approve error:', err);
+        }
+    }
+
+    async function rejectClient(clientId) {
+        if (!confirm('Are you sure you want to reject this client?')) return;
+        try {
+            const token = localStorage.getItem('token');
+            await fetch(`${API_BASE}/coach/clients/${clientId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            await loadCoachData();
+            render();
+        } catch (err) {
+            console.error('Reject error:', err);
+        }
+    }
+
+    function logout() {
+        localStorage.removeItem('token');
+        window.location.href = '/login.html';
+    }
+
+    // Placeholder functions for features
+    function showInviteModal() { alert('Invite client modal - TODO'); }
+    function viewClient(id) { alert('View client: ' + id); }
+    function showNewSessionModal() { alert('New session modal - TODO'); }
+    function syncCalendar() { alert('Sync calendar - TODO'); }
+    function connectGoogle() { alert('Connect Google Calendar - TODO'); }
+    function connectZoom() { alert('Connect Zoom - TODO'); }
+    function joinSession(id) { alert('Join session: ' + id); }
+    function editSession(id) { alert('Edit session: ' + id); }
+    function selectClientForWorkout(id) { state.selectedClient = id; render(); }
+    function createWorkout() { alert('Create workout - TODO'); }
+    function showExercisePicker() { setTab('exercises'); }
+    function useTemplate(name) { alert('Use template: ' + name); }
+    function saveAsDraft() { alert('Save as draft - TODO'); }
+    function assignWorkout() { alert('Assign workout - TODO'); }
+    function searchExercises(query) { console.log('Search:', query); }
+    function filterExercises(cat) { console.log('Filter:', cat); }
+    function viewExercise(id) { alert('View exercise: ' + id); }
+    function selectConversation(id) { console.log('Select conversation:', id); }
+    function requestPayout() { alert('Request payout - TODO'); }
+    function copyReferralLink() { alert('Link copied!'); }
+    function shareTwitter() { window.open('https://twitter.com/intent/tweet?text=Join%20ClockWork!'); }
+    function shareInstagram() { alert('Share to Instagram - TODO'); }
+
+    // ═══════════════════════════════════════════════════════════
+    // INIT
+    // ═══════════════════════════════════════════════════════════
+
+    fetchProfile();
+    </script>
+</body>
+</html>
