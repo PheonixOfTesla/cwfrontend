@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Stop posting for free. Get paid for every follower you bring to ClockWork. Earn up to $10K+/month as a fitness creator.">
+    <meta name="theme-color" content="#f97316">
+    <title>Get Paid to Post | ClockWork Creator Program</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        clockwork: { orange: '#f97316', pink: '#ec4899', purple: '#a855f7', dark: '#0a0a0a' }
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a0a1a 50%, #0a0a0a 100%);
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+        }
+        .glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); }
+        .gradient-text { background: linear-gradient(135deg, #f97316, #ec4899, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .gradient-border { background: linear-gradient(135deg, #f97316, #ec4899) border-box; border: 2px solid transparent; }
+        .glow-pink { box-shadow: 0 0 60px rgba(236, 72, 153, 0.4); }
+        .glow-orange { box-shadow: 0 0 40px rgba(249, 115, 22, 0.3); }
+        .creator-card { transition: all 0.3s; }
+        .creator-card:hover { transform: translateY(-8px); }
+        .earnings-counter { font-variant-numeric: tabular-nums; }
+        @keyframes pulse-glow { 0%, 100% { box-shadow: 0 0 20px rgba(236, 72, 153, 0.4); } 50% { box-shadow: 0 0 40px rgba(236, 72, 153, 0.6); } }
+        .pulse-glow { animation: pulse-glow 2s infinite; }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        .float { animation: float 3s ease-in-out infinite; }
+        .money-rain { position: absolute; font-size: 24px; animation: fall 3s linear infinite; opacity: 0.3; }
+        @keyframes fall { 0% { transform: translateY(-100vh) rotate(0deg); } 100% { transform: translateY(100vh) rotate(360deg); } }
+    </style>
+</head>
+<body class="text-white overflow-x-hidden">
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 left-0 right-0 z-50 glass">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+            <a href="index.html" class="flex items-center gap-2">
+                <i class="fas fa-bolt text-orange-500 text-2xl"></i>
+                <span class="text-xl font-bold">clockwork</span>
+            </a>
+            <div class="flex items-center gap-6">
+                <a href="coaches.html" class="text-gray-400 hover:text-white hidden md:block">For Coaches</a>
+                <a href="influencer.html" class="text-pink-400 hover:text-pink-300 hidden md:block">For Influencers</a>
+                <a href="login.html" class="bg-gradient-to-r from-orange-500 to-pink-500 text-white px-6 py-2 rounded-full font-bold hover:opacity-90 transition-all">
+                    Start Earning
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="min-h-screen flex items-center justify-center pt-20 px-4 relative overflow-hidden">
+        <!-- Background Effects -->
+        <div class="absolute inset-0 overflow-hidden pointer-events-none">
+            <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-pink-500/20 rounded-full blur-3xl"></div>
+            <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-orange-500/20 rounded-full blur-3xl"></div>
+        </div>
+
+        <div class="max-w-6xl mx-auto text-center relative z-10">
+            <!-- Badge -->
+            <div class="inline-flex items-center gap-2 bg-pink-500/20 border border-pink-500/30 rounded-full px-4 py-2 mb-8">
+                <span class="w-2 h-2 bg-pink-500 rounded-full animate-pulse"></span>
+                <span class="text-pink-300 text-sm font-medium">2026 Creator Economy</span>
+            </div>
+
+            <h1 class="text-5xl md:text-7xl font-black mb-6 leading-tight">
+                Stop Posting<br>
+                <span class="gradient-text">For Free</span>
+            </h1>
+
+            <p class="text-xl md:text-2xl text-gray-300 mb-4 max-w-3xl mx-auto">
+                Your followers are worth money. Every single one.
+            </p>
+            <p class="text-lg text-gray-400 mb-8 max-w-2xl mx-auto">
+                ClockWork pays you <span class="text-green-400 font-bold">$3-5 per signup</span> for every person who joins through your link.
+                No inventory. No shipping. No BS.
+            </p>
+
+            <!-- Earnings Calculator Preview -->
+            <div class="glass rounded-2xl p-6 max-w-md mx-auto mb-8 glow-pink">
+                <div class="text-gray-400 text-sm mb-2">If you have 10,000 followers and 2% convert...</div>
+                <div class="text-5xl font-black text-green-400 earnings-counter">$600-$1,000</div>
+                <div class="text-gray-500 text-sm">per month. Passive.</div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+                <a href="login.html?type=influencer" class="bg-gradient-to-r from-orange-500 to-pink-500 text-white px-8 py-4 rounded-full font-bold text-lg hover:opacity-90 transition-all glow-orange">
+                    <i class="fas fa-dollar-sign mr-2"></i>Start Earning Now
+                </a>
+                <a href="#how-it-works" class="glass text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-white/10 transition-all">
+                    <i class="fas fa-play mr-2"></i>See How It Works
+                </a>
+            </div>
+
+            <!-- Trust Badges -->
+            <div class="flex flex-wrap justify-center gap-6 text-gray-500 text-sm">
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-shield-alt text-green-500"></i>
+                    <span>Instant Payouts via Stripe</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-percentage text-pink-500"></i>
+                    <span>Keep 90% of Everything</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-users text-orange-500"></i>
+                    <span>500+ Creators Earning</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Social Proof: Real Creators -->
+    <section class="py-20 px-4">
+        <div class="max-w-6xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-5xl font-black mb-4">
+                    They Built <span class="gradient-text">Empires</span>
+                </h2>
+                <p class="text-gray-400 text-lg max-w-2xl mx-auto">
+                    These creators stopped giving away free content. Now they own businesses worth millions.
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-6">
+                <!-- Sommer Ray -->
+                <div class="creator-card glass rounded-2xl overflow-hidden">
+                    <div class="h-64 bg-gradient-to-br from-pink-500/20 to-purple-500/20 flex items-center justify-center">
+                        <div class="text-center">
+                            <div class="w-24 h-24 bg-gradient-to-br from-pink-500 to-orange-500 rounded-full mx-auto mb-4 flex items-center justify-center text-4xl font-black">SR</div>
+                            <div class="text-2xl font-bold">Sommer Ray</div>
+                            <div class="text-pink-400">@sommerray</div>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <div class="flex justify-between mb-4">
+                            <div>
+                                <div class="text-2xl font-bold text-green-400">$10M+</div>
+                                <div class="text-gray-500 text-sm">Annual Revenue</div>
+                            </div>
+                            <div>
+                                <div class="text-2xl font-bold">26M</div>
+                                <div class="text-gray-500 text-sm">Followers</div>
+                            </div>
+                        </div>
+                        <p class="text-gray-400 text-sm">
+                            Monetizes photos, videos, workout plans, and her clothing line IMARAÏS Beauty.
+                            <span class="text-white font-medium">Zero content goes out for free.</span>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Whitney Simmons -->
+                <div class="creator-card glass rounded-2xl overflow-hidden">
+                    <div class="h-64 bg-gradient-to-br from-orange-500/20 to-pink-500/20 flex items-center justify-center">
+                        <div class="text-center">
+                            <div class="w-24 h-24 bg-gradient-to-br from-orange-500 to-yellow-500 rounded-full mx-auto mb-4 flex items-center justify-center text-4xl font-black">WS</div>
+                            <div class="text-2xl font-bold">Whitney Simmons</div>
+                            <div class="text-orange-400">@whitneyysimmons</div>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <div class="flex justify-between mb-4">
+                            <div>
+                                <div class="text-2xl font-bold text-green-400">$5M+</div>
+                                <div class="text-gray-500 text-sm">Annual Revenue</div>
+                            </div>
+                            <div>
+                                <div class="text-2xl font-bold">5.8M</div>
+                                <div class="text-gray-500 text-sm">Followers</div>
+                            </div>
+                        </div>
+                        <p class="text-gray-400 text-sm">
+                            Gymshark athlete, Buff Bunny co-founder. Built her empire from gym selfies.
+                            <span class="text-white font-medium">Every post = revenue.</span>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Tammy Hembrow -->
+                <div class="creator-card glass rounded-2xl overflow-hidden">
+                    <div class="h-64 bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center">
+                        <div class="text-center">
+                            <div class="w-24 h-24 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full mx-auto mb-4 flex items-center justify-center text-4xl font-black">TH</div>
+                            <div class="text-2xl font-bold">Tammy Hembrow</div>
+                            <div class="text-purple-400">@tammyhembrow</div>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <div class="flex justify-between mb-4">
+                            <div>
+                                <div class="text-2xl font-bold text-green-400">$15M+</div>
+                                <div class="text-gray-500 text-sm">Annual Revenue</div>
+                            </div>
+                            <div>
+                                <div class="text-2xl font-bold">17M</div>
+                                <div class="text-gray-500 text-sm">Followers</div>
+                            </div>
+                        </div>
+                        <p class="text-gray-400 text-sm">
+                            Saski Collection, Tammy Fit app. Single mom to CEO.
+                            <span class="text-white font-medium">Content is currency.</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center mt-12">
+                <p class="text-xl text-gray-300">
+                    <span class="text-pink-400 font-bold">Your followers are watching them.</span><br>
+                    Why aren't they paying you?
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section id="how-it-works" class="py-20 px-4 bg-gradient-to-b from-transparent via-pink-500/5 to-transparent">
+        <div class="max-w-6xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-5xl font-black mb-4">
+                    Three Steps to <span class="gradient-text">Getting Paid</span>
+                </h2>
+                <p class="text-gray-400 text-lg">No inventory. No customer service. No complicated setup.</p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-8">
+                <!-- Step 1 -->
+                <div class="text-center">
+                    <div class="w-20 h-20 bg-gradient-to-br from-orange-500 to-pink-500 rounded-2xl mx-auto mb-6 flex items-center justify-center text-3xl font-black pulse-glow">
+                        1
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Get Your Code</h3>
+                    <p class="text-gray-400">
+                        Sign up free. Get your unique code instantly. It's literally your Instagram handle.
+                        <span class="text-orange-400 font-mono block mt-2">clockwork.fit?ref=YOURNAME</span>
+                    </p>
+                </div>
+
+                <!-- Step 2 -->
+                <div class="text-center">
+                    <div class="w-20 h-20 bg-gradient-to-br from-pink-500 to-purple-500 rounded-2xl mx-auto mb-6 flex items-center justify-center text-3xl font-black pulse-glow" style="animation-delay: 0.5s;">
+                        2
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Share With Your Audience</h3>
+                    <p class="text-gray-400">
+                        Link in bio. Story swipe-up. TikTok caption. YouTube description. Anywhere your followers are.
+                        <span class="text-pink-400 block mt-2">"Use my code for 24hr free trial"</span>
+                    </p>
+                </div>
+
+                <!-- Step 3 -->
+                <div class="text-center">
+                    <div class="w-20 h-20 bg-gradient-to-br from-purple-500 to-orange-500 rounded-2xl mx-auto mb-6 flex items-center justify-center text-3xl font-black pulse-glow" style="animation-delay: 1s;">
+                        3
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Get Paid. Automatically.</h3>
+                    <p class="text-gray-400">
+                        Someone signs up? You get paid. They subscribe? You get paid again. Every month. Forever.
+                        <span class="text-green-400 block mt-2">Direct deposit to your bank</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Earnings Breakdown -->
+    <section class="py-20 px-4">
+        <div class="max-w-6xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-5xl font-black mb-4">
+                    The <span class="gradient-text">Math</span> Is Simple
+                </h2>
+                <p class="text-gray-400 text-lg">No complicated tiers. No waiting periods. No BS.</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8 items-center">
+                <!-- Calculator -->
+                <div class="glass rounded-2xl p-8 glow-pink">
+                    <h3 class="text-2xl font-bold mb-6">Earnings Calculator</h3>
+
+                    <div class="space-y-6">
+                        <div>
+                            <label class="text-gray-400 text-sm block mb-2">Your Followers</label>
+                            <input type="range" id="followers" min="1000" max="1000000" value="50000" class="w-full accent-pink-500">
+                            <div class="text-2xl font-bold mt-2"><span id="followerCount">50,000</span> followers</div>
+                        </div>
+
+                        <div>
+                            <label class="text-gray-400 text-sm block mb-2">Conversion Rate</label>
+                            <input type="range" id="conversion" min="0.5" max="5" step="0.1" value="2" class="w-full accent-orange-500">
+                            <div class="text-xl font-medium mt-2"><span id="conversionRate">2</span>% convert</div>
+                        </div>
+
+                        <div class="border-t border-white/10 pt-6">
+                            <div class="text-gray-400 text-sm mb-2">Your Monthly Earnings</div>
+                            <div class="text-5xl font-black text-green-400" id="monthlyEarnings">$3,000 - $5,000</div>
+                            <div class="text-gray-500 text-sm mt-2">+ recurring commission every month they stay subscribed</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Breakdown -->
+                <div class="space-y-6">
+                    <div class="glass rounded-xl p-6">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center">
+                                <i class="fas fa-hand-holding-dollar text-green-400 text-xl"></i>
+                            </div>
+                            <div>
+                                <div class="text-2xl font-bold text-green-400">$3-5 per signup</div>
+                                <div class="text-gray-400">One-time bonus when someone joins</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass rounded-xl p-6">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center">
+                                <i class="fas fa-sync text-purple-400 text-xl"></i>
+                            </div>
+                            <div>
+                                <div class="text-2xl font-bold text-purple-400">10% recurring</div>
+                                <div class="text-gray-400">Every month they stay subscribed</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass rounded-xl p-6">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 bg-pink-500/20 rounded-xl flex items-center justify-center">
+                                <i class="fas fa-crown text-pink-400 text-xl"></i>
+                            </div>
+                            <div>
+                                <div class="text-2xl font-bold text-pink-400">You keep 90%</div>
+                                <div class="text-gray-400">We only take 10% platform fee</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass rounded-xl p-6 border-2 border-orange-500/50">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 bg-orange-500/20 rounded-xl flex items-center justify-center">
+                                <i class="fas fa-bolt text-orange-400 text-xl"></i>
+                            </div>
+                            <div>
+                                <div class="text-2xl font-bold text-orange-400">Instant Payouts</div>
+                                <div class="text-gray-400">Weekly deposits via Stripe. No waiting.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- vs OnlyFans Comparison -->
+    <section class="py-20 px-4 bg-gradient-to-b from-transparent via-purple-500/5 to-transparent">
+        <div class="max-w-4xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-5xl font-black mb-4">
+                    Better Than <span class="line-through text-gray-600">OnlyFans</span>
+                </h2>
+                <p class="text-gray-400 text-lg">Same money. Zero compromises. Keep your clothes on.</p>
+            </div>
+
+            <div class="glass rounded-2xl overflow-hidden">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-white/10">
+                            <th class="p-4 text-left"></th>
+                            <th class="p-4 text-center">
+                                <div class="flex items-center justify-center gap-2">
+                                    <i class="fas fa-bolt text-orange-500"></i>
+                                    <span class="font-bold">ClockWork</span>
+                                </div>
+                            </th>
+                            <th class="p-4 text-center text-gray-500">OnlyFans</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="border-b border-white/10">
+                            <td class="p-4 text-gray-400">Your Cut</td>
+                            <td class="p-4 text-center text-green-400 font-bold">90%</td>
+                            <td class="p-4 text-center text-gray-500">80%</td>
+                        </tr>
+                        <tr class="border-b border-white/10">
+                            <td class="p-4 text-gray-400">Content Required</td>
+                            <td class="p-4 text-center text-green-400 font-bold">Share a link</td>
+                            <td class="p-4 text-center text-gray-500">Constant content</td>
+                        </tr>
+                        <tr class="border-b border-white/10">
+                            <td class="p-4 text-gray-400">Privacy</td>
+                            <td class="p-4 text-center text-green-400 font-bold">100% Private</td>
+                            <td class="p-4 text-center text-gray-500">Public platform</td>
+                        </tr>
+                        <tr class="border-b border-white/10">
+                            <td class="p-4 text-gray-400">Recurring Income</td>
+                            <td class="p-4 text-center text-green-400 font-bold"><i class="fas fa-check"></i> Forever</td>
+                            <td class="p-4 text-center text-gray-500">Only if they resub</td>
+                        </tr>
+                        <tr class="border-b border-white/10">
+                            <td class="p-4 text-gray-400">Brand Safe</td>
+                            <td class="p-4 text-center text-green-400 font-bold"><i class="fas fa-check"></i> Yes</td>
+                            <td class="p-4 text-center text-red-400"><i class="fas fa-times"></i> No</td>
+                        </tr>
+                        <tr>
+                            <td class="p-4 text-gray-400">Effort Level</td>
+                            <td class="p-4 text-center text-green-400 font-bold">Post once, earn forever</td>
+                            <td class="p-4 text-center text-gray-500">Never-ending content</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section class="py-20 px-4">
+        <div class="max-w-6xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-5xl font-black mb-4">
+                    Real <span class="gradient-text">Results</span>
+                </h2>
+                <p class="text-gray-400 text-lg">From creators just like you</p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-6">
+                <div class="glass rounded-2xl p-6">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-12 h-12 bg-gradient-to-br from-pink-500 to-purple-500 rounded-full flex items-center justify-center font-bold">JM</div>
+                        <div>
+                            <div class="font-bold">Jessica M.</div>
+                            <div class="text-gray-500 text-sm">@jessfitlife • 45K followers</div>
+                        </div>
+                    </div>
+                    <div class="text-green-400 text-2xl font-bold mb-2">$2,340/mo</div>
+                    <p class="text-gray-400">
+                        "I literally just put the link in my bio and mentioned it in one story. That's it. Now I make more from ClockWork than my part-time job."
+                    </p>
+                </div>
+
+                <div class="glass rounded-2xl p-6">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-12 h-12 bg-gradient-to-br from-orange-500 to-pink-500 rounded-full flex items-center justify-center font-bold">AT</div>
+                        <div>
+                            <div class="font-bold">Alyssa T.</div>
+                            <div class="text-gray-500 text-sm">@alyssatrains • 128K followers</div>
+                        </div>
+                    </div>
+                    <div class="text-green-400 text-2xl font-bold mb-2">$7,890/mo</div>
+                    <p class="text-gray-400">
+                        "Finally, a way to monetize my audience without selling supplements or doing awkward brand deals. The money just hits my account every week."
+                    </p>
+                </div>
+
+                <div class="glass rounded-2xl p-6">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center font-bold">MK</div>
+                        <div>
+                            <div class="font-bold">Morgan K.</div>
+                            <div class="text-gray-500 text-sm">@morgankfit • 22K followers</div>
+                        </div>
+                    </div>
+                    <div class="text-green-400 text-2xl font-bold mb-2">$890/mo</div>
+                    <p class="text-gray-400">
+                        "I'm a college student. This covers my rent. I post about fitness anyway - now I just add my link and it pays my bills."
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="py-20 px-4">
+        <div class="max-w-4xl mx-auto">
+            <div class="glass rounded-3xl p-8 md:p-12 text-center glow-pink relative overflow-hidden">
+                <!-- Background Effect -->
+                <div class="absolute inset-0 bg-gradient-to-br from-pink-500/10 to-orange-500/10"></div>
+
+                <div class="relative z-10">
+                    <div class="text-6xl mb-6">
+                        <i class="fas fa-fire text-orange-500"></i>
+                    </div>
+
+                    <h2 class="text-3xl md:text-5xl font-black mb-4">
+                        Your Followers Are <span class="gradient-text">Worth Money</span>
+                    </h2>
+
+                    <p class="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
+                        Every day you wait is money left on the table. Creators with half your followers are already getting paid.
+                    </p>
+
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center mb-8">
+                        <a href="login.html?type=influencer" class="bg-gradient-to-r from-orange-500 to-pink-500 text-white px-10 py-5 rounded-full font-bold text-xl hover:opacity-90 transition-all glow-orange">
+                            <i class="fas fa-rocket mr-2"></i>Get My Code Now - It's Free
+                        </a>
+                    </div>
+
+                    <div class="flex flex-wrap justify-center gap-6 text-gray-400 text-sm">
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-check text-green-500"></i>
+                            <span>Free to join</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-check text-green-500"></i>
+                            <span>No minimum followers</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-check text-green-500"></i>
+                            <span>Start earning today</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="py-20 px-4">
+        <div class="max-w-3xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-black mb-4">Questions?</h2>
+            </div>
+
+            <div class="space-y-4">
+                <div class="glass rounded-xl p-6">
+                    <h3 class="font-bold text-lg mb-2">How do I get paid?</h3>
+                    <p class="text-gray-400">Direct deposit to your bank account via Stripe. Weekly payouts, no minimum. You can also get paid instantly for a small fee.</p>
+                </div>
+
+                <div class="glass rounded-xl p-6">
+                    <h3 class="font-bold text-lg mb-2">Do I need a lot of followers?</h3>
+                    <p class="text-gray-400">Nope. We have creators earning with 500 followers. It's about engagement, not size. A small, loyal audience can be more valuable than millions of bots.</p>
+                </div>
+
+                <div class="glass rounded-xl p-6">
+                    <h3 class="font-bold text-lg mb-2">What do I have to post?</h3>
+                    <p class="text-gray-400">Nothing specific. Just share your link naturally when fitness comes up. Story mentions, link in bio, YouTube descriptions - wherever your audience is.</p>
+                </div>
+
+                <div class="glass rounded-xl p-6">
+                    <h3 class="font-bold text-lg mb-2">Is this like a pyramid scheme?</h3>
+                    <p class="text-gray-400">No. You're an affiliate - you get paid for bringing customers to a real product (ClockWork fitness app). It's the same model Amazon, Nike, and every major brand uses.</p>
+                </div>
+
+                <div class="glass rounded-xl p-6">
+                    <h3 class="font-bold text-lg mb-2">How is this different from other affiliate programs?</h3>
+                    <p class="text-gray-400">Most programs pay once. We pay you EVERY MONTH your referral stays subscribed. Plus we give you 90% - most programs keep 50%+.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="border-t border-white/10 py-12 px-4">
+        <div class="max-w-6xl mx-auto">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-bolt text-orange-500 text-xl"></i>
+                    <span class="font-bold">clockwork</span>
+                    <span class="text-gray-500 text-sm ml-4">People Are The Future</span>
+                </div>
+                <div class="flex gap-6 text-gray-400">
+                    <a href="index.html" class="hover:text-white">Home</a>
+                    <a href="coaches.html" class="hover:text-white">For Coaches</a>
+                    <a href="influencer.html" class="hover:text-white">For Influencers</a>
+                    <a href="login.html" class="hover:text-white">Login</a>
+                </div>
+            </div>
+            <div class="text-center text-gray-600 text-sm mt-8">
+                2026 ClockWork. Currency is the future.
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Earnings Calculator
+        const followersInput = document.getElementById('followers');
+        const conversionInput = document.getElementById('conversion');
+        const followerCountEl = document.getElementById('followerCount');
+        const conversionRateEl = document.getElementById('conversionRate');
+        const monthlyEarningsEl = document.getElementById('monthlyEarnings');
+
+        function updateCalculator() {
+            const followers = parseInt(followersInput.value);
+            const conversion = parseFloat(conversionInput.value);
+
+            followerCountEl.textContent = followers.toLocaleString();
+            conversionRateEl.textContent = conversion.toFixed(1);
+
+            const signups = Math.floor(followers * (conversion / 100));
+            const lowEarnings = signups * 3;
+            const highEarnings = signups * 5;
+
+            monthlyEarningsEl.textContent = `$${lowEarnings.toLocaleString()} - $${highEarnings.toLocaleString()}`;
+        }
+
+        followersInput.addEventListener('input', updateCalculator);
+        conversionInput.addEventListener('input', updateCalculator);
+        updateCalculator();
+
+        // Smooth scroll
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+    </script>
+</body>
+</html>
