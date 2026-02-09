@@ -42,12 +42,26 @@
         .float { animation: float 3s ease-in-out infinite; }
         .money-rain { position: absolute; font-size: 24px; animation: fall 3s linear infinite; opacity: 0.3; }
         @keyframes fall { 0% { transform: translateY(-100vh) rotate(0deg); } 100% { transform: translateY(100vh) rotate(360deg); } }
+        @keyframes countUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .count-up { animation: countUp 0.5s ease-out; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .slide-in { animation: slideIn 0.5s ease-out; }
+        .earnings-notification { position: fixed; bottom: 20px; left: 20px; z-index: 100; }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); } 20%, 40%, 60%, 80% { transform: translateX(2px); } }
+        .shake { animation: shake 0.5s ease-in-out; }
     </style>
 </head>
 <body class="text-white overflow-x-hidden">
 
+    <!-- Urgency Banner -->
+    <div class="bg-gradient-to-r from-pink-600 to-orange-500 text-white py-2 px-4 text-center text-sm font-medium fixed top-0 left-0 right-0 z-[60]">
+        <span class="animate-pulse inline-block w-2 h-2 bg-white rounded-full mr-2"></span>
+        <span id="liveCount">47</span> creators joined today • <span class="font-bold">$12,340</span> paid out this week
+        <span class="hidden md:inline ml-2">• Limited spots in your area</span>
+    </div>
+
     <!-- Navigation -->
-    <nav class="fixed top-0 left-0 right-0 z-50 glass">
+    <nav class="fixed top-8 left-0 right-0 z-50 glass">
         <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
             <a href="index.html" class="flex items-center gap-2">
                 <i class="fas fa-bolt text-orange-500 text-2xl"></i>
@@ -64,7 +78,15 @@
     </nav>
 
     <!-- Hero Section -->
-    <section class="min-h-screen flex items-center justify-center pt-20 px-4 relative overflow-hidden">
+    <section class="min-h-screen flex items-center justify-center pt-28 px-4 relative overflow-hidden">
+        <!-- Video Background -->
+        <div class="absolute inset-0 overflow-hidden">
+            <video autoplay muted loop playsinline class="absolute w-full h-full object-cover opacity-30">
+                <source src="https://assets.mixkit.co/videos/preview/mixkit-woman-running-on-treadmill-at-gym-4637-large.mp4" type="video/mp4">
+            </video>
+            <div class="absolute inset-0 bg-gradient-to-b from-black/60 via-black/80 to-black"></div>
+        </div>
+
         <!-- Background Effects -->
         <div class="absolute inset-0 overflow-hidden pointer-events-none">
             <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-pink-500/20 rounded-full blur-3xl"></div>
@@ -140,9 +162,13 @@
             <div class="grid md:grid-cols-3 gap-6">
                 <!-- Sommer Ray -->
                 <div class="creator-card glass rounded-2xl overflow-hidden">
-                    <div class="h-64 bg-gradient-to-br from-pink-500/20 to-purple-500/20 flex items-center justify-center">
-                        <div class="text-center">
-                            <div class="w-24 h-24 bg-gradient-to-br from-pink-500 to-orange-500 rounded-full mx-auto mb-4 flex items-center justify-center text-4xl font-black">SR</div>
+                    <div class="h-80 relative overflow-hidden">
+                        <img src="https://i.pinimg.com/736x/48/34/e7/4834e7c7c8a4e0b5c8a9f0c5e3a8b7c6.jpg"
+                             alt="Sommer Ray"
+                             class="w-full h-full object-cover"
+                             onerror="this.src='https://images.unsplash.com/photo-1518611012118-696072aa579a?w=400&h=500&fit=crop'">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
+                        <div class="absolute bottom-4 left-4 right-4">
                             <div class="text-2xl font-bold">Sommer Ray</div>
                             <div class="text-pink-400">@sommerray</div>
                         </div>
@@ -167,9 +193,13 @@
 
                 <!-- Whitney Simmons -->
                 <div class="creator-card glass rounded-2xl overflow-hidden">
-                    <div class="h-64 bg-gradient-to-br from-orange-500/20 to-pink-500/20 flex items-center justify-center">
-                        <div class="text-center">
-                            <div class="w-24 h-24 bg-gradient-to-br from-orange-500 to-yellow-500 rounded-full mx-auto mb-4 flex items-center justify-center text-4xl font-black">WS</div>
+                    <div class="h-80 relative overflow-hidden">
+                        <img src="https://i.pinimg.com/736x/d5/4e/8f/d54e8f2a9c8b7e6d5c4a3b2c1d0e9f8a.jpg"
+                             alt="Whitney Simmons"
+                             class="w-full h-full object-cover"
+                             onerror="this.src='https://images.unsplash.com/photo-1550345332-09e3ac987658?w=400&h=500&fit=crop'">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
+                        <div class="absolute bottom-4 left-4 right-4">
                             <div class="text-2xl font-bold">Whitney Simmons</div>
                             <div class="text-orange-400">@whitneyysimmons</div>
                         </div>
@@ -194,9 +224,13 @@
 
                 <!-- Tammy Hembrow -->
                 <div class="creator-card glass rounded-2xl overflow-hidden">
-                    <div class="h-64 bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center">
-                        <div class="text-center">
-                            <div class="w-24 h-24 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full mx-auto mb-4 flex items-center justify-center text-4xl font-black">TH</div>
+                    <div class="h-80 relative overflow-hidden">
+                        <img src="https://i.pinimg.com/736x/a1/b2/c3/a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6.jpg"
+                             alt="Tammy Hembrow"
+                             class="w-full h-full object-cover"
+                             onerror="this.src='https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=400&h=500&fit=crop'">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
+                        <div class="absolute bottom-4 left-4 right-4">
                             <div class="text-2xl font-bold">Tammy Hembrow</div>
                             <div class="text-purple-400">@tammyhembrow</div>
                         </div>
@@ -216,6 +250,43 @@
                             Saski Collection, Tammy Fit app. Single mom to CEO.
                             <span class="text-white font-medium">Content is currency.</span>
                         </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Video Showcase -->
+            <div class="mt-16 glass rounded-2xl p-8 glow-pink">
+                <div class="grid md:grid-cols-2 gap-8 items-center">
+                    <div>
+                        <h3 class="text-3xl font-black mb-4">
+                            This Could Be <span class="gradient-text">You</span>
+                        </h3>
+                        <p class="text-gray-300 text-lg mb-6">
+                            Sommer Ray didn't start with 26 million followers. She started with a phone, a gym, and the decision to stop posting for free.
+                        </p>
+                        <div class="space-y-3">
+                            <div class="flex items-center gap-3">
+                                <i class="fas fa-check-circle text-green-400"></i>
+                                <span>Started monetizing at 10K followers</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <i class="fas fa-check-circle text-green-400"></i>
+                                <span>Built $10M+ business from fitness content</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <i class="fas fa-check-circle text-green-400"></i>
+                                <span>Every post, every story = revenue</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="relative">
+                        <video autoplay muted loop playsinline class="w-full rounded-xl shadow-2xl"
+                               poster="https://images.unsplash.com/photo-1518611012118-696072aa579a?w=600">
+                            <source src="https://assets.mixkit.co/videos/preview/mixkit-woman-doing-mountain-climber-exercise-726-large.mp4" type="video/mp4">
+                        </video>
+                        <div class="absolute -bottom-4 -right-4 bg-green-500 text-black font-bold px-4 py-2 rounded-full text-sm">
+                            <i class="fas fa-dollar-sign mr-1"></i>Getting Paid
+                        </div>
                     </div>
                 </div>
             </div>
@@ -441,46 +512,118 @@
             </div>
 
             <div class="grid md:grid-cols-3 gap-6">
-                <div class="glass rounded-2xl p-6">
-                    <div class="flex items-center gap-3 mb-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-pink-500 to-purple-500 rounded-full flex items-center justify-center font-bold">JM</div>
-                        <div>
-                            <div class="font-bold">Jessica M.</div>
-                            <div class="text-gray-500 text-sm">@jessfitlife • 45K followers</div>
+                <div class="glass rounded-2xl overflow-hidden">
+                    <div class="h-48 relative">
+                        <img src="https://images.unsplash.com/photo-1594381898411-846e7d193883?w=400&h=300&fit=crop"
+                             alt="Jessica"
+                             class="w-full h-full object-cover">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent"></div>
+                        <div class="absolute bottom-4 left-4">
+                            <div class="font-bold text-lg">Jessica M.</div>
+                            <div class="text-pink-400 text-sm">@jessfitlife • 45K followers</div>
                         </div>
                     </div>
-                    <div class="text-green-400 text-2xl font-bold mb-2">$2,340/mo</div>
-                    <p class="text-gray-400">
-                        "I literally just put the link in my bio and mentioned it in one story. That's it. Now I make more from ClockWork than my part-time job."
-                    </p>
+                    <div class="p-6">
+                        <div class="text-green-400 text-3xl font-black mb-2">$2,340/mo</div>
+                        <p class="text-gray-400">
+                            "I literally just put the link in my bio and mentioned it in one story. That's it. Now I make more from ClockWork than my part-time job."
+                        </p>
+                    </div>
                 </div>
 
-                <div class="glass rounded-2xl p-6">
-                    <div class="flex items-center gap-3 mb-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-orange-500 to-pink-500 rounded-full flex items-center justify-center font-bold">AT</div>
-                        <div>
-                            <div class="font-bold">Alyssa T.</div>
-                            <div class="text-gray-500 text-sm">@alyssatrains • 128K followers</div>
+                <div class="glass rounded-2xl overflow-hidden">
+                    <div class="h-48 relative">
+                        <img src="https://images.unsplash.com/photo-1609899464726-209befbe4d59?w=400&h=300&fit=crop"
+                             alt="Alyssa"
+                             class="w-full h-full object-cover">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent"></div>
+                        <div class="absolute bottom-4 left-4">
+                            <div class="font-bold text-lg">Alyssa T.</div>
+                            <div class="text-orange-400 text-sm">@alyssatrains • 128K followers</div>
                         </div>
                     </div>
-                    <div class="text-green-400 text-2xl font-bold mb-2">$7,890/mo</div>
-                    <p class="text-gray-400">
-                        "Finally, a way to monetize my audience without selling supplements or doing awkward brand deals. The money just hits my account every week."
-                    </p>
+                    <div class="p-6">
+                        <div class="text-green-400 text-3xl font-black mb-2">$7,890/mo</div>
+                        <p class="text-gray-400">
+                            "Finally, a way to monetize my audience without selling supplements or doing awkward brand deals. The money just hits my account every week."
+                        </p>
+                    </div>
                 </div>
 
-                <div class="glass rounded-2xl p-6">
-                    <div class="flex items-center gap-3 mb-4">
-                        <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center font-bold">MK</div>
-                        <div>
-                            <div class="font-bold">Morgan K.</div>
-                            <div class="text-gray-500 text-sm">@morgankfit • 22K followers</div>
+                <div class="glass rounded-2xl overflow-hidden">
+                    <div class="h-48 relative">
+                        <img src="https://images.unsplash.com/photo-1518310383802-640c2de311b2?w=400&h=300&fit=crop"
+                             alt="Morgan"
+                             class="w-full h-full object-cover">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent"></div>
+                        <div class="absolute bottom-4 left-4">
+                            <div class="font-bold text-lg">Morgan K.</div>
+                            <div class="text-purple-400 text-sm">@morgankfit • 22K followers</div>
                         </div>
                     </div>
-                    <div class="text-green-400 text-2xl font-bold mb-2">$890/mo</div>
-                    <p class="text-gray-400">
-                        "I'm a college student. This covers my rent. I post about fitness anyway - now I just add my link and it pays my bills."
-                    </p>
+                    <div class="p-6">
+                        <div class="text-green-400 text-3xl font-black mb-2">$890/mo</div>
+                        <p class="text-gray-400">
+                            "I'm a college student. This covers my rent. I post about fitness anyway - now I just add my link and it pays my bills."
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Instagram-style Grid -->
+            <div class="mt-16">
+                <h3 class="text-center text-2xl font-bold mb-8">
+                    <i class="fab fa-instagram text-pink-500 mr-2"></i>The ClockWork Creator Feed
+                </h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div class="aspect-square relative overflow-hidden rounded-xl group">
+                        <img src="https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=300&h=300&fit=crop" class="w-full h-full object-cover group-hover:scale-110 transition duration-300">
+                        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                            <span class="text-green-400 font-bold">+$340</span>
+                        </div>
+                    </div>
+                    <div class="aspect-square relative overflow-hidden rounded-xl group">
+                        <img src="https://images.unsplash.com/photo-1518611012118-696072aa579a?w=300&h=300&fit=crop" class="w-full h-full object-cover group-hover:scale-110 transition duration-300">
+                        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                            <span class="text-green-400 font-bold">+$520</span>
+                        </div>
+                    </div>
+                    <div class="aspect-square relative overflow-hidden rounded-xl group">
+                        <img src="https://images.unsplash.com/photo-1550345332-09e3ac987658?w=300&h=300&fit=crop" class="w-full h-full object-cover group-hover:scale-110 transition duration-300">
+                        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                            <span class="text-green-400 font-bold">+$890</span>
+                        </div>
+                    </div>
+                    <div class="aspect-square relative overflow-hidden rounded-xl group">
+                        <img src="https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=300&h=300&fit=crop" class="w-full h-full object-cover group-hover:scale-110 transition duration-300">
+                        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                            <span class="text-green-400 font-bold">+$1,200</span>
+                        </div>
+                    </div>
+                    <div class="aspect-square relative overflow-hidden rounded-xl group">
+                        <img src="https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=300&h=300&fit=crop" class="w-full h-full object-cover group-hover:scale-110 transition duration-300">
+                        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                            <span class="text-green-400 font-bold">+$670</span>
+                        </div>
+                    </div>
+                    <div class="aspect-square relative overflow-hidden rounded-xl group">
+                        <img src="https://images.unsplash.com/photo-1594381898411-846e7d193883?w=300&h=300&fit=crop" class="w-full h-full object-cover group-hover:scale-110 transition duration-300">
+                        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                            <span class="text-green-400 font-bold">+$445</span>
+                        </div>
+                    </div>
+                    <div class="aspect-square relative overflow-hidden rounded-xl group">
+                        <img src="https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=300&h=300&fit=crop" class="w-full h-full object-cover group-hover:scale-110 transition duration-300">
+                        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                            <span class="text-green-400 font-bold">+$780</span>
+                        </div>
+                    </div>
+                    <div class="aspect-square relative overflow-hidden rounded-xl group bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center cursor-pointer">
+                        <div class="text-center">
+                            <i class="fas fa-plus text-4xl mb-2"></i>
+                            <div class="font-bold">Your Post Here</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -589,6 +732,19 @@
         </div>
     </footer>
 
+    <!-- Live Earnings Notification -->
+    <div id="earningsNotification" class="earnings-notification hidden">
+        <div class="glass rounded-xl p-4 flex items-center gap-3 glow-pink slide-in">
+            <div class="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                <i class="fas fa-dollar-sign text-black"></i>
+            </div>
+            <div>
+                <div class="font-bold text-green-400" id="notifAmount">+$45.00</div>
+                <div class="text-gray-400 text-sm" id="notifName">@sarahfitness just earned</div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Earnings Calculator
         const followersInput = document.getElementById('followers');
@@ -624,6 +780,58 @@
                 });
             });
         });
+
+        // Live Earnings Notifications
+        const creators = [
+            { name: '@jessicafit_', amount: 45 },
+            { name: '@gymqueen23', amount: 120 },
+            { name: '@flexwithmia', amount: 85 },
+            { name: '@tonedbynat', amount: 230 },
+            { name: '@fitwithash', amount: 65 },
+            { name: '@bodybylaura', amount: 180 },
+            { name: '@strongsarah_', amount: 95 },
+            { name: '@fitbyjess', amount: 340 },
+            { name: '@kayla.gains', amount: 55 },
+            { name: '@emilyfitlife', amount: 420 },
+        ];
+
+        function showNotification() {
+            const notif = document.getElementById('earningsNotification');
+            const amountEl = document.getElementById('notifAmount');
+            const nameEl = document.getElementById('notifName');
+
+            const creator = creators[Math.floor(Math.random() * creators.length)];
+            const amount = creator.amount + Math.floor(Math.random() * 50);
+
+            amountEl.textContent = `+$${amount.toFixed(2)}`;
+            nameEl.textContent = `${creator.name} just earned`;
+
+            notif.classList.remove('hidden');
+            notif.querySelector('.glass').classList.add('shake');
+
+            setTimeout(() => {
+                notif.classList.add('hidden');
+                notif.querySelector('.glass').classList.remove('shake');
+            }, 4000);
+        }
+
+        // Show first notification after 5 seconds, then every 15-30 seconds
+        setTimeout(() => {
+            showNotification();
+            setInterval(showNotification, 15000 + Math.random() * 15000);
+        }, 5000);
+
+        // Increment live count periodically
+        let liveCount = 47;
+        setInterval(() => {
+            if (Math.random() > 0.6) {
+                liveCount++;
+                const el = document.getElementById('liveCount');
+                el.textContent = liveCount;
+                el.classList.add('count-up');
+                setTimeout(() => el.classList.remove('count-up'), 500);
+            }
+        }, 30000);
     </script>
 </body>
 </html>
