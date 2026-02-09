@@ -293,19 +293,91 @@
         }
 
 
+        // Earnings Row Component
+        function EarningsRow({ earning }) {
+            return (
+                <tr className="border-b border-white/5 hover:bg-white/5">
+                    <td className="py-3 px-4">
+                        <div className="font-medium">{earning.userId?.name || 'Unknown'}</div>
+                        <div className="text-gray-500 text-sm">{earning.userId?.email}</div>
+                    </td>
+                    <td className="py-3 px-4">
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                            earning.earnerType === 'coach' ? 'bg-green-500/20 text-green-400' :
+                            earning.earnerType === 'influencer' ? 'bg-purple-500/20 text-purple-400' :
+                            'bg-blue-500/20 text-blue-400'
+                        }`}>
+                            {earning.earnerType?.toUpperCase()}
+                        </span>
+                    </td>
+                    <td className="py-3 px-4 font-mono text-orange-400">{earning.referralCode}</td>
+                    <td className="py-3 px-4 text-green-400 font-bold">${earning.balance?.toFixed(2) || '0.00'}</td>
+                    <td className="py-3 px-4">${earning.lifetime?.total?.toFixed(2) || '0.00'}</td>
+                    <td className="py-3 px-4">{earning.referralStats?.totalReferrals || 0}</td>
+                </tr>
+            );
+        }
+
+        // Coach Application Row Component
+        function CoachApplicationRow({ app, onApprove, onReject }) {
+            const statusColors = {
+                pending: 'bg-yellow-500/20 text-yellow-400',
+                approved: 'bg-green-500/20 text-green-400',
+                rejected: 'bg-red-500/20 text-red-400'
+            };
+
+            return (
+                <tr className="border-b border-white/5 hover:bg-white/5">
+                    <td className="py-3 px-4">
+                        <div className="font-medium">{app.name}</div>
+                        <div className="text-gray-500 text-sm">{app.email}</div>
+                    </td>
+                    <td className="py-3 px-4">{app.coachApplication?.applicationData?.specialty || 'N/A'}</td>
+                    <td className="py-3 px-4 text-sm">{app.coachApplication?.applicationData?.experience || 'N/A'}</td>
+                    <td className="py-3 px-4">
+                        <span className={`px-2 py-1 rounded-full text-xs ${statusColors[app.coachApplication?.status] || ''}`}>
+                            {app.coachApplication?.status?.toUpperCase()}
+                        </span>
+                    </td>
+                    <td className="py-3 px-4 text-gray-400 text-sm">
+                        {app.coachApplication?.appliedAt ? new Date(app.coachApplication.appliedAt).toLocaleDateString() : 'N/A'}
+                    </td>
+                    <td className="py-3 px-4">
+                        {app.coachApplication?.status === 'pending' && (
+                            <div className="flex gap-2">
+                                <button onClick={() => onApprove(app._id)} className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg text-sm">
+                                    <i className="fas fa-check mr-1"></i>Approve
+                                </button>
+                                <button onClick={() => onReject(app._id)} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-sm">
+                                    <i className="fas fa-times mr-1"></i>Reject
+                                </button>
+                            </div>
+                        )}
+                    </td>
+                </tr>
+            );
+        }
+
         // Main Dashboard Component
         function AdminDashboard({ user, onLogout }) {
             const [stats, setStats] = useState(null);
             const [users, setUsers] = useState([]);
             const [vipUsers, setVipUsers] = useState([]);
             const [influencerApps, setInfluencerApps] = useState([]);
+            const [earnings, setEarnings] = useState([]);
+            const [earningsSummary, setEarningsSummary] = useState(null);
+            const [coachApplications, setCoachApplications] = useState([]);
+            const [coachIncome, setCoachIncome] = useState([]);
             const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
             const [influencerPagination, setInfluencerPagination] = useState({ page: 1, pages: 1, total: 0 });
+            const [earningsPagination, setEarningsPagination] = useState({ page: 1, pages: 1, total: 0 });
+            const [coachPagination, setCoachPagination] = useState({ page: 1, pages: 1, total: 0 });
             const [loading, setLoading] = useState(true);
             const [activeTab, setActiveTab] = useState('overview');
             const [search, setSearch] = useState('');
             const [filterType, setFilterType] = useState('');
             const [filterTier, setFilterTier] = useState('');
+            const [earnerTypeFilter, setEarnerTypeFilter] = useState('');
             const [newVIPEmail, setNewVIPEmail] = useState('');
             const [message, setMessage] = useState(null);
 
@@ -353,10 +425,60 @@
                 }
             }, []);
 
+            const loadEarnings = useCallback(async (page = 1) => {
+                try {
+                    const params = new URLSearchParams({ page, limit: 20 });
+                    if (earnerTypeFilter) params.append('earnerType', earnerTypeFilter);
+                    const res = await api.fetch(`/admin/earnings?${params}`);
+                    setEarnings(res.earnings || []);
+                    setEarningsPagination(res.pagination || { page: 1, pages: 1, total: 0 });
+                } catch (err) {
+                    console.error('Failed to load earnings:', err);
+                }
+            }, [earnerTypeFilter]);
+
+            const loadEarningsSummary = useCallback(async () => {
+                try {
+                    const res = await api.fetch('/admin/earnings/summary');
+                    setEarningsSummary(res.summary);
+                } catch (err) {
+                    console.error('Failed to load earnings summary:', err);
+                }
+            }, []);
+
+            const loadCoachApplications = useCallback(async (page = 1) => {
+                try {
+                    const params = new URLSearchParams({ page, limit: 20, status: 'pending' });
+                    const res = await api.fetch(`/admin/coach-applications?${params}`);
+                    setCoachApplications(res.applications || []);
+                    setCoachPagination(res.pagination || { page: 1, pages: 1, total: 0 });
+                } catch (err) {
+                    console.error('Failed to load coach applications:', err);
+                }
+            }, []);
+
+            const loadCoachIncome = useCallback(async () => {
+                try {
+                    const res = await api.fetch('/admin/coaches/income');
+                    setCoachIncome(res.coaches || []);
+                } catch (err) {
+                    console.error('Failed to load coach income:', err);
+                }
+            }, []);
+
             useEffect(() => {
                 const init = async () => {
                     setLoading(true);
-                    await Promise.all([loadStats(), loadUsers(), loadVIPUsers(), loadInfluencerApplications()]);
+                    await Promise.all([
+                        loadStats(),
+                        loadUsers(),
+                        loadVIPUsers(),
+                        loadInfluencerApplications(),
+                        loadEarnings(),
+                        loadEarningsSummary(),
+                        loadCoachApplications(),
+                        loadCoachIncome()
+                    ]);
                     setLoading(false);
                 };
                 init();
@@ -432,6 +554,33 @@
                 }
             };
 
+            const handleApproveCoach = async (userId) => {
+                if (!confirm('Are you sure you want to approve this coach application?')) return;
+                try {
+                    await api.fetch(`/admin/coach-applications/${userId}/approve`, { method: 'POST' });
+                    showMessage('Coach application approved!');
+                    loadCoachApplications();
+                    loadCoachIncome();
+                    loadEarnings();
+                } catch (err) {
+                    showMessage(err.message, 'error');
+                }
+            };
+
+            const handleRejectCoach = async (userId) => {
+                const reason = prompt('Enter rejection reason (optional):');
+                try {
+                    await api.fetch(`/admin/coach-applications/${userId}/reject`, {
+                        method: 'POST',
+                        body: JSON.stringify({ reason })
+                    });
+                    showMessage('Coach application rejected.');
+                    loadCoachApplications();
+                } catch (err) {
+                    showMessage(err.message, 'error');
+                }
+            };
+
             if (loading) {
                 return (
                     <div className="min-h-screen flex items-center justify-center">
@@ -474,7 +623,7 @@
                     {/* Navigation Tabs */}
                     <div className="max-w-7xl mx-auto px-4 py-4">
                         <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-                            {['overview', 'users', 'vip', 'influencers'].map(tab => (
+                            {['overview', 'users', 'vip', 'earnings', 'coaches', 'influencers'].map(tab => (
                                 <button
                                     key={tab}
                                     onClick={() => setActiveTab(tab)}
@@ -487,6 +636,8 @@
                                     {tab === 'overview' && <><i className="fas fa-chart-line mr-2"></i>Overview</>}
                                     {tab === 'users' && <><i className="fas fa-users mr-2"></i>Users</>}
                                     {tab === 'vip' && <><i className="fas fa-crown mr-2"></i>VIP Management</>}
+                                    {tab === 'earnings' && <><i className="fas fa-dollar-sign mr-2"></i>Earnings</>}
+                                    {tab === 'coaches' && <><i className="fas fa-chalkboard-teacher mr-2"></i>Coaches</>}
                                     {tab === 'influencers' && <><i className="fas fa-bullhorn mr-2"></i>Influencers</>}
                                 </button>
                             ))}
@@ -793,7 +944,238 @@
                                 </div>
                             </div>
                         )}
-                        
+
+                        {/* Earnings Tab */}
+                        {activeTab === 'earnings' && (
+                            <div className="space-y-6">
+                                {/* Earnings Summary */}
+                                {earningsSummary && (
+                                    <div className="glass rounded-xl p-6 border-l-4 border-green-500">
+                                        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                                            <i className="fas fa-chart-pie text-green-500"></i>
+                                            PATF Earnings Overview
+                                        </h2>
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                                            <div className="text-center">
+                                                <div className="text-3xl font-bold text-green-400">
+                                                    {earningsSummary.platform?.totalEarners || 0}
+                                                </div>
+                                                <div className="text-gray-400 text-sm mt-1">Total Earners</div>
+                                            </div>
+                                            <div className="text-center">
+                                                <div className="text-3xl font-bold text-blue-400">
+                                                    ${earningsSummary.platform?.totalBalance?.toFixed(2) || '0.00'}
+                                                </div>
+                                                <div className="text-gray-400 text-sm mt-1">Pending Payouts</div>
+                                            </div>
+                                            <div className="text-center">
+                                                <div className="text-3xl font-bold text-purple-400">
+                                                    ${earningsSummary.platform?.totalLifetime?.toFixed(2) || '0.00'}
+                                                </div>
+                                                <div className="text-gray-400 text-sm mt-1">Lifetime Paid</div>
+                                            </div>
+                                            <div className="text-center">
+                                                <div className="text-3xl font-bold text-orange-400">
+                                                    {earningsSummary.platform?.totalReferrals || 0}
+                                                </div>
+                                                <div className="text-gray-400 text-sm mt-1">Total Referrals</div>
+                                            </div>
+                                        </div>
+
+                                        {/* By Type */}
+                                        <div className="mt-6 pt-4 border-t border-white/10">
+                                            <h3 className="text-sm font-bold text-gray-400 mb-3">BY EARNER TYPE</h3>
+                                            <div className="grid grid-cols-3 gap-4">
+                                                {['coach', 'influencer', 'affiliate'].map(type => (
+                                                    <div key={type} className="bg-white/5 rounded-lg p-3 text-center">
+                                                        <div className="text-xl font-bold">{earningsSummary.byType?.[type]?.count || 0}</div>
+                                                        <div className="text-gray-500 text-xs capitalize">{type}s</div>
+                                                        <div className="text-green-400 text-sm mt-1">
+                                                            ${earningsSummary.byType?.[type]?.totalLifetime?.toFixed(2) || '0.00'}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Filters */}
+                                <div className="glass rounded-xl p-4">
+                                    <div className="flex gap-4">
+                                        <select
+                                            value={earnerTypeFilter}
+                                            onChange={(e) => { setEarnerTypeFilter(e.target.value); loadEarnings(1); }}
+                                            className="bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500"
+                                        >
+                                            <option value="">All Earner Types</option>
+                                            <option value="coach">Coaches</option>
+                                            <option value="influencer">Influencers</option>
+                                            <option value="affiliate">Affiliates</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {/* Earnings Table */}
+                                <div className="glass rounded-xl overflow-hidden">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full">
+                                            <thead className="bg-white/5">
+                                                <tr className="text-left text-gray-400 text-sm">
+                                                    <th className="py-3 px-4">User</th>
+                                                    <th className="py-3 px-4">Type</th>
+                                                    <th className="py-3 px-4">Referral Code</th>
+                                                    <th className="py-3 px-4">Balance</th>
+                                                    <th className="py-3 px-4">Lifetime</th>
+                                                    <th className="py-3 px-4">Referrals</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {earnings.map(e => (
+                                                    <EarningsRow key={e._id} earning={e} />
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {earnings.length === 0 && <p className="text-gray-400 text-center py-8">No earnings records found.</p>}
+                                    {/* Pagination */}
+                                    <div className="border-t border-white/10 px-4 py-3 flex items-center justify-between text-sm">
+                                        <div className="text-gray-400">
+                                            Showing {earnings.length} of {earningsPagination.total} earners
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => loadEarnings(earningsPagination.page - 1)}
+                                                disabled={earningsPagination.page <= 1}
+                                                className="px-3 py-1 bg-white/5 rounded disabled:opacity-50"
+                                            >
+                                                Previous
+                                            </button>
+                                            <span className="px-3 py-1">
+                                                Page {earningsPagination.page} of {earningsPagination.pages}
+                                            </span>
+                                            <button
+                                                onClick={() => loadEarnings(earningsPagination.page + 1)}
+                                                disabled={earningsPagination.page >= earningsPagination.pages}
+                                                className="px-3 py-1 bg-white/5 rounded disabled:opacity-50"
+                                            >
+                                                Next
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Top Earners */}
+                                {earningsSummary?.topEarners?.length > 0 && (
+                                    <div className="glass rounded-xl p-6">
+                                        <h2 className="text-lg font-bold mb-4"><i className="fas fa-trophy text-yellow-500 mr-2"></i>Top Earners</h2>
+                                        <div className="space-y-3">
+                                            {earningsSummary.topEarners.slice(0, 5).map((earner, i) => (
+                                                <div key={earner.userId} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                                                    <div className="flex items-center gap-3">
+                                                        <span className={`w-8 h-8 flex items-center justify-center rounded-full font-bold ${
+                                                            i === 0 ? 'bg-yellow-500 text-black' :
+                                                            i === 1 ? 'bg-gray-400 text-black' :
+                                                            i === 2 ? 'bg-orange-700 text-white' :
+                                                            'bg-white/10 text-gray-400'
+                                                        }`}>{i + 1}</span>
+                                                        <div>
+                                                            <div className="font-medium">{earner.name}</div>
+                                                            <div className="text-gray-500 text-sm">{earner.earnerType}</div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <div className="font-bold text-green-400">${earner.lifetime?.toFixed(2) || '0.00'}</div>
+                                                        <div className="text-gray-500 text-sm">lifetime</div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Coaches Tab */}
+                        {activeTab === 'coaches' && (
+                            <div className="space-y-6">
+                                {/* Pending Applications */}
+                                <div className="glass rounded-xl p-6">
+                                    <h2 className="text-lg font-bold mb-4">
+                                        <i className="fas fa-clipboard-list text-orange-500 mr-2"></i>
+                                        Pending Coach Applications ({coachApplications.length})
+                                    </h2>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full">
+                                            <thead className="bg-white/5">
+                                                <tr className="text-left text-gray-400 text-sm">
+                                                    <th className="py-3 px-4">Applicant</th>
+                                                    <th className="py-3 px-4">Specialty</th>
+                                                    <th className="py-3 px-4">Experience</th>
+                                                    <th className="py-3 px-4">Status</th>
+                                                    <th className="py-3 px-4">Applied</th>
+                                                    <th className="py-3 px-4">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {coachApplications.map(app => (
+                                                    <CoachApplicationRow
+                                                        key={app._id}
+                                                        app={app}
+                                                        onApprove={handleApproveCoach}
+                                                        onReject={handleRejectCoach}
+                                                    />
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {coachApplications.length === 0 && (
+                                        <p className="text-gray-400 text-center py-8">No pending coach applications.</p>
+                                    )}
+                                </div>
+
+                                {/* Coach Income Overview */}
+                                <div className="glass rounded-xl p-6">
+                                    <h2 className="text-lg font-bold mb-4">
+                                        <i className="fas fa-money-bill-wave text-green-500 mr-2"></i>
+                                        Active Coaches & Income ({coachIncome.length})
+                                    </h2>
+                                    {coachIncome.length === 0 ? (
+                                        <p className="text-gray-400 text-center py-8">No active coaches yet.</p>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            {coachIncome.map(coach => (
+                                                <div key={coach._id} className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-10 h-10 bg-green-500/20 rounded-full flex items-center justify-center">
+                                                            <i className="fas fa-chalkboard-teacher text-green-400"></i>
+                                                        </div>
+                                                        <div>
+                                                            <div className="font-medium">{coach.name}</div>
+                                                            <div className="text-gray-500 text-sm">{coach.email}</div>
+                                                            <div className="text-gray-600 text-xs">
+                                                                {coach.coachApplication?.applicationData?.specialty || 'General Fitness'}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <div className="text-green-400 font-bold">
+                                                            ${coach.earnings?.balance?.toFixed(2) || '0.00'}
+                                                        </div>
+                                                        <div className="text-gray-500 text-sm">balance</div>
+                                                        <div className="text-gray-600 text-xs">
+                                                            ${coach.earnings?.lifetime?.fromCoaching?.toFixed(2) || '0.00'} coaching /
+                                                            ${coach.earnings?.lifetime?.fromReferrals?.toFixed(2) || '0.00'} referrals
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
                         {/* Influencers Tab */}
                         {activeTab === 'influencers' && (
                             <div className="space-y-4">
