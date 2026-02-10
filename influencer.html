@@ -177,6 +177,7 @@
             try {
                 const res = await fetch(`${API_BASE}/auth/creator/signup`, {
                     method: 'POST',
+                    credentials: 'include',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ token, password })
                 });
@@ -184,10 +185,7 @@
                 const data = await res.json();
 
                 if (data.success) {
-                    // Store token
-                    localStorage.setItem('creatorToken', data.token);
-
-                    // Show success and redirect
+                    // Show success and redirect (auth cookie set by backend)
                     showSuccess('Account created! Redirecting...');
                     setTimeout(() => {
                         window.location.href = '/creator-studio';
@@ -218,6 +216,7 @@
             try {
                 const res = await fetch(`${API_BASE}/auth/login`, {
                     method: 'POST',
+                    credentials: 'include',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password })
                 });
@@ -225,7 +224,7 @@
                 const data = await res.json();
 
                 if (data.success) {
-                    localStorage.setItem('creatorToken', data.token);
+                    // Auth cookie set by backend
                     window.location.href = '/creator-studio';
                 } else {
                     showError(data.message || 'Invalid email or password');

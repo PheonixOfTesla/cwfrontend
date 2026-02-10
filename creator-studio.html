@@ -175,7 +175,7 @@
                         method: 'POST',
                         body: JSON.stringify({ email, password })
                     });
-                    localStorage.setItem('creatorToken', res.token);
+                    // Auth cookie set by backend
                     onLogin(res.user);
                 } catch (err) {
                     setError(err.message);
