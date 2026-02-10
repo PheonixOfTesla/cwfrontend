@@ -315,10 +315,20 @@
 
         // Dashboard Tab
         function DashboardTab({ profile, earnings, onEarningsUpdate }) {
+            const [showConfetti, setShowConfetti] = useState(false);
+            const [earningsPopup, setEarningsPopup] = useState(null);
             const stats = earnings?.summary || { totalEarnings: 0, clicks: 0, signups: 0, conversionRate: 0 };
             const tier = profile?.tier || 'BRONZE';
             const tierProgress = { BRONZE: { max: 10, next: 'SILVER' }, SILVER: { max: 25, next: 'GOLD' }, GOLD: { max: 50, next: 'PLATINUM' }, PLATINUM: { max: 100, next: 'DIAMOND' }, DIAMOND: { max: 999, next: null } };
             const currentTier = tierProgress[tier] || tierProgress.BRONZE;
+
+            useEffect(() => {
+                if (earningsPopup) {
+                    setShowConfetti(true);
+                    const timer = setTimeout(() => setShowConfetti(false), 3000);
+                    return () => clearTimeout(timer);
+                }
+            }, [earningsPopup]);
 
             return (
                 <div className="space-y-6">
