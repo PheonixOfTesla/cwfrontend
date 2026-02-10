@@ -1,0 +1,1301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Creator Studio - ClockWork">
+    <meta name="theme-color" content="#f97316">
+    <title>Creator Studio - ClockWork</title>
+
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        clockwork: { orange: '#f97316', pink: '#ec4899', dark: '#0a0a0a', darker: '#050505' }
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html { scroll-behavior: smooth; }
+        body {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.08); }
+        .glow { box-shadow: 0 0 30px rgba(249, 115, 22, 0.3); }
+        .glow-pink { box-shadow: 0 0 30px rgba(236, 72, 153, 0.3); }
+        .stat-card { background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%); }
+        .gradient-text { background: linear-gradient(135deg, #f97316, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .gradient-border { border-image: linear-gradient(135deg, #f97316, #ec4899) 1; }
+        .gradient-bg { background: linear-gradient(135deg, #f97316, #ec4899); }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        .pulse-glow { animation: pulseGlow 2s ease-in-out infinite; }
+        @keyframes pulseGlow { 0%, 100% { box-shadow: 0 0 20px rgba(249, 115, 22, 0.3); } 50% { box-shadow: 0 0 40px rgba(249, 115, 22, 0.6); } }
+        .confetti { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9999; }
+        .confetti-piece { position: absolute; width: 10px; height: 10px; animation: confettiFall 3s ease-out forwards; }
+        @keyframes confettiFall { 0% { transform: translateY(-100px) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(720deg); opacity: 0; } }
+        .earnings-popup { animation: slideInRight 0.5s ease-out, fadeOut 0.5s ease-out 2.5s forwards; }
+        @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+        .tier-progress { background: linear-gradient(90deg, #f97316, #ec4899); background-size: 200% 100%; animation: shimmer 2s linear infinite; }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        .streak-fire { animation: firePulse 0.5s ease-in-out infinite alternate; }
+        @keyframes firePulse { from { transform: scale(1); } to { transform: scale(1.1); } }
+        .drag-over { border: 2px dashed #f97316 !important; background: rgba(249, 115, 22, 0.1) !important; }
+    </style>
+</head>
+<body class="text-white">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useCallback, useRef } = React;
+
+        // API Configuration
+        const API_BASE = window.location.hostname === 'localhost'
+            ? 'http://localhost:5000/api'
+            : '/api';
+
+        // API Helper
+        const api = {
+            async fetch(endpoint, options = {}) {
+                const token = localStorage.getItem('creatorToken');
+                const res = await fetch(`${API_BASE}${endpoint}`, {
+                    ...options,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': token ? `Bearer ${token}` : '',
+                        ...options.headers
+                    }
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.message || 'Request failed');
+                return data;
+            }
+        };
+
+        // Audio Manager for chimes
+        const AudioManager = {
+            earningsChime: null,
+            milestoneChime: null,
+            init() {
+                // Create audio context on user interaction
+                if (!this.earningsChime) {
+                    this.earningsChime = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleUw9kd3hsFMAADqP4');
+                    this.milestoneChime = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleUw9kd3hsFMAADqP4');
+                }
+            },
+            playEarnings() {
+                this.init();
+                try { this.earningsChime.currentTime = 0; this.earningsChime.play().catch(() => {}); } catch(e) {}
+            },
+            playMilestone() {
+                this.init();
+                try { this.milestoneChime.currentTime = 0; this.milestoneChime.play().catch(() => {}); } catch(e) {}
+            }
+        };
+
+        // Confetti Component
+        function Confetti({ active }) {
+            if (!active) return null;
+            const colors = ['#f97316', '#ec4899', '#fbbf24', '#22c55e', '#3b82f6', '#8b5cf6'];
+            const pieces = Array.from({ length: 50 }, (_, i) => ({
+                id: i,
+                left: Math.random() * 100,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                delay: Math.random() * 0.5,
+                size: Math.random() * 8 + 5
+            }));
+            return (
+                <div className="confetti">
+                    {pieces.map(p => (
+                        <div
+                            key={p.id}
+                            className="confetti-piece"
+                            style={{
+                                left: `${p.left}%`,
+                                backgroundColor: p.color,
+                                width: p.size,
+                                height: p.size,
+                                animationDelay: `${p.delay}s`,
+                                borderRadius: Math.random() > 0.5 ? '50%' : '0'
+                            }}
+                        />
+                    ))}
+                </div>
+            );
+        }
+
+        // Earnings Notification Popup
+        function EarningsPopup({ earnings, onDismiss }) {
+            useEffect(() => {
+                const timer = setTimeout(onDismiss, 3000);
+                return () => clearTimeout(timer);
+            }, [onDismiss]);
+
+            return (
+                <div className="earnings-popup fixed top-20 right-4 z-50 glass rounded-xl p-4 border border-green-500/50 max-w-xs">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full gradient-bg flex items-center justify-center">
+                            <i className="fas fa-dollar-sign text-white"></i>
+                        </div>
+                        <div>
+                            <div className="text-green-400 font-bold">+${earnings.amount.toFixed(2)}</div>
+                            <div className="text-gray-400 text-sm">{earnings.source}</div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Login Form
+        function LoginForm({ onLogin }) {
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            const [error, setError] = useState('');
+            const [loading, setLoading] = useState(false);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setError('');
+                setLoading(true);
+                try {
+                    const res = await api.fetch('/auth/login', {
+                        method: 'POST',
+                        body: JSON.stringify({ email, password })
+                    });
+                    localStorage.setItem('creatorToken', res.token);
+                    onLogin(res.user);
+                } catch (err) {
+                    setError(err.message);
+                }
+                setLoading(false);
+            };
+
+            return (
+                <div className="min-h-screen flex items-center justify-center p-4">
+                    <div className="glass rounded-2xl p-8 w-full max-w-md">
+                        <div className="text-center mb-8">
+                            <div className="text-4xl mb-2"><i className="fas fa-video gradient-text"></i></div>
+                            <h1 className="text-2xl font-bold">Creator Studio</h1>
+                            <p className="text-gray-400 mt-2">Sign in to your creator account</p>
+                        </div>
+                        {error && <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-3 mb-4 text-red-300 text-sm">{error}</div>}
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-gray-400 text-sm mb-2">Email</label>
+                                <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-orange-500" placeholder="creator@example.com" required />
+                            </div>
+                            <div>
+                                <label className="block text-gray-400 text-sm mb-2">Password</label>
+                                <input type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-orange-500" placeholder="********" required />
+                            </div>
+                            <button type="submit" disabled={loading} className="w-full gradient-bg hover:opacity-90 text-white font-bold py-3 rounded-lg transition-opacity disabled:opacity-50">
+                                {loading ? 'Signing in...' : 'Sign In'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+
+        // Stat Card Component
+        function StatCard({ icon, label, value, subValue, color = 'orange', pulse = false }) {
+            const colors = {
+                orange: 'text-orange-500',
+                green: 'text-green-500',
+                blue: 'text-blue-500',
+                purple: 'text-purple-500',
+                pink: 'text-pink-500',
+                yellow: 'text-yellow-500'
+            };
+            return (
+                <div className={`stat-card rounded-xl p-4 border border-white/10 ${pulse ? 'pulse-glow' : ''}`}>
+                    <div className="flex items-center gap-3">
+                        <div className={`text-2xl ${colors[color]}`}><i className={`fas fa-${icon}`}></i></div>
+                        <div>
+                            <div className="text-gray-400 text-sm">{label}</div>
+                            <div className="text-2xl font-bold">{value}</div>
+                            {subValue && <div className="text-xs text-gray-500">{subValue}</div>}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Tier Progress Bar
+        function TierProgress({ current, max, tier, nextTier }) {
+            const progress = Math.min((current / max) * 100, 100);
+            const remaining = max - current;
+            const nearMiss = remaining <= 3 && remaining > 0;
+
+            return (
+                <div className="glass rounded-xl p-4">
+                    <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm text-gray-400">Tier Progress</span>
+                        <span className={`text-sm font-bold ${nearMiss ? 'text-yellow-400' : 'text-orange-400'}`}>
+                            {tier} {nextTier && `-> ${nextTier}`}
+                        </span>
+                    </div>
+                    <div className="h-3 bg-white/10 rounded-full overflow-hidden">
+                        <div className="tier-progress h-full rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
+                    </div>
+                    <div className="mt-2 text-right">
+                        {nearMiss ? (
+                            <span className="text-yellow-400 text-sm font-bold animate-pulse">
+                                Only {remaining} more to unlock {nextTier}!
+                            </span>
+                        ) : (
+                            <span className="text-gray-500 text-sm">{current} / {max} referrals</span>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        // Streak Counter
+        function StreakCounter({ streak, lastPostDate }) {
+            const isActive = streak > 0;
+            return (
+                <div className="glass rounded-xl p-4">
+                    <div className="flex items-center gap-3">
+                        <div className={`text-3xl ${isActive ? 'streak-fire' : ''}`}>
+                            {isActive ? <span className="text-orange-500">&#128293;</span> : <span className="text-gray-500">&#128293;</span>}
+                        </div>
+                        <div>
+                            <div className="text-gray-400 text-sm">Posting Streak</div>
+                            <div className="text-2xl font-bold">{streak} days</div>
+                            {lastPostDate && (
+                                <div className="text-xs text-gray-500">
+                                    Last post: {new Date(lastPostDate).toLocaleDateString()}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    {streak >= 7 && <div className="mt-2 text-xs text-yellow-400">Streak bonus active! +10% earnings</div>}
+                </div>
+            );
+        }
+
+        // Live Earnings Feed
+        function LiveEarningsFeed({ earnings }) {
+            return (
+                <div className="glass rounded-xl p-4 max-h-64 overflow-y-auto scrollbar-hide">
+                    <h3 className="text-sm font-bold text-gray-400 mb-3">LIVE EARNINGS</h3>
+                    {earnings.length === 0 ? (
+                        <p className="text-gray-500 text-sm text-center py-4">No earnings yet</p>
+                    ) : (
+                        <div className="space-y-2">
+                            {earnings.map((e, i) => (
+                                <div key={i} className="flex items-center justify-between p-2 bg-white/5 rounded-lg">
+                                    <div className="flex items-center gap-2">
+                                        <i className={`fas fa-${e.type === 'signup' ? 'user-plus' : e.type === 'sale' ? 'shopping-cart' : 'dollar-sign'} text-green-400 text-sm`}></i>
+                                        <span className="text-sm text-gray-300">{e.description}</span>
+                                    </div>
+                                    <span className="text-green-400 font-bold">+${e.amount.toFixed(2)}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // Dashboard Tab
+        function DashboardTab({ profile, earnings, onEarningsUpdate }) {
+            const [liveEarnings, setLiveEarnings] = useState([]);
+            const [earningsPopup, setEarningsPopup] = useState(null);
+            const [showConfetti, setShowConfetti] = useState(false);
+
+            // Variable interval earnings simulation (15-45 seconds)
+            useEffect(() => {
+                const simulateEarning = () => {
+                    const types = ['signup', 'sale', 'commission'];
+                    const descriptions = [
+                        'New signup via your link',
+                        'Product sale commission',
+                        'Referral bonus',
+                        'Subscription renewal'
+                    ];
+                    const newEarning = {
+                        type: types[Math.floor(Math.random() * types.length)],
+                        description: descriptions[Math.floor(Math.random() * descriptions.length)],
+                        amount: parseFloat((Math.random() * 15 + 1).toFixed(2)),
+                        timestamp: new Date()
+                    };
+
+                    setLiveEarnings(prev => [newEarning, ...prev].slice(0, 10));
+                    setEarningsPopup(newEarning);
+                    AudioManager.playEarnings();
+
+                    // Random milestone celebration
+                    if (Math.random() < 0.1) {
+                        setShowConfetti(true);
+                        AudioManager.playMilestone();
+                        setTimeout(() => setShowConfetti(false), 3000);
+                    }
+                };
+
+                const scheduleNext = () => {
+                    const delay = Math.random() * 30000 + 15000; // 15-45 seconds
+                    return setTimeout(() => {
+                        simulateEarning();
+                        scheduleNext();
+                    }, delay);
+                };
+
+                const timer = scheduleNext();
+                return () => clearTimeout(timer);
+            }, []);
+
+            const stats = earnings?.summary || { totalEarnings: 0, clicks: 0, signups: 0, conversionRate: 0 };
+            const tier = profile?.tier || 'BRONZE';
+            const tierProgress = { BRONZE: { max: 10, next: 'SILVER' }, SILVER: { max: 25, next: 'GOLD' }, GOLD: { max: 50, next: 'PLATINUM' }, PLATINUM: { max: 100, next: 'DIAMOND' }, DIAMOND: { max: 999, next: null } };
+            const currentTier = tierProgress[tier] || tierProgress.BRONZE;
+
+            return (
+                <div className="space-y-6">
+                    <Confetti active={showConfetti} />
+                    {earningsPopup && <EarningsPopup earnings={earningsPopup} onDismiss={() => setEarningsPopup(null)} />}
+
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <StatCard icon="dollar-sign" label="Total Earnings" value={`$${(stats.totalEarnings || 0).toFixed(2)}`} color="green" pulse />
+                        <StatCard icon="mouse-pointer" label="Link Clicks" value={(stats.clicks || 0).toLocaleString()} color="blue" />
+                        <StatCard icon="user-plus" label="Signups" value={(stats.signups || 0).toLocaleString()} color="purple" />
+                        <StatCard icon="percentage" label="Conv. Rate" value={`${(stats.conversionRate || 0).toFixed(1)}%`} color="orange" />
+                    </div>
+
+                    {/* Tier & Streak Row */}
+                    <div className="grid md:grid-cols-2 gap-4">
+                        <TierProgress
+                            current={stats.signups || 0}
+                            max={currentTier.max}
+                            tier={tier}
+                            nextTier={currentTier.next}
+                        />
+                        <StreakCounter streak={profile?.streak || 0} lastPostDate={profile?.lastPostDate} />
+                    </div>
+
+                    {/* Live Feed */}
+                    <LiveEarningsFeed earnings={liveEarnings} />
+
+                    {/* Quick Actions */}
+                    <div className="glass rounded-xl p-4">
+                        <h3 className="text-sm font-bold text-gray-400 mb-3">QUICK ACTIONS</h3>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <button className="bg-white/5 hover:bg-white/10 rounded-lg p-3 text-center transition-colors">
+                                <i className="fas fa-share text-orange-400 mb-1"></i>
+                                <div className="text-sm">Share Link</div>
+                            </button>
+                            <button className="bg-white/5 hover:bg-white/10 rounded-lg p-3 text-center transition-colors">
+                                <i className="fas fa-plus text-pink-400 mb-1"></i>
+                                <div className="text-sm">New Post</div>
+                            </button>
+                            <button className="bg-white/5 hover:bg-white/10 rounded-lg p-3 text-center transition-colors">
+                                <i className="fas fa-chart-line text-blue-400 mb-1"></i>
+                                <div className="text-sm">Analytics</div>
+                            </button>
+                            <button className="bg-white/5 hover:bg-white/10 rounded-lg p-3 text-center transition-colors">
+                                <i className="fas fa-wallet text-green-400 mb-1"></i>
+                                <div className="text-sm">Withdraw</div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Create Tab - Post Composer
+        function CreateTab({ onPostCreate }) {
+            const [caption, setCaption] = useState('');
+            const [visibility, setVisibility] = useState('public');
+            const [mediaType, setMediaType] = useState(null);
+            const [posting, setPosting] = useState(false);
+            const [message, setMessage] = useState(null);
+
+            const captionTemplates = [
+                { label: 'Workout Tip', text: 'Quick tip that changed my fitness game...' },
+                { label: 'Transformation', text: 'The journey from day 1 to now...' },
+                { label: 'Motivation', text: 'Remember why you started...' },
+                { label: 'Product Review', text: 'Been using this for 30 days and here\'s what I found...' },
+                { label: 'Q&A', text: 'You asked, I\'m answering! Today\'s question:' }
+            ];
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                if (!caption.trim()) return;
+                setPosting(true);
+                try {
+                    await api.fetch('/coach/posts', {
+                        method: 'POST',
+                        body: JSON.stringify({ caption, visibility, mediaType })
+                    });
+                    setMessage({ type: 'success', text: 'Post created successfully!' });
+                    setCaption('');
+                    setMediaType(null);
+                    onPostCreate?.();
+                } catch (err) {
+                    setMessage({ type: 'error', text: err.message });
+                }
+                setPosting(false);
+            };
+
+            return (
+                <div className="space-y-6">
+                    {message && (
+                        <div className={`p-4 rounded-lg ${message.type === 'error' ? 'bg-red-500/20 text-red-300' : 'bg-green-500/20 text-green-300'}`}>
+                            {message.text}
+                        </div>
+                    )}
+
+                    <div className="glass rounded-xl p-6">
+                        <h2 className="text-lg font-bold mb-4"><i className="fas fa-pen gradient-text mr-2"></i>Create Post</h2>
+
+                        {/* Caption Templates */}
+                        <div className="mb-4">
+                            <label className="block text-gray-400 text-sm mb-2">Quick Templates</label>
+                            <div className="flex flex-wrap gap-2">
+                                {captionTemplates.map((t, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={() => setCaption(t.text)}
+                                        className="bg-white/5 hover:bg-white/10 px-3 py-1 rounded-full text-sm text-gray-300 transition-colors"
+                                    >
+                                        {t.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            {/* Caption */}
+                            <div>
+                                <label className="block text-gray-400 text-sm mb-2">Caption</label>
+                                <textarea
+                                    value={caption}
+                                    onChange={e => setCaption(e.target.value)}
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-orange-500 min-h-32 resize-none"
+                                    placeholder="Write your caption..."
+                                    maxLength={2200}
+                                />
+                                <div className="text-right text-gray-500 text-xs mt-1">{caption.length}/2200</div>
+                            </div>
+
+                            {/* Visibility */}
+                            <div>
+                                <label className="block text-gray-400 text-sm mb-2">Visibility</label>
+                                <div className="flex gap-3">
+                                    {['public', 'followers', 'subscribers'].map(v => (
+                                        <button
+                                            key={v}
+                                            type="button"
+                                            onClick={() => setVisibility(v)}
+                                            className={`px-4 py-2 rounded-lg text-sm capitalize transition-colors ${
+                                                visibility === v ? 'gradient-bg text-white' : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                                            }`}
+                                        >
+                                            <i className={`fas fa-${v === 'public' ? 'globe' : v === 'followers' ? 'users' : 'lock'} mr-2`}></i>
+                                            {v}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Media Upload */}
+                            <div>
+                                <label className="block text-gray-400 text-sm mb-2">Add Media</label>
+                                <div className="flex gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setMediaType('image')}
+                                        className={`flex-1 p-4 rounded-lg border-2 border-dashed transition-colors ${
+                                            mediaType === 'image' ? 'border-orange-500 bg-orange-500/10' : 'border-white/10 hover:border-white/30'
+                                        }`}
+                                    >
+                                        <i className="fas fa-image text-2xl mb-2 text-orange-400"></i>
+                                        <div className="text-sm text-gray-400">Image</div>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setMediaType('video')}
+                                        className={`flex-1 p-4 rounded-lg border-2 border-dashed transition-colors ${
+                                            mediaType === 'video' ? 'border-pink-500 bg-pink-500/10' : 'border-white/10 hover:border-white/30'
+                                        }`}
+                                    >
+                                        <i className="fas fa-video text-2xl mb-2 text-pink-400"></i>
+                                        <div className="text-sm text-gray-400">Video</div>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setMediaType('carousel')}
+                                        className={`flex-1 p-4 rounded-lg border-2 border-dashed transition-colors ${
+                                            mediaType === 'carousel' ? 'border-purple-500 bg-purple-500/10' : 'border-white/10 hover:border-white/30'
+                                        }`}
+                                    >
+                                        <i className="fas fa-images text-2xl mb-2 text-purple-400"></i>
+                                        <div className="text-sm text-gray-400">Carousel</div>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={posting || !caption.trim()}
+                                className="w-full gradient-bg hover:opacity-90 text-white font-bold py-3 rounded-lg transition-opacity disabled:opacity-50"
+                            >
+                                {posting ? 'Posting...' : 'Create Post'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+
+        // Content Tab - Posts List
+        function ContentTab() {
+            const [posts, setPosts] = useState([]);
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+                const loadPosts = async () => {
+                    try {
+                        const res = await api.fetch('/coach/posts');
+                        setPosts(res.posts || []);
+                    } catch (err) {
+                        console.error('Failed to load posts:', err);
+                    }
+                    setLoading(false);
+                };
+                loadPosts();
+            }, []);
+
+            if (loading) {
+                return <div className="flex justify-center py-12"><i className="fas fa-spinner fa-spin text-3xl text-orange-500"></i></div>;
+            }
+
+            return (
+                <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                        <h2 className="text-lg font-bold">Your Content</h2>
+                        <span className="text-gray-400 text-sm">{posts.length} posts</span>
+                    </div>
+
+                    {posts.length === 0 ? (
+                        <div className="glass rounded-xl p-8 text-center">
+                            <i className="fas fa-photo-film text-4xl text-gray-500 mb-4"></i>
+                            <p className="text-gray-400">No posts yet. Create your first post!</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {posts.map((post, i) => (
+                                <div key={post._id || i} className="glass rounded-xl p-4">
+                                    <div className="flex gap-4">
+                                        <div className="w-20 h-20 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                                            <i className={`fas fa-${post.mediaType === 'video' ? 'video' : 'image'} text-gray-500 text-2xl`}></i>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm text-gray-300 line-clamp-2 mb-2">{post.caption}</p>
+                                            <div className="flex gap-4 text-xs text-gray-500">
+                                                <span><i className="fas fa-eye mr-1"></i>{(post.views || 0).toLocaleString()}</span>
+                                                <span><i className="fas fa-heart mr-1"></i>{(post.likes || 0).toLocaleString()}</span>
+                                                <span><i className="fas fa-comment mr-1"></i>{(post.comments || 0).toLocaleString()}</span>
+                                                <span className="text-green-400"><i className="fas fa-dollar-sign mr-1"></i>${(post.earnings || 0).toFixed(2)}</span>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className={`text-xs px-2 py-1 rounded-full ${
+                                                post.visibility === 'public' ? 'bg-green-500/20 text-green-400' :
+                                                post.visibility === 'followers' ? 'bg-blue-500/20 text-blue-400' :
+                                                'bg-yellow-500/20 text-yellow-400'
+                                            }`}>
+                                                {post.visibility}
+                                            </span>
+                                            <div className="text-xs text-gray-500 mt-2">
+                                                {post.createdAt ? new Date(post.createdAt).toLocaleDateString() : 'Draft'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // Links Tab - Linktree-style Manager
+        function LinksTab() {
+            const [links, setLinks] = useState([
+                { id: 1, title: 'My Fitness Program', url: 'https://clockwork.fit/program', clicks: 234, active: true },
+                { id: 2, title: 'Free Workout Guide', url: 'https://clockwork.fit/guide', clicks: 567, active: true },
+                { id: 3, title: 'Instagram', url: 'https://instagram.com/creator', clicks: 123, active: true }
+            ]);
+            const [editingLink, setEditingLink] = useState(null);
+            const [newLink, setNewLink] = useState({ title: '', url: '' });
+            const [draggedItem, setDraggedItem] = useState(null);
+
+            const handleDragStart = (e, index) => {
+                setDraggedItem(index);
+                e.dataTransfer.effectAllowed = 'move';
+            };
+
+            const handleDragOver = (e, index) => {
+                e.preventDefault();
+                if (draggedItem === null || draggedItem === index) return;
+
+                const newLinks = [...links];
+                const item = newLinks[draggedItem];
+                newLinks.splice(draggedItem, 1);
+                newLinks.splice(index, 0, item);
+                setLinks(newLinks);
+                setDraggedItem(index);
+            };
+
+            const handleDragEnd = () => {
+                setDraggedItem(null);
+                // Save new order to API
+                api.fetch('/coach/links', {
+                    method: 'PUT',
+                    body: JSON.stringify({ links })
+                }).catch(console.error);
+            };
+
+            const addLink = () => {
+                if (!newLink.title || !newLink.url) return;
+                const link = { id: Date.now(), ...newLink, clicks: 0, active: true };
+                setLinks([...links, link]);
+                setNewLink({ title: '', url: '' });
+            };
+
+            const deleteLink = (id) => {
+                setLinks(links.filter(l => l.id !== id));
+            };
+
+            const toggleActive = (id) => {
+                setLinks(links.map(l => l.id === id ? { ...l, active: !l.active } : l));
+            };
+
+            return (
+                <div className="space-y-6">
+                    <div className="glass rounded-xl p-6">
+                        <h2 className="text-lg font-bold mb-4"><i className="fas fa-link gradient-text mr-2"></i>Your Links</h2>
+                        <p className="text-gray-400 text-sm mb-4">Drag to reorder. Links appear in this order on your profile.</p>
+
+                        <div className="space-y-3">
+                            {links.map((link, index) => (
+                                <div
+                                    key={link.id}
+                                    draggable
+                                    onDragStart={e => handleDragStart(e, index)}
+                                    onDragOver={e => handleDragOver(e, index)}
+                                    onDragEnd={handleDragEnd}
+                                    className={`glass rounded-lg p-4 cursor-move transition-all ${
+                                        draggedItem === index ? 'opacity-50 scale-95' : ''
+                                    } ${!link.active ? 'opacity-60' : ''}`}
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <i className="fas fa-grip-vertical text-gray-500"></i>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-medium">{link.title}</div>
+                                            <div className="text-gray-500 text-sm truncate">{link.url}</div>
+                                        </div>
+                                        <div className="text-sm text-gray-400">
+                                            <i className="fas fa-mouse-pointer mr-1"></i>{link.clicks}
+                                        </div>
+                                        <button
+                                            onClick={() => toggleActive(link.id)}
+                                            className={`w-10 h-6 rounded-full transition-colors ${link.active ? 'bg-green-500' : 'bg-gray-600'}`}
+                                        >
+                                            <div className={`w-4 h-4 bg-white rounded-full transition-transform ${link.active ? 'translate-x-5' : 'translate-x-1'}`}></div>
+                                        </button>
+                                        <button onClick={() => setEditingLink(link)} className="text-gray-400 hover:text-white">
+                                            <i className="fas fa-edit"></i>
+                                        </button>
+                                        <button onClick={() => deleteLink(link.id)} className="text-red-400 hover:text-red-300">
+                                            <i className="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Add New Link */}
+                    <div className="glass rounded-xl p-6">
+                        <h3 className="text-sm font-bold text-gray-400 mb-4">ADD NEW LINK</h3>
+                        <div className="flex gap-3">
+                            <input
+                                type="text"
+                                value={newLink.title}
+                                onChange={e => setNewLink({ ...newLink, title: e.target.value })}
+                                placeholder="Link title"
+                                className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500"
+                            />
+                            <input
+                                type="url"
+                                value={newLink.url}
+                                onChange={e => setNewLink({ ...newLink, url: e.target.value })}
+                                placeholder="https://..."
+                                className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500"
+                            />
+                            <button
+                                onClick={addLink}
+                                disabled={!newLink.title || !newLink.url}
+                                className="gradient-bg hover:opacity-90 text-white font-bold px-6 py-2 rounded-lg transition-opacity disabled:opacity-50"
+                            >
+                                <i className="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Analytics Tab
+        function AnalyticsTab({ earnings }) {
+            const [leaderboard, setLeaderboard] = useState([]);
+            const [myRank, setMyRank] = useState(null);
+            const [chartData, setChartData] = useState([]);
+
+            useEffect(() => {
+                const loadLeaderboard = async () => {
+                    try {
+                        const res = await api.fetch('/earnings/leaderboard');
+                        setLeaderboard(res.leaderboard || []);
+                        setMyRank(res.myRank);
+                    } catch (err) {
+                        console.error('Failed to load leaderboard:', err);
+                    }
+                };
+                loadLeaderboard();
+
+                // Generate mock chart data
+                const days = 7;
+                const data = [];
+                for (let i = days - 1; i >= 0; i--) {
+                    const date = new Date();
+                    date.setDate(date.getDate() - i);
+                    data.push({
+                        date: date.toLocaleDateString('en-US', { weekday: 'short' }),
+                        earnings: Math.random() * 100 + 20,
+                        clicks: Math.floor(Math.random() * 500 + 100)
+                    });
+                }
+                setChartData(data);
+            }, []);
+
+            const maxEarnings = Math.max(...chartData.map(d => d.earnings), 1);
+
+            const funnelData = [
+                { stage: 'Impressions', value: 12450, color: 'bg-blue-500' },
+                { stage: 'Clicks', value: 2340, color: 'bg-purple-500' },
+                { stage: 'Signups', value: 156, color: 'bg-pink-500' },
+                { stage: 'Conversions', value: 43, color: 'bg-orange-500' }
+            ];
+
+            return (
+                <div className="space-y-6">
+                    {/* Earnings Chart */}
+                    <div className="glass rounded-xl p-6">
+                        <h2 className="text-lg font-bold mb-4"><i className="fas fa-chart-line gradient-text mr-2"></i>Earnings (Last 7 Days)</h2>
+                        <div className="flex items-end gap-2 h-40">
+                            {chartData.map((d, i) => (
+                                <div key={i} className="flex-1 flex flex-col items-center">
+                                    <div className="w-full bg-white/10 rounded-t relative" style={{ height: `${(d.earnings / maxEarnings) * 100}%`, minHeight: 4 }}>
+                                        <div className="absolute inset-0 gradient-bg rounded-t opacity-80"></div>
+                                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs text-green-400 whitespace-nowrap">
+                                            ${d.earnings.toFixed(0)}
+                                        </div>
+                                    </div>
+                                    <div className="text-xs text-gray-500 mt-2">{d.date}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Funnel Metrics */}
+                    <div className="glass rounded-xl p-6">
+                        <h2 className="text-lg font-bold mb-4"><i className="fas fa-filter gradient-text mr-2"></i>Conversion Funnel</h2>
+                        <div className="space-y-3">
+                            {funnelData.map((item, i) => {
+                                const width = ((item.value / funnelData[0].value) * 100);
+                                return (
+                                    <div key={i} className="relative">
+                                        <div className="flex justify-between text-sm mb-1">
+                                            <span className="text-gray-400">{item.stage}</span>
+                                            <span className="font-bold">{item.value.toLocaleString()}</span>
+                                        </div>
+                                        <div className="h-8 bg-white/10 rounded-lg overflow-hidden">
+                                            <div className={`h-full ${item.color} transition-all duration-500`} style={{ width: `${width}%` }}></div>
+                                        </div>
+                                        {i > 0 && (
+                                            <div className="absolute -top-1 right-0 text-xs text-gray-500">
+                                                {((item.value / funnelData[i-1].value) * 100).toFixed(1)}% rate
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Leaderboard */}
+                    <div className="glass rounded-xl p-6">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-lg font-bold"><i className="fas fa-trophy text-yellow-500 mr-2"></i>Leaderboard</h2>
+                            {myRank && (
+                                <span className="text-sm text-gray-400">Your Rank: <span className="text-orange-400 font-bold">#{myRank}</span></span>
+                            )}
+                        </div>
+                        <div className="space-y-3">
+                            {(leaderboard.length > 0 ? leaderboard : [
+                                { name: 'FitnessPro', earnings: 4523.50, rank: 1 },
+                                { name: 'GymGuru', earnings: 3891.25, rank: 2 },
+                                { name: 'HealthHero', earnings: 3245.00, rank: 3 },
+                                { name: 'WorkoutWiz', earnings: 2890.75, rank: 4 },
+                                { name: 'StrengthStar', earnings: 2456.50, rank: 5 }
+                            ]).slice(0, 5).map((entry, i) => (
+                                <div key={i} className="flex items-center gap-3 p-3 bg-white/5 rounded-lg">
+                                    <span className={`w-8 h-8 flex items-center justify-center rounded-full font-bold ${
+                                        i === 0 ? 'bg-yellow-500 text-black' :
+                                        i === 1 ? 'bg-gray-400 text-black' :
+                                        i === 2 ? 'bg-orange-700 text-white' :
+                                        'bg-white/10 text-gray-400'
+                                    }`}>{entry.rank || i + 1}</span>
+                                    <span className="flex-1 font-medium">{entry.name}</span>
+                                    <span className="text-green-400 font-bold">${(entry.earnings || 0).toLocaleString()}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Payouts Tab
+        function PayoutsTab({ earnings }) {
+            const [payoutHistory, setPayoutHistory] = useState([]);
+            const [requesting, setRequesting] = useState(false);
+            const [message, setMessage] = useState(null);
+            const [stripeConnected, setStripeConnected] = useState(false);
+
+            useEffect(() => {
+                // Load payout history
+                setPayoutHistory([
+                    { id: 1, amount: 150.00, status: 'completed', date: '2024-01-15', method: 'Stripe' },
+                    { id: 2, amount: 275.50, status: 'completed', date: '2024-01-01', method: 'Stripe' },
+                    { id: 3, amount: 89.25, status: 'pending', date: '2024-01-20', method: 'Stripe' }
+                ]);
+            }, []);
+
+            const handleRequestPayout = async () => {
+                setRequesting(true);
+                try {
+                    await api.fetch('/earnings/payout', { method: 'POST' });
+                    setMessage({ type: 'success', text: 'Payout requested successfully!' });
+                } catch (err) {
+                    setMessage({ type: 'error', text: err.message });
+                }
+                setRequesting(false);
+            };
+
+            const balance = earnings?.summary?.balance || 0;
+            const minPayout = 50;
+            const canPayout = balance >= minPayout && stripeConnected;
+
+            return (
+                <div className="space-y-6">
+                    {message && (
+                        <div className={`p-4 rounded-lg ${message.type === 'error' ? 'bg-red-500/20 text-red-300' : 'bg-green-500/20 text-green-300'}`}>
+                            {message.text}
+                        </div>
+                    )}
+
+                    {/* Balance Card */}
+                    <div className="glass rounded-xl p-6 border-l-4 border-green-500">
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <div className="text-gray-400 text-sm">Available Balance</div>
+                                <div className="text-4xl font-bold text-green-400">${balance.toFixed(2)}</div>
+                                <div className="text-gray-500 text-sm mt-1">Minimum payout: ${minPayout}</div>
+                            </div>
+                            <button
+                                onClick={handleRequestPayout}
+                                disabled={!canPayout || requesting}
+                                className={`gradient-bg hover:opacity-90 text-white font-bold px-6 py-3 rounded-lg transition-opacity ${!canPayout ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            >
+                                {requesting ? 'Processing...' : 'Request Payout'}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Stripe Connect */}
+                    <div className="glass rounded-xl p-6">
+                        <h2 className="text-lg font-bold mb-4"><i className="fab fa-stripe text-purple-400 mr-2"></i>Stripe Connect</h2>
+                        {stripeConnected ? (
+                            <div className="flex items-center gap-3 p-4 bg-green-500/10 rounded-lg border border-green-500/30">
+                                <i className="fas fa-check-circle text-green-400 text-xl"></i>
+                                <div>
+                                    <div className="font-medium text-green-400">Connected</div>
+                                    <div className="text-gray-500 text-sm">Your Stripe account is linked and ready for payouts</div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="text-center py-6">
+                                <i className="fab fa-stripe text-5xl text-purple-400 mb-4"></i>
+                                <p className="text-gray-400 mb-4">Connect your Stripe account to receive payouts</p>
+                                <button
+                                    onClick={() => setStripeConnected(true)}
+                                    className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-6 py-3 rounded-lg transition-colors"
+                                >
+                                    <i className="fas fa-link mr-2"></i>Connect Stripe
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Payout History */}
+                    <div className="glass rounded-xl p-6">
+                        <h2 className="text-lg font-bold mb-4"><i className="fas fa-history gradient-text mr-2"></i>Payout History</h2>
+                        {payoutHistory.length === 0 ? (
+                            <p className="text-gray-500 text-center py-4">No payouts yet</p>
+                        ) : (
+                            <div className="space-y-3">
+                                {payoutHistory.map(payout => (
+                                    <div key={payout.id} className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                                                payout.status === 'completed' ? 'bg-green-500/20' : 'bg-yellow-500/20'
+                                            }`}>
+                                                <i className={`fas fa-${payout.status === 'completed' ? 'check' : 'clock'} ${
+                                                    payout.status === 'completed' ? 'text-green-400' : 'text-yellow-400'
+                                                }`}></i>
+                                            </div>
+                                            <div>
+                                                <div className="font-medium">${payout.amount.toFixed(2)}</div>
+                                                <div className="text-gray-500 text-sm">{payout.method}</div>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className={`text-xs px-2 py-1 rounded-full ${
+                                                payout.status === 'completed' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
+                                            }`}>
+                                                {payout.status}
+                                            </span>
+                                            <div className="text-gray-500 text-sm mt-1">{payout.date}</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        // Settings Tab
+        function SettingsTab({ profile, onUpdate }) {
+            const [formData, setFormData] = useState({
+                displayName: profile?.displayName || '',
+                bio: profile?.bio || '',
+                email: profile?.email || '',
+                socialLinks: {
+                    instagram: profile?.socialLinks?.instagram || '',
+                    tiktok: profile?.socialLinks?.tiktok || '',
+                    youtube: profile?.socialLinks?.youtube || '',
+                    twitter: profile?.socialLinks?.twitter || ''
+                }
+            });
+            const [notifications, setNotifications] = useState({
+                earnings: true,
+                milestones: true,
+                newFollowers: true,
+                weeklyDigest: true,
+                marketing: false
+            });
+            const [saving, setSaving] = useState(false);
+            const [message, setMessage] = useState(null);
+
+            const handleSave = async () => {
+                setSaving(true);
+                try {
+                    await api.fetch('/coach/profile', {
+                        method: 'PUT',
+                        body: JSON.stringify({ ...formData, notifications })
+                    });
+                    setMessage({ type: 'success', text: 'Settings saved successfully!' });
+                    onUpdate?.();
+                } catch (err) {
+                    setMessage({ type: 'error', text: err.message });
+                }
+                setSaving(false);
+            };
+
+            return (
+                <div className="space-y-6">
+                    {message && (
+                        <div className={`p-4 rounded-lg ${message.type === 'error' ? 'bg-red-500/20 text-red-300' : 'bg-green-500/20 text-green-300'}`}>
+                            {message.text}
+                        </div>
+                    )}
+
+                    {/* Profile Settings */}
+                    <div className="glass rounded-xl p-6">
+                        <h2 className="text-lg font-bold mb-4"><i className="fas fa-user gradient-text mr-2"></i>Profile Settings</h2>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-gray-400 text-sm mb-2">Display Name</label>
+                                <input
+                                    type="text"
+                                    value={formData.displayName}
+                                    onChange={e => setFormData({ ...formData, displayName: e.target.value })}
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-orange-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-gray-400 text-sm mb-2">Bio</label>
+                                <textarea
+                                    value={formData.bio}
+                                    onChange={e => setFormData({ ...formData, bio: e.target.value })}
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-orange-500 min-h-24 resize-none"
+                                    maxLength={500}
+                                />
+                                <div className="text-right text-gray-500 text-xs mt-1">{formData.bio.length}/500</div>
+                            </div>
+                            <div>
+                                <label className="block text-gray-400 text-sm mb-2">Email</label>
+                                <input
+                                    type="email"
+                                    value={formData.email}
+                                    onChange={e => setFormData({ ...formData, email: e.target.value })}
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-orange-500"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Social Links */}
+                    <div className="glass rounded-xl p-6">
+                        <h2 className="text-lg font-bold mb-4"><i className="fas fa-share-nodes gradient-text mr-2"></i>Social Links</h2>
+                        <div className="grid md:grid-cols-2 gap-4">
+                            {Object.entries(formData.socialLinks).map(([platform, url]) => (
+                                <div key={platform}>
+                                    <label className="block text-gray-400 text-sm mb-2 capitalize">
+                                        <i className={`fab fa-${platform} mr-2`}></i>{platform}
+                                    </label>
+                                    <input
+                                        type="url"
+                                        value={url}
+                                        onChange={e => setFormData({
+                                            ...formData,
+                                            socialLinks: { ...formData.socialLinks, [platform]: e.target.value }
+                                        })}
+                                        placeholder={`https://${platform}.com/...`}
+                                        className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500"
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Notification Preferences */}
+                    <div className="glass rounded-xl p-6">
+                        <h2 className="text-lg font-bold mb-4"><i className="fas fa-bell gradient-text mr-2"></i>Notification Preferences</h2>
+                        <div className="space-y-3">
+                            {Object.entries(notifications).map(([key, value]) => (
+                                <div key={key} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                                    <span className="capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
+                                    <button
+                                        onClick={() => setNotifications({ ...notifications, [key]: !value })}
+                                        className={`w-12 h-6 rounded-full transition-colors ${value ? 'bg-orange-500' : 'bg-gray-600'}`}
+                                    >
+                                        <div className={`w-5 h-5 bg-white rounded-full transition-transform ${value ? 'translate-x-6' : 'translate-x-1'}`}></div>
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Save Button */}
+                    <button
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="w-full gradient-bg hover:opacity-90 text-white font-bold py-3 rounded-lg transition-opacity disabled:opacity-50"
+                    >
+                        {saving ? 'Saving...' : 'Save Settings'}
+                    </button>
+
+                    {/* Danger Zone */}
+                    <div className="glass rounded-xl p-6 border border-red-500/30">
+                        <h2 className="text-lg font-bold mb-4 text-red-400"><i className="fas fa-exclamation-triangle mr-2"></i>Danger Zone</h2>
+                        <p className="text-gray-400 text-sm mb-4">These actions are irreversible. Please proceed with caution.</p>
+                        <div className="flex gap-3">
+                            <button className="bg-red-500/20 hover:bg-red-500/30 text-red-400 px-4 py-2 rounded-lg transition-colors">
+                                Deactivate Account
+                            </button>
+                            <button className="bg-red-500/20 hover:bg-red-500/30 text-red-400 px-4 py-2 rounded-lg transition-colors">
+                                Delete All Data
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Main Creator Studio Component
+        function CreatorStudio({ user, onLogout }) {
+            const [activeTab, setActiveTab] = useState('dashboard');
+            const [profile, setProfile] = useState(null);
+            const [earnings, setEarnings] = useState(null);
+            const [loading, setLoading] = useState(true);
+
+            const loadData = useCallback(async () => {
+                try {
+                    const [profileRes, earningsRes] = await Promise.all([
+                        api.fetch('/coach/profile').catch(() => ({ profile: {} })),
+                        api.fetch('/earnings/summary').catch(() => ({ summary: {} }))
+                    ]);
+                    setProfile(profileRes.profile || profileRes);
+                    setEarnings(earningsRes);
+                } catch (err) {
+                    console.error('Failed to load data:', err);
+                }
+                setLoading(false);
+            }, []);
+
+            useEffect(() => {
+                loadData();
+            }, [loadData]);
+
+            const tabs = [
+                { id: 'dashboard', label: 'Dashboard', icon: 'chart-line' },
+                { id: 'create', label: 'Create', icon: 'plus-circle' },
+                { id: 'content', label: 'Content', icon: 'photo-film' },
+                { id: 'links', label: 'Links', icon: 'link' },
+                { id: 'analytics', label: 'Analytics', icon: 'chart-pie' },
+                { id: 'payouts', label: 'Payouts', icon: 'wallet' },
+                { id: 'settings', label: 'Settings', icon: 'cog' }
+            ];
+
+            if (loading) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center">
+                        <div className="text-center">
+                            <div className="text-4xl mb-4"><i className="fas fa-spinner fa-spin text-orange-500"></i></div>
+                            <div className="text-gray-400">Loading Creator Studio...</div>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen">
+                    {/* Header */}
+                    <header className="glass border-b border-white/10 sticky top-0 z-50">
+                        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <i className="fas fa-video gradient-text text-2xl"></i>
+                                <h1 className="text-xl font-bold">Creator Studio</h1>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <span className="text-gray-400 text-sm hidden sm:inline">{user?.email || profile?.email}</span>
+                                <button onClick={onLogout} className="text-gray-400 hover:text-white">
+                                    <i className="fas fa-sign-out-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Navigation Tabs */}
+                    <div className="max-w-6xl mx-auto px-4 py-4">
+                        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2">
+                            {tabs.map(tab => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`px-4 py-2 rounded-lg whitespace-nowrap transition-all ${
+                                        activeTab === tab.id
+                                            ? 'gradient-bg text-white glow'
+                                            : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                                    }`}
+                                >
+                                    <i className={`fas fa-${tab.icon} mr-2`}></i>
+                                    <span className="hidden sm:inline">{tab.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Main Content */}
+                    <main className="max-w-6xl mx-auto px-4 pb-8">
+                        {activeTab === 'dashboard' && <DashboardTab profile={profile} earnings={earnings} onEarningsUpdate={loadData} />}
+                        {activeTab === 'create' && <CreateTab onPostCreate={loadData} />}
+                        {activeTab === 'content' && <ContentTab />}
+                        {activeTab === 'links' && <LinksTab />}
+                        {activeTab === 'analytics' && <AnalyticsTab earnings={earnings} />}
+                        {activeTab === 'payouts' && <PayoutsTab earnings={earnings} />}
+                        {activeTab === 'settings' && <SettingsTab profile={profile} onUpdate={loadData} />}
+                    </main>
+                </div>
+            );
+        }
+
+        // App Component
+        function App() {
+            const [user, setUser] = useState(null);
+            const [checking, setChecking] = useState(true);
+
+            useEffect(() => {
+                const checkAuth = async () => {
+                    const token = localStorage.getItem('creatorToken');
+                    if (token) {
+                        try {
+                            const res = await api.fetch('/users/profile');
+                            setUser(res.user || res);
+                        } catch (err) {
+                            localStorage.removeItem('creatorToken');
+                        }
+                    }
+                    setChecking(false);
+                };
+                checkAuth();
+            }, []);
+
+            const handleLogout = () => {
+                localStorage.removeItem('creatorToken');
+                setUser(null);
+            };
+
+            if (checking) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center">
+                        <div className="text-4xl"><i className="fas fa-spinner fa-spin text-orange-500"></i></div>
+                    </div>
+                );
+            }
+
+            if (!user) {
+                return <LoginForm onLogin={setUser} />;
+            }
+
+            return <CreatorStudio user={user} onLogout={handleLogout} />;
+        }
+
+        // Render App
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>

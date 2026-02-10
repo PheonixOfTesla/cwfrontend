@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Creator Profile | ClockWork</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        dark: { 900: '#0a0a0f', 800: '#12121a', 700: '#1a1a24', 600: '#22222e' },
+                        accent: { orange: '#ff6b35', pink: '#ff2d7a', purple: '#a855f7' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        body { background: linear-gradient(135deg, #0a0a0f 0%, #12121a 50%, #0a0a0f 100%); min-height: 100vh; }
+        .glass { background: rgba(26, 26, 36, 0.6); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .glass-card { background: rgba(34, 34, 46, 0.5); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.06); }
+        .gradient-text { background: linear-gradient(135deg, #ff6b35, #ff2d7a); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .gradient-border { position: relative; }
+        .gradient-border::before { content: ''; position: absolute; inset: 0; padding: 2px; background: linear-gradient(135deg, #ff6b35, #ff2d7a); border-radius: inherit; -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+        .link-btn { transition: all 0.3s ease; }
+        .link-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(255, 107, 53, 0.3); }
+        .social-icon { transition: all 0.2s ease; }
+        .social-icon:hover { transform: scale(1.15); }
+        .copy-btn { transition: all 0.2s ease; }
+        .copy-btn:hover { background: rgba(255, 107, 53, 0.2); }
+        .post-card { transition: all 0.3s ease; }
+        .post-card:hover { transform: scale(1.02); }
+        .shimmer { background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0) 100%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+        .verified-badge { display: inline-flex; align-items: center; justify-content: center; }
+    </style>
+</head>
+<body class="text-white">
+    <!-- Loading State -->
+    <div id="loading" class="fixed inset-0 bg-dark-900 flex items-center justify-center z-50">
+        <div class="text-center">
+            <div class="w-16 h-16 border-4 border-accent-orange/30 border-t-accent-orange rounded-full animate-spin mx-auto mb-4"></div>
+            <p class="text-gray-400">Loading profile...</p>
+        </div>
+    </div>
+
+    <!-- Error State -->
+    <div id="error" class="fixed inset-0 bg-dark-900 flex items-center justify-center z-50 hidden">
+        <div class="text-center px-6">
+            <div class="w-20 h-20 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-user-slash text-3xl text-red-400"></i>
+            </div>
+            <h2 class="text-2xl font-bold mb-2">Creator Not Found</h2>
+            <p class="text-gray-400 mb-6">This profile doesn't exist or has been removed.</p>
+            <a href="/" class="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-accent-orange to-accent-pink rounded-xl font-semibold">
+                <i class="fas fa-home"></i> Go Home
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div id="content" class="hidden">
+        <!-- Cover Banner -->
+        <div class="relative h-48 sm:h-56 md:h-64">
+            <img id="coverImage" src="" alt="Cover" class="w-full h-full object-cover">
+            <div class="absolute inset-0 bg-gradient-to-t from-dark-900 via-transparent to-transparent"></div>
+        </div>
+
+        <!-- Profile Section -->
+        <div class="max-w-lg mx-auto px-4 -mt-16 relative z-10">
+            <!-- Profile Picture -->
+            <div class="flex justify-center mb-4">
+                <div class="relative">
+                    <div class="w-32 h-32 rounded-full gradient-border p-1">
+                        <img id="profilePicture" src="" alt="Profile" class="w-full h-full rounded-full object-cover bg-dark-700">
+                    </div>
+                    <div id="verifiedBadge" class="absolute -bottom-1 -right-1 w-8 h-8 bg-gradient-to-r from-accent-orange to-accent-pink rounded-full flex items-center justify-center hidden">
+                        <i class="fas fa-check text-white text-sm"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Name & Handle -->
+            <div class="text-center mb-4">
+                <h1 id="creatorName" class="text-2xl sm:text-3xl font-bold mb-1"></h1>
+                <p id="creatorHandle" class="text-gray-400"></p>
+            </div>
+
+            <!-- Bio -->
+            <p id="creatorBio" class="text-center text-gray-300 mb-6 px-4 leading-relaxed"></p>
+
+            <!-- Social Icons -->
+            <div id="socialIcons" class="flex justify-center gap-4 mb-6">
+                <!-- Populated by JS -->
+            </div>
+
+            <!-- Referral Code Card -->
+            <div id="referralCard" class="glass-card rounded-2xl p-5 mb-6 hidden">
+                <div class="text-center mb-3">
+                    <span class="text-xs uppercase tracking-wider text-gray-400 font-medium">Use my code for exclusive perks</span>
+                </div>
+                <div class="flex items-center justify-between bg-dark-900/50 rounded-xl p-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-gradient-to-r from-accent-orange to-accent-pink flex items-center justify-center">
+                            <i class="fas fa-gift text-white"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-400">Referral Code</p>
+                            <p id="referralCode" class="text-xl font-bold gradient-text"></p>
+                        </div>
+                    </div>
+                    <button id="copyCodeBtn" class="copy-btn px-4 py-2 rounded-lg bg-white/5 border border-white/10 hover:border-accent-orange/50 flex items-center gap-2">
+                        <i class="fas fa-copy text-accent-orange"></i>
+                        <span class="text-sm">Copy</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Links Section -->
+            <div id="linksSection" class="space-y-3 mb-8">
+                <!-- Populated by JS -->
+            </div>
+
+            <!-- Recent Content Grid -->
+            <div id="contentSection" class="mb-8 hidden">
+                <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <i class="fas fa-fire text-accent-orange"></i>
+                    Recent Content
+                </h3>
+                <div id="contentGrid" class="grid grid-cols-3 gap-2">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="py-8 text-center border-t border-white/5 mt-8">
+            <a href="/" class="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                    <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <span class="font-medium">Powered by <span class="gradient-text font-bold">ClockWork</span></span>
+            </a>
+            <p class="text-gray-500 text-xs mt-2">Create your own link-in-bio</p>
+        </footer>
+    </div>
+
+    <script>
+        // API Configuration
+        const API_BASE = window.location.hostname === 'localhost'
+            ? 'http://localhost:3000'
+            : 'https://api.clockwork.fit';
+
+        // Get handle from URL
+        function getHandle() {
+            // Check for /@handle format
+            const pathMatch = window.location.pathname.match(/^\/@(.+)$/);
+            if (pathMatch) return pathMatch[1];
+
+            // Check for ?handle= query param
+            const params = new URLSearchParams(window.location.search);
+            const handleParam = params.get('handle');
+            if (handleParam) return handleParam;
+
+            // Check for /creator/@handle or /creator/handle format
+            const creatorMatch = window.location.pathname.match(/\/creator\/?@?(.+)$/);
+            if (creatorMatch) return creatorMatch[1];
+
+            return null;
+        }
+
+        // DOM Elements
+        const loadingEl = document.getElementById('loading');
+        const errorEl = document.getElementById('error');
+        const contentEl = document.getElementById('content');
+
+        // Track link click
+        async function trackClick(code, linkUrl) {
+            try {
+                await fetch(`${API_BASE}/api/earnings/track/click/${code}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: linkUrl, timestamp: new Date().toISOString() })
+                });
+            } catch (err) {
+                console.error('Click tracking failed:', err);
+            }
+        }
+
+        // Copy referral code
+        function setupCopyButton(code) {
+            const btn = document.getElementById('copyCodeBtn');
+            btn.addEventListener('click', async () => {
+                try {
+                    await navigator.clipboard.writeText(code);
+                    btn.innerHTML = '<i class="fas fa-check text-green-400"></i><span class="text-sm">Copied!</span>';
+                    setTimeout(() => {
+                        btn.innerHTML = '<i class="fas fa-copy text-accent-orange"></i><span class="text-sm">Copy</span>';
+                    }, 2000);
+                } catch (err) {
+                    console.error('Copy failed:', err);
+                }
+            });
+        }
+
+        // Render social icons
+        function renderSocialIcons(socials) {
+            const container = document.getElementById('socialIcons');
+            const platforms = [
+                { key: 'instagram', icon: 'fa-instagram', color: '#E4405F', baseUrl: 'https://instagram.com/' },
+                { key: 'tiktok', icon: 'fa-tiktok', color: '#000000', baseUrl: 'https://tiktok.com/@' },
+                { key: 'youtube', icon: 'fa-youtube', color: '#FF0000', baseUrl: 'https://youtube.com/' },
+                { key: 'twitter', icon: 'fa-x-twitter', color: '#000000', baseUrl: 'https://x.com/' }
+            ];
+
+            platforms.forEach(platform => {
+                const handle = socials?.[platform.key];
+                if (handle) {
+                    const link = document.createElement('a');
+                    link.href = handle.startsWith('http') ? handle : platform.baseUrl + handle.replace('@', '');
+                    link.target = '_blank';
+                    link.rel = 'noopener noreferrer';
+                    link.className = 'social-icon w-11 h-11 rounded-full glass-card flex items-center justify-center hover:bg-white/10';
+                    link.innerHTML = `<i class="fab ${platform.icon} text-lg"></i>`;
+                    container.appendChild(link);
+                }
+            });
+        }
+
+        // Render links
+        function renderLinks(links, referralCode) {
+            const container = document.getElementById('linksSection');
+            if (!links || links.length === 0) return;
+
+            links.forEach(link => {
+                const btn = document.createElement('a');
+                btn.href = link.url;
+                btn.target = '_blank';
+                btn.rel = 'noopener noreferrer';
+                btn.className = 'link-btn block w-full glass-card rounded-xl p-4 text-center hover:bg-white/10';
+
+                btn.innerHTML = `
+                    <div class="flex items-center justify-center gap-3">
+                        ${link.icon ? `<i class="${link.icon} text-accent-orange"></i>` : ''}
+                        <span class="font-medium">${link.title}</span>
+                    </div>
+                `;
+
+                btn.addEventListener('click', (e) => {
+                    if (referralCode) {
+                        trackClick(referralCode, link.url);
+                    }
+                });
+
+                container.appendChild(btn);
+            });
+        }
+
+        // Render content grid
+        function renderContent(posts) {
+            if (!posts || posts.length === 0) return;
+
+            const section = document.getElementById('contentSection');
+            const grid = document.getElementById('contentGrid');
+            section.classList.remove('hidden');
+
+            posts.slice(0, 3).forEach(post => {
+                const card = document.createElement('div');
+                card.className = 'post-card aspect-square rounded-xl overflow-hidden cursor-pointer relative group';
+
+                const thumbnail = post.thumbnail || post.mediaUrl || post.image;
+                if (thumbnail) {
+                    card.innerHTML = `
+                        <img src="${thumbnail}" alt="${post.title || 'Post'}" class="w-full h-full object-cover">
+                        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <i class="fas fa-play text-2xl"></i>
+                        </div>
+                    `;
+                } else {
+                    card.innerHTML = `
+                        <div class="w-full h-full bg-gradient-to-br from-accent-orange/20 to-accent-pink/20 flex items-center justify-center">
+                            <i class="fas fa-image text-2xl text-gray-500"></i>
+                        </div>
+                    `;
+                }
+
+                if (post.url) {
+                    card.addEventListener('click', () => window.open(post.url, '_blank'));
+                }
+
+                grid.appendChild(card);
+            });
+        }
+
+        // Main init
+        async function init() {
+            const handle = getHandle();
+
+            if (!handle) {
+                loadingEl.classList.add('hidden');
+                errorEl.classList.remove('hidden');
+                return;
+            }
+
+            try {
+                // Fetch profile data
+                const profileRes = await fetch(`${API_BASE}/api/coach/${handle}/public`);
+                if (!profileRes.ok) throw new Error('Profile not found');
+                const profile = await profileRes.json();
+
+                // Update page title
+                document.title = `${profile.name || profile.displayName || '@' + handle} | ClockWork`;
+
+                // Populate profile data
+                document.getElementById('coverImage').src = profile.coverImage || profile.bannerImage || 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1200&h=400&fit=crop';
+                document.getElementById('profilePicture').src = profile.profilePicture || profile.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.name || handle)}&background=ff6b35&color=fff&size=256`;
+                document.getElementById('creatorName').textContent = profile.name || profile.displayName || handle;
+                document.getElementById('creatorHandle').textContent = '@' + handle;
+                document.getElementById('creatorBio').textContent = profile.bio || profile.description || '';
+
+                // Verified badge
+                if (profile.verified || profile.isVerified) {
+                    document.getElementById('verifiedBadge').classList.remove('hidden');
+                }
+
+                // Social icons
+                renderSocialIcons(profile.socials || profile.socialLinks || {});
+
+                // Referral code
+                const referralCode = profile.referralCode || profile.code;
+                if (referralCode) {
+                    document.getElementById('referralCard').classList.remove('hidden');
+                    document.getElementById('referralCode').textContent = referralCode;
+                    setupCopyButton(referralCode);
+                }
+
+                // Links
+                renderLinks(profile.links || profile.linkTree || [], referralCode);
+
+                // Fetch and render feed
+                try {
+                    const feedRes = await fetch(`${API_BASE}/api/coach/${handle}/feed`);
+                    if (feedRes.ok) {
+                        const feed = await feedRes.json();
+                        renderContent(feed.posts || feed.content || feed);
+                    }
+                } catch (feedErr) {
+                    console.log('Feed not available');
+                }
+
+                // Show content
+                loadingEl.classList.add('hidden');
+                contentEl.classList.remove('hidden');
+
+            } catch (err) {
+                console.error('Failed to load profile:', err);
+                loadingEl.classList.add('hidden');
+                errorEl.classList.remove('hidden');
+            }
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

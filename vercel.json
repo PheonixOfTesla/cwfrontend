@@ -38,6 +38,18 @@
     {
       "source": "/coach/:id",
       "destination": "/coach.html"
+    },
+    {
+      "source": "/@:handle",
+      "destination": "/creator.html"
+    },
+    {
+      "source": "/creator-studio",
+      "destination": "/creator-studio.html"
+    },
+    {
+      "source": "/creator/:handle",
+      "destination": "/creator.html"
     }
   ]
 }
