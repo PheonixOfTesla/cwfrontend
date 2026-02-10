@@ -3,16 +3,255 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Redirecting to Creator Studio...</title>
-    <script>
-        // Redirect old influencer dashboard to new Creator Studio
-        window.location.href = '/creator-studio.html';
-    </script>
+    <title>Creator Studio - ClockWork</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background: linear-gradient(135deg, #0a0a0a 0%, #1a0a1a 50%, #0a0a0a 100%); min-height: 100vh; }
+        .glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); }
+        .gradient-bg { background: linear-gradient(135deg, #f97316, #ec4899); }
+    </style>
 </head>
-<body style="background: #0a0a0a; color: white; display: flex; align-items: center; justify-content: center; height: 100vh; font-family: system-ui;">
-    <div style="text-align: center;">
-        <h1 style="font-size: 2rem; margin-bottom: 1rem;">Upgrading to Creator Studio...</h1>
-        <p style="color: #666;">Redirecting you to the new and improved dashboard</p>
+<body class="text-white flex items-center justify-center min-h-screen p-4">
+
+    <div class="glass rounded-3xl p-8 max-w-md w-full">
+        <!-- Logo -->
+        <div class="text-center mb-6">
+            <i class="fas fa-video text-5xl mb-4" style="background:linear-gradient(135deg,#f97316,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;"></i>
+            <h1 class="text-3xl font-bold">Creator Studio</h1>
+            <p id="subtitle" class="text-gray-400 mt-2">Sign in to your creator account</p>
+        </div>
+
+        <!-- Error Message -->
+        <div id="error" class="hidden bg-red-500/20 border border-red-500/50 text-red-300 px-4 py-3 rounded-lg mb-4"></div>
+
+        <!-- Success Message -->
+        <div id="success" class="hidden bg-green-500/20 border border-green-500/50 text-green-300 px-4 py-3 rounded-lg mb-4"></div>
+
+        <!-- CREATE ACCOUNT FORM (shown if ?token= present) -->
+        <form id="createAccountForm" class="hidden space-y-4">
+            <input type="hidden" id="approvalToken">
+
+            <div>
+                <label class="block text-sm text-gray-400 mb-2">Email</label>
+                <input
+                    type="email"
+                    id="createEmail"
+                    readonly
+                    class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-gray-400"
+                >
+            </div>
+
+            <div>
+                <label class="block text-sm text-gray-400 mb-2">Create Password</label>
+                <input
+                    type="password"
+                    id="createPassword"
+                    required
+                    minlength="8"
+                    class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-orange-500"
+                    placeholder="Min 8 characters"
+                >
+            </div>
+
+            <div>
+                <label class="block text-sm text-gray-400 mb-2">Confirm Password</label>
+                <input
+                    type="password"
+                    id="confirmPassword"
+                    required
+                    class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-orange-500"
+                    placeholder="Re-enter password"
+                >
+            </div>
+
+            <button
+                type="submit"
+                id="createBtn"
+                class="w-full gradient-bg text-white font-bold py-3 rounded-lg hover:opacity-90 transition-opacity"
+            >
+                Create Account
+            </button>
+
+            <p class="text-center text-sm text-gray-400">
+                Already have an account?
+                <a href="/influencer" class="text-orange-500 hover:text-orange-400">Sign In</a>
+            </p>
+        </form>
+
+        <!-- SIGN IN FORM (default) -->
+        <form id="signInForm" class="space-y-4">
+            <div>
+                <label class="block text-sm text-gray-400 mb-2">Email</label>
+                <input
+                    type="email"
+                    id="signInEmail"
+                    required
+                    class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-orange-500"
+                    placeholder="creator@example.com"
+                >
+            </div>
+
+            <div>
+                <label class="block text-sm text-gray-400 mb-2">Password</label>
+                <input
+                    type="password"
+                    id="signInPassword"
+                    required
+                    class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-orange-500"
+                    placeholder="••••••••"
+                >
+            </div>
+
+            <button
+                type="submit"
+                id="signInBtn"
+                class="w-full gradient-bg text-white font-bold py-3 rounded-lg hover:opacity-90 transition-opacity"
+            >
+                Sign In
+            </button>
+
+            <p class="text-center text-sm text-gray-400">
+                Don't have an account?
+                <a href="/apply" class="text-orange-500 hover:text-orange-400">Apply to become a creator</a>
+            </p>
+        </form>
     </div>
+
+    <script>
+        const API_BASE = window.location.hostname === 'localhost'
+            ? 'http://localhost:5000/api'
+            : '/api';
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const approvalToken = urlParams.get('token');
+
+        // If token present, validate and show create account form
+        if (approvalToken) {
+            validateApprovalToken(approvalToken);
+        }
+
+        // Validate approval token
+        async function validateApprovalToken(token) {
+            try {
+                const res = await fetch(`${API_BASE}/auth/validate-approval-token`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    // Show create account form
+                    document.getElementById('signInForm').classList.add('hidden');
+                    document.getElementById('createAccountForm').classList.remove('hidden');
+                    document.getElementById('subtitle').textContent = 'Create your creator account';
+                    document.getElementById('approvalToken').value = token;
+                    document.getElementById('createEmail').value = data.email;
+                } else {
+                    showError(data.message || 'Invalid or expired approval link');
+                }
+            } catch (err) {
+                showError('Failed to validate approval token');
+            }
+        }
+
+        // Create Account Form Submit
+        document.getElementById('createAccountForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const password = document.getElementById('createPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const token = document.getElementById('approvalToken').value;
+
+            if (password !== confirmPassword) {
+                showError('Passwords do not match');
+                return;
+            }
+
+            const btn = document.getElementById('createBtn');
+            btn.disabled = true;
+            btn.textContent = 'Creating Account...';
+
+            try {
+                const res = await fetch(`${API_BASE}/auth/creator/signup`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token, password })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    // Store token
+                    localStorage.setItem('creatorToken', data.token);
+
+                    // Show success and redirect
+                    showSuccess('Account created! Redirecting...');
+                    setTimeout(() => {
+                        window.location.href = '/creator-studio';
+                    }, 1500);
+                } else {
+                    showError(data.message);
+                    btn.disabled = false;
+                    btn.textContent = 'Create Account';
+                }
+            } catch (err) {
+                showError('Account creation failed. Please try again.');
+                btn.disabled = false;
+                btn.textContent = 'Create Account';
+            }
+        });
+
+        // Sign In Form Submit
+        document.getElementById('signInForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const email = document.getElementById('signInEmail').value;
+            const password = document.getElementById('signInPassword').value;
+
+            const btn = document.getElementById('signInBtn');
+            btn.disabled = true;
+            btn.textContent = 'Signing In...';
+
+            try {
+                const res = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    localStorage.setItem('creatorToken', data.token);
+                    window.location.href = '/creator-studio';
+                } else {
+                    showError(data.message || 'Invalid email or password');
+                    btn.disabled = false;
+                    btn.textContent = 'Sign In';
+                }
+            } catch (err) {
+                showError('Sign in failed. Please try again.');
+                btn.disabled = false;
+                btn.textContent = 'Sign In';
+            }
+        });
+
+        function showError(message) {
+            const errorEl = document.getElementById('error');
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+            document.getElementById('success').classList.add('hidden');
+        }
+
+        function showSuccess(message) {
+            const successEl = document.getElementById('success');
+            successEl.textContent = message;
+            successEl.classList.remove('hidden');
+            document.getElementById('error').classList.add('hidden');
+        }
+    </script>
 </body>
 </html>

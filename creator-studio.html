@@ -315,51 +315,6 @@
 
         // Dashboard Tab
         function DashboardTab({ profile, earnings, onEarningsUpdate }) {
-            const [liveEarnings, setLiveEarnings] = useState([]);
-            const [earningsPopup, setEarningsPopup] = useState(null);
-            const [showConfetti, setShowConfetti] = useState(false);
-
-            // Variable interval earnings simulation (15-45 seconds)
-            useEffect(() => {
-                const simulateEarning = () => {
-                    const types = ['signup', 'sale', 'commission'];
-                    const descriptions = [
-                        'New signup via your link',
-                        'Product sale commission',
-                        'Referral bonus',
-                        'Subscription renewal'
-                    ];
-                    const newEarning = {
-                        type: types[Math.floor(Math.random() * types.length)],
-                        description: descriptions[Math.floor(Math.random() * descriptions.length)],
-                        amount: parseFloat((Math.random() * 15 + 1).toFixed(2)),
-                        timestamp: new Date()
-                    };
-
-                    setLiveEarnings(prev => [newEarning, ...prev].slice(0, 10));
-                    setEarningsPopup(newEarning);
-                    AudioManager.playEarnings();
-
-                    // Random milestone celebration
-                    if (Math.random() < 0.1) {
-                        setShowConfetti(true);
-                        AudioManager.playMilestone();
-                        setTimeout(() => setShowConfetti(false), 3000);
-                    }
-                };
-
-                const scheduleNext = () => {
-                    const delay = Math.random() * 30000 + 15000; // 15-45 seconds
-                    return setTimeout(() => {
-                        simulateEarning();
-                        scheduleNext();
-                    }, delay);
-                };
-
-                const timer = scheduleNext();
-                return () => clearTimeout(timer);
-            }, []);
-
             const stats = earnings?.summary || { totalEarnings: 0, clicks: 0, signups: 0, conversionRate: 0 };
             const tier = profile?.tier || 'BRONZE';
             const tierProgress = { BRONZE: { max: 10, next: 'SILVER' }, SILVER: { max: 25, next: 'GOLD' }, GOLD: { max: 50, next: 'PLATINUM' }, PLATINUM: { max: 100, next: 'DIAMOND' }, DIAMOND: { max: 999, next: null } };
@@ -423,6 +378,8 @@
             const [caption, setCaption] = useState('');
             const [visibility, setVisibility] = useState('public');
             const [mediaType, setMediaType] = useState(null);
+            const [mediaFiles, setMediaFiles] = useState([]);
+            const [mediaPreview, setMediaPreview] = useState([]);
             const [posting, setPosting] = useState(false);
             const [message, setMessage] = useState(null);
 
@@ -434,21 +391,91 @@
                 { label: 'Q&A', text: 'You asked, I\'m answering! Today\'s question:' }
             ];
 
+            const handleFileSelect = async (type) => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.multiple = type === 'carousel';
+                input.accept = type === 'video' ? 'video/*' : 'image/*';
+
+                input.onchange = async (e) => {
+                    const files = Array.from(e.target.files);
+                    if (!files.length) return;
+
+                    setMediaType(type);
+                    const previews = files.map(file => URL.createObjectURL(file));
+                    setMediaPreview(previews);
+                    setMediaFiles(files);
+                };
+
+                input.click();
+            };
+
             const handleSubmit = async (e) => {
                 e.preventDefault();
                 if (!caption.trim()) return;
                 setPosting(true);
+                setMessage(null);
+
                 try {
+                    let mediaUrl = null;
+                    let mediaPublicId = null;
+                    let carousel = null;
+
+                    // Upload media if present
+                    if (mediaFiles.length > 0) {
+                        if (mediaType === 'carousel') {
+                            // Upload multiple images
+                            const formData = new FormData();
+                            mediaFiles.forEach(file => formData.append('files', file));
+
+                            const uploadRes = await fetch(`${API_BASE}/upload/carousel`, {
+                                method: 'POST',
+                                headers: { 'Authorization': `Bearer ${localStorage.getItem('creatorToken')}` },
+                                body: formData
+                            });
+                            const uploadData = await uploadRes.json();
+                            if (!uploadData.success) throw new Error('Upload failed');
+
+                            carousel = uploadData.data.images;
+                        } else {
+                            // Upload single image or video
+                            const formData = new FormData();
+                            formData.append('file', mediaFiles[0]);
+
+                            const uploadRes = await fetch(`${API_BASE}/upload/media`, {
+                                method: 'POST',
+                                headers: { 'Authorization': `Bearer ${localStorage.getItem('creatorToken')}` },
+                                body: formData
+                            });
+                            const uploadData = await uploadRes.json();
+                            if (!uploadData.success) throw new Error('Upload failed');
+
+                            mediaUrl = uploadData.data.url;
+                            mediaPublicId = uploadData.data.publicId;
+                        }
+                    }
+
+                    // Create post
                     await api.fetch('/coach/posts', {
                         method: 'POST',
-                        body: JSON.stringify({ caption, visibility, mediaType })
+                        body: JSON.stringify({
+                            content: caption,
+                            visibility,
+                            mediaType: mediaType || 'none',
+                            mediaUrl,
+                            mediaPublicId,
+                            carousel
+                        })
                     });
+
                     setMessage({ type: 'success', text: 'Post created successfully!' });
                     setCaption('');
                     setMediaType(null);
+                    setMediaFiles([]);
+                    setMediaPreview([]);
                     onPostCreate?.();
                 } catch (err) {
-                    setMessage({ type: 'error', text: err.message });
+                    setMessage({ type: 'error', text: err.message || 'Failed to create post' });
                 }
                 setPosting(false);
             };
@@ -517,10 +544,36 @@
                             {/* Media Upload */}
                             <div>
                                 <label className="block text-gray-400 text-sm mb-2">Add Media</label>
+
+                                {/* Media Preview */}
+                                {mediaPreview.length > 0 && (
+                                    <div className="mb-3 p-3 bg-white/5 rounded-lg">
+                                        <div className="flex gap-2 overflow-x-auto">
+                                            {mediaPreview.map((url, i) => (
+                                                <div key={i} className="relative flex-shrink-0">
+                                                    {mediaType === 'video' ? (
+                                                        <video src={url} className="h-24 rounded" />
+                                                    ) : (
+                                                        <img src={url} className="h-24 rounded object-cover" />
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => { setMediaFiles([]); setMediaPreview([]); setMediaType(null); }}
+                                            className="text-red-400 text-sm mt-2"
+                                        >
+                                            <i className="fas fa-times mr-1"></i>Remove
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* Upload Buttons */}
                                 <div className="flex gap-3">
                                     <button
                                         type="button"
-                                        onClick={() => setMediaType('image')}
+                                        onClick={() => handleFileSelect('image')}
                                         className={`flex-1 p-4 rounded-lg border-2 border-dashed transition-colors ${
                                             mediaType === 'image' ? 'border-orange-500 bg-orange-500/10' : 'border-white/10 hover:border-white/30'
                                         }`}
@@ -530,7 +583,7 @@
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => setMediaType('video')}
+                                        onClick={() => handleFileSelect('video')}
                                         className={`flex-1 p-4 rounded-lg border-2 border-dashed transition-colors ${
                                             mediaType === 'video' ? 'border-pink-500 bg-pink-500/10' : 'border-white/10 hover:border-white/30'
                                         }`}
@@ -540,7 +593,7 @@
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => setMediaType('carousel')}
+                                        onClick={() => handleFileSelect('carousel')}
                                         className={`flex-1 p-4 rounded-lg border-2 border-dashed transition-colors ${
                                             mediaType === 'carousel' ? 'border-purple-500 bg-purple-500/10' : 'border-white/10 hover:border-white/30'
                                         }`}
@@ -782,28 +835,37 @@
                 };
                 loadLeaderboard();
 
-                // Generate mock chart data
-                const days = 7;
-                const data = [];
-                for (let i = days - 1; i >= 0; i--) {
-                    const date = new Date();
-                    date.setDate(date.getDate() - i);
-                    data.push({
-                        date: date.toLocaleDateString('en-US', { weekday: 'short' }),
-                        earnings: Math.random() * 100 + 20,
-                        clicks: Math.floor(Math.random() * 500 + 100)
-                    });
-                }
-                setChartData(data);
+                // Load real analytics data
+                const loadAnalytics = async () => {
+                    try {
+                        const res = await api.fetch('/influencers/earnings');
+                        if (res.success && res.data) {
+                            // Use actual stats or zeros if no data yet
+                            const stats = res.data.stats || {};
+                            setChartData([
+                                { date: 'Mon', earnings: 0, clicks: 0 },
+                                { date: 'Tue', earnings: 0, clicks: 0 },
+                                { date: 'Wed', earnings: 0, clicks: 0 },
+                                { date: 'Thu', earnings: 0, clicks: 0 },
+                                { date: 'Fri', earnings: 0, clicks: 0 },
+                                { date: 'Sat', earnings: 0, clicks: 0 },
+                                { date: 'Sun', earnings: 0, clicks: stats.clicks || 0 }
+                            ]);
+                        }
+                    } catch (err) {
+                        console.error('Failed to load analytics:', err);
+                    }
+                };
+                loadAnalytics();
             }, []);
 
             const maxEarnings = Math.max(...chartData.map(d => d.earnings), 1);
 
             const funnelData = [
-                { stage: 'Impressions', value: 12450, color: 'bg-blue-500' },
-                { stage: 'Clicks', value: 2340, color: 'bg-purple-500' },
-                { stage: 'Signups', value: 156, color: 'bg-pink-500' },
-                { stage: 'Conversions', value: 43, color: 'bg-orange-500' }
+                { stage: 'Impressions', value: 0, color: 'bg-blue-500' },
+                { stage: 'Clicks', value: 0, color: 'bg-purple-500' },
+                { stage: 'Signups', value: 0, color: 'bg-pink-500' },
+                { stage: 'Conversions', value: 0, color: 'bg-orange-500' }
             ];
 
             return (
@@ -893,31 +955,45 @@
             const [stripeConnected, setStripeConnected] = useState(false);
             const [stripeLoading, setStripeLoading] = useState(false);
             const [bankInfo, setBankInfo] = useState(null);
+            const [earningsData, setEarningsData] = useState(null);
 
             useEffect(() => {
+                loadEarnings();
                 loadStripeStatus();
                 loadPayoutHistory();
 
                 // Check if returning from Stripe onboarding
                 const urlParams = new URLSearchParams(window.location.search);
-                if (urlParams.get('stripe') === 'success') {
+                if (urlParams.get('success') === 'true') {
                     setMessage({ type: 'success', text: 'Stripe account connected successfully!' });
-                    // Clear the URL parameter
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                } else if (urlParams.get('stripe') === 'refresh') {
+                    // Clear the URL parameter and reload status
+                    window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
+                    loadStripeStatus();
+                } else if (urlParams.get('refresh') === 'true') {
                     setMessage({ type: 'error', text: 'Stripe connection was interrupted. Please try again.' });
-                    window.history.replaceState({}, document.title, window.location.pathname);
+                    window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
                 }
             }, []);
 
+            const loadEarnings = async () => {
+                try {
+                    const res = await api.fetch('/influencers/earnings');
+                    if (res.success && res.data) {
+                        setEarningsData(res.data);
+                    }
+                } catch (err) {
+                    console.error('Failed to load earnings:', err);
+                }
+            };
+
             const loadStripeStatus = async () => {
                 try {
-                    const res = await api.fetch('/earnings/stripe/status');
-                    setStripeConnected(res.data.connected && res.data.onboardingComplete);
-                    if (res.data.bankLast4) {
+                    const res = await api.fetch('/influencers/stripe/status');
+                    setStripeConnected(res.success && res.connected && res.onboardingComplete);
+                    if (res.bankLast4) {
                         setBankInfo({
-                            last4: res.data.bankLast4,
-                            bankName: res.data.bankName
+                            last4: res.bankLast4,
+                            bankName: res.bankName
                         });
                     }
                 } catch (err) {
@@ -937,11 +1013,15 @@
             const handleConnectStripe = async () => {
                 setStripeLoading(true);
                 try {
-                    const res = await api.fetch('/earnings/stripe/connect', { method: 'POST' });
+                    const res = await api.fetch('/influencers/stripe/connect', { method: 'POST' });
                     // Redirect to Stripe onboarding
-                    window.location.href = res.data.url;
+                    if (res.success && res.url) {
+                        window.location.href = res.url;
+                    } else {
+                        throw new Error('Failed to create Stripe Connect link');
+                    }
                 } catch (err) {
-                    setMessage({ type: 'error', text: err.message });
+                    setMessage({ type: 'error', text: err.message || 'Failed to connect Stripe' });
                     setStripeLoading(false);
                 }
             };
@@ -958,8 +1038,8 @@
                 setRequesting(false);
             };
 
-            const balance = earnings?.summary?.balance?.available || 0;
-            const pendingBalance = earnings?.summary?.balance?.pending || 0;
+            const balance = earningsData?.balance?.available || 0;
+            const pendingBalance = earningsData?.balance?.pending || 0;
             const minPayout = 50;
             const canPayout = balance >= minPayout && stripeConnected;
 
@@ -991,6 +1071,33 @@
                             </button>
                         </div>
                     </div>
+
+                    {/* Revenue Breakdown */}
+                    {earningsData && (
+                        <div className="glass rounded-xl p-6">
+                            <h2 className="text-lg font-bold mb-4"><i className="fas fa-chart-pie gradient-text mr-2"></i>Revenue Breakdown</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="bg-white/5 rounded-lg p-4">
+                                    <div className="text-gray-400 text-sm mb-1">Total Lifetime Earnings</div>
+                                    <div className="text-2xl font-bold text-green-400">${(earningsData.lifetime?.total || 0).toFixed(2)}</div>
+                                </div>
+                                <div className="bg-white/5 rounded-lg p-4">
+                                    <div className="text-gray-400 text-sm mb-1">From Referrals</div>
+                                    <div className="text-2xl font-bold text-blue-400">${(earningsData.lifetime?.fromReferrals || 0).toFixed(2)}</div>
+                                </div>
+                                <div className="bg-white/5 rounded-lg p-4">
+                                    <div className="text-gray-400 text-sm mb-1">Total Paid Out</div>
+                                    <div className="text-2xl font-bold text-purple-400">${(earningsData.lifetime?.paidOut || 0).toFixed(2)}</div>
+                                </div>
+                            </div>
+                            <div className="mt-4 p-4 bg-orange-500/10 rounded-lg border border-orange-500/30">
+                                <div className="flex items-center gap-2 text-orange-400">
+                                    <i className="fas fa-info-circle"></i>
+                                    <span className="text-sm">Commission Rate: 15% on all paid conversions • Referral Code: <span className="font-mono font-bold">{earningsData.referralCode}</span></span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Stripe Connect */}
                     <div className="glass rounded-xl p-6">
@@ -1275,8 +1382,15 @@
                                 <h1 className="text-xl font-bold">Creator Studio</h1>
                             </div>
                             <div className="flex items-center gap-4">
-                                <span className="text-gray-400 text-sm hidden sm:inline">{user?.email || profile?.email}</span>
-                                <button onClick={onLogout} className="text-gray-400 hover:text-white">
+                                <button
+                                    onClick={() => setActiveTab('settings')}
+                                    className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+                                    title="View Profile"
+                                >
+                                    <i className="fas fa-user-circle text-xl"></i>
+                                    <span className="text-sm hidden sm:inline">{user?.name || profile?.name || user?.email || profile?.email}</span>
+                                </button>
+                                <button onClick={onLogout} className="text-gray-400 hover:text-white" title="Logout">
                                     <i className="fas fa-sign-out-alt"></i>
                                 </button>
                             </div>
