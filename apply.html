@@ -173,6 +173,17 @@
                     </div>
 
                     <div>
+                        <label for="referralCode" class="block text-sm font-medium text-gray-300 mb-2">
+                            Referral Code <span class="text-gray-500 text-xs">(Optional)</span>
+                        </label>
+                        <input type="text" id="referralCode" name="referralCode" placeholder="Enter referral code if you have one"
+                            class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none transition-all uppercase">
+                        <p class="text-xs text-gray-500 mt-1">
+                            <i class="fas fa-gift mr-1"></i>Applied via a referral? Enter their code here
+                        </p>
+                    </div>
+
+                    <div>
                         <label for="platform" class="block text-sm font-medium text-gray-300 mb-2">Primary Platform</label>
                         <select id="platform" name="platform" required
                             class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:outline-none transition-all">
@@ -492,6 +503,18 @@
             const followerInput = document.getElementById('followerCount');
             const engagementInput = document.getElementById('engagementRate');
 
+            // Handle referral code from URL parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            const refCode = urlParams.get('ref');
+            if (refCode) {
+                const refInput = document.getElementById('referralCode');
+                if (refInput) {
+                    refInput.value = refCode.toUpperCase();
+                    // Track the click
+                    fetch(`${API_URL}/earnings/track/click/${refCode}`, { method: 'POST' }).catch(() => {});
+                }
+            }
+
             // Real-time tier updates
             followerInput.addEventListener('input', () => {
                 const followers = parseInt(followerInput.value) || 0;
@@ -533,6 +556,7 @@
                             followerCount: followers,
                             engagementRate: engagement,
                             videoLinks: videoLinks,
+                            referralCode: formData.get('referralCode') || null,
                         };
 
                         const response = await fetch(`${API_URL}/influencers/apply`, {

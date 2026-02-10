@@ -229,6 +229,16 @@
                             <input type="tel" id="phone" placeholder="(555) 123-4567"
                                 class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none transition-all">
                         </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">
+                                Referral Code <span class="text-gray-500 text-xs">(Optional)</span>
+                            </label>
+                            <input type="text" id="referralCode" placeholder="Enter referral code if you have one"
+                                class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none transition-all uppercase">
+                            <p class="text-xs text-gray-500 mt-1">
+                                <i class="fas fa-gift mr-1"></i>Applied via a referral? Enter their code here
+                            </p>
+                        </div>
                     </div>
 
                     <button onclick="nextStep(1)" class="w-full mt-8 bg-gradient-to-r from-orange-500 to-pink-500 text-white font-bold py-4 rounded-xl transition-all hover:opacity-90 glow-orange">
@@ -539,6 +549,20 @@
         let currentStep = 1;
         let applicationData = {};
 
+        // Handle referral code from URL parameter
+        (function initReferralCode() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const refCode = urlParams.get('ref');
+            if (refCode) {
+                const refInput = document.getElementById('referralCode');
+                if (refInput) {
+                    refInput.value = refCode.toUpperCase();
+                    // Optionally track the click
+                    fetch(`${API_URL}/earnings/track/click/${refCode}`, { method: 'POST' }).catch(() => {});
+                }
+            }
+        })();
+
         // Audio functions
         function playChime() {
             const audio = document.getElementById('chimeSound');
@@ -662,6 +686,7 @@
                     applicationData.email = document.getElementById('email').value;
                     applicationData.instagram = document.getElementById('instagram').value;
                     applicationData.phone = document.getElementById('phone').value;
+                    applicationData.referralCode = document.getElementById('referralCode').value || null;
                     break;
                 case 2:
                     applicationData.experience = document.getElementById('experience').value;
