@@ -180,6 +180,29 @@
         const errorEl = document.getElementById('error');
         const contentEl = document.getElementById('content');
 
+        // Get cookie helper
+        function getCookie(name) {
+            const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+            return match ? match[2] : null;
+        }
+
+        // Render paywall
+        function renderPaywall(profile) {
+            const feed = document.getElementById('feed');
+            feed.innerHTML = `
+                <div class="text-center py-16 px-6">
+                    <div class="w-20 h-20 bg-gradient-to-br from-orange-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="fas fa-lock text-white text-3xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-white mb-3">Exclusive Content</h3>
+                    <p class="text-gray-400 mb-6 max-w-md mx-auto">Subscribe to unlock ${profile.name}'s exclusive posts, workouts, and premium content.</p>
+                    <button onclick="window.location.href='/signup'" class="bg-gradient-to-r from-orange-500 to-pink-500 text-white px-8 py-3 rounded-lg font-bold text-lg hover:opacity-90 transition-opacity">
+                        Subscribe for $4.99/month
+                    </button>
+                </div>
+            `;
+        }
+
         // Track link click
         async function trackClick(code, linkUrl) {
             try {
@@ -343,15 +366,36 @@
                 // Links
                 renderLinks(profile.links || profile.linkTree || [], referralCode);
 
-                // Fetch and render feed
-                try {
-                    const feedRes = await fetch(`${API_BASE}/api/coach/${handle}/feed`);
-                    if (feedRes.ok) {
-                        const feed = await feedRes.json();
-                        renderContent(feed.posts || feed.content || feed);
+                // Check subscription status
+                const token = localStorage.getItem('token') || getCookie('token');
+                let isSubscribed = false;
+                if (token) {
+                    try {
+                        const subRes = await fetch(`${API_BASE}/api/coach/${handle}/subscription-status`, {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        if (subRes.ok) {
+                            const subData = await subRes.json();
+                            isSubscribed = subData.subscribed;
+                        }
+                    } catch (e) {}
+                }
+
+                // Show paywall or content
+                if (!isSubscribed) {
+                    renderPaywall(profile);
+                } else {
+                    try {
+                        const feedRes = await fetch(`${API_BASE}/api/coach/${handle}/feed`, {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        if (feedRes.ok) {
+                            const feed = await feedRes.json();
+                            renderContent(feed.posts || feed.content || feed);
+                        }
+                    } catch (feedErr) {
+                        console.log('Feed not available');
                     }
-                } catch (feedErr) {
-                    console.log('Feed not available');
                 }
 
                 // Show content
