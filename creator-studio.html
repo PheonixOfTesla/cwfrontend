@@ -355,7 +355,7 @@
                     </div>
 
                     {/* Live Feed */}
-                    <LiveEarningsFeed earnings={liveEarnings} />
+                    <LiveEarningsFeed earnings={earnings?.liveEarnings || []} />
 
                     {/* Quick Actions */}
                     <div className="glass rounded-xl p-4">
