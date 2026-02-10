@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Start earning with ClockWork's referral program. Get your unique code in seconds.">
+    <meta name="theme-color" content="#f97316">
+    <title>Start Earning | ClockWork Referral Program</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        clockwork: { orange: '#f97316', pink: '#ec4899', purple: '#a855f7', dark: '#0a0a0a' }
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a0a1a 50%, #0a0a0a 100%);
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+        }
+        .glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); }
+        .gradient-text { background: linear-gradient(135deg, #f97316, #ec4899, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .glow-pink { box-shadow: 0 0 60px rgba(236, 72, 153, 0.4); }
+        .glow-green { box-shadow: 0 0 60px rgba(34, 197, 94, 0.4); }
+
+        @keyframes confetti-fall {
+            0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            top: -10px;
+            animation: confetti-fall 3s ease-out forwards;
+            z-index: 1000;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(34, 197, 94, 0.4); }
+            50% { box-shadow: 0 0 40px rgba(34, 197, 94, 0.8); }
+        }
+        .pulse-glow-green { animation: pulse-glow 2s infinite; }
+
+        @keyframes scale-in {
+            0% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .scale-in { animation: scale-in 0.5s ease-out; }
+
+        .form-input {
+            width: 100%;
+            padding: 16px 20px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 12px;
+            color: white;
+            font-size: 16px;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: #f97316;
+            background: rgba(255,255,255,0.08);
+        }
+        .form-input::placeholder { color: #666; }
+    </style>
+</head>
+<body class="text-white">
+    <!-- Confetti Canvas -->
+    <canvas id="confetti-canvas" class="fixed inset-0 pointer-events-none z-[1000]"></canvas>
+
+    <!-- Audio -->
+    <audio id="successChime" preload="auto">
+        <source src="https://assets.mixkit.co/active_storage/sfx/2018/2018-preview.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 left-0 right-0 z-50 glass">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+            <a href="index.html" class="flex items-center gap-2">
+                <i class="fas fa-bolt text-orange-500 text-2xl"></i>
+                <span class="text-xl font-bold">clockwork</span>
+            </a>
+            <a href="referral.html" class="text-gray-400 hover:text-white flex items-center gap-2">
+                <i class="fas fa-arrow-left"></i>
+                Back
+            </a>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <section class="min-h-screen flex items-center justify-center pt-20 pb-12 px-4">
+        <div class="max-w-md w-full">
+            <!-- Header -->
+            <div class="text-center mb-8">
+                <div class="w-20 h-20 bg-gradient-to-r from-orange-500 to-pink-500 rounded-2xl mx-auto mb-6 flex items-center justify-center">
+                    <i class="fas fa-dollar-sign text-white text-3xl"></i>
+                </div>
+                <h1 class="text-3xl md:text-4xl font-black mb-2">Start Earning Now</h1>
+                <p class="text-gray-400">Get your unique referral code in seconds</p>
+            </div>
+
+            <!-- Form Card -->
+            <div class="glass rounded-3xl p-8 glow-pink" id="formCard">
+                <!-- Form State -->
+                <form id="referralForm" class="space-y-5">
+                    <div>
+                        <label class="text-gray-400 text-sm block mb-2">First Name</label>
+                        <input type="text" id="firstName" name="firstName" placeholder="Emily" required class="form-input">
+                    </div>
+                    <div>
+                        <label class="text-gray-400 text-sm block mb-2">Last Name</label>
+                        <input type="text" id="lastName" name="lastName" placeholder="Johnson" required class="form-input">
+                    </div>
+                    <div>
+                        <label class="text-gray-400 text-sm block mb-2">Email</label>
+                        <input type="email" id="email" name="email" placeholder="emily@example.com" required class="form-input">
+                    </div>
+                    <button type="submit" id="submitBtn" class="w-full bg-gradient-to-r from-orange-500 to-pink-500 text-white font-bold text-lg py-4 rounded-full hover:opacity-90 transition-all flex items-center justify-center gap-2">
+                        <span id="btnText"><i class="fas fa-bolt"></i> Get My Code</span>
+                        <span id="btnSpinner" class="hidden">
+                            <svg class="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </span>
+                    </button>
+                </form>
+
+                <!-- Success State (Hidden by default) -->
+                <div id="successState" class="hidden text-center">
+                    <div class="w-24 h-24 bg-gradient-to-r from-green-500 to-emerald-400 rounded-full mx-auto mb-6 flex items-center justify-center scale-in">
+                        <i class="fas fa-check text-white text-4xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-black mb-2">You're In!</h2>
+                    <p class="text-gray-400 mb-6">Share your code and start earning</p>
+
+                    <!-- Code Display -->
+                    <div class="bg-black/40 rounded-2xl p-6 mb-6 border-2 border-dashed border-green-500/30">
+                        <div class="text-gray-400 text-sm uppercase tracking-wider mb-2">Your Referral Code</div>
+                        <div id="referralCode" class="text-4xl md:text-5xl font-black gradient-text tracking-widest">-</div>
+                    </div>
+
+                    <!-- Link Display -->
+                    <div class="bg-black/30 rounded-xl p-4 mb-6 flex items-center gap-3">
+                        <input type="text" id="referralLink" readonly value="" class="flex-1 bg-transparent text-green-400 text-sm outline-none">
+                        <button onclick="copyLink()" id="copyBtn" class="bg-white text-black font-bold px-4 py-2 rounded-lg hover:bg-gray-200 transition-all text-sm whitespace-nowrap">
+                            Copy Link
+                        </button>
+                    </div>
+
+                    <!-- Share Buttons -->
+                    <div class="flex justify-center gap-4 mb-6">
+                        <a href="#" id="shareTwitter" target="_blank" class="w-12 h-12 bg-[#1da1f2] rounded-full flex items-center justify-center hover:scale-110 transition-transform">
+                            <i class="fab fa-twitter text-white text-xl"></i>
+                        </a>
+                        <a href="#" id="shareFacebook" target="_blank" class="w-12 h-12 bg-[#1877f2] rounded-full flex items-center justify-center hover:scale-110 transition-transform">
+                            <i class="fab fa-facebook-f text-white text-xl"></i>
+                        </a>
+                        <a href="#" id="shareEmail" class="w-12 h-12 bg-gray-600 rounded-full flex items-center justify-center hover:scale-110 transition-transform">
+                            <i class="fas fa-envelope text-white text-xl"></i>
+                        </a>
+                    </div>
+
+                    <!-- Earnings Info -->
+                    <div class="grid grid-cols-3 gap-4 pt-6 border-t border-white/10">
+                        <div class="text-center">
+                            <div class="text-xl font-bold text-green-400">$3-5</div>
+                            <div class="text-xs text-gray-500">Per Signup</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-xl font-bold text-purple-400">10%</div>
+                            <div class="text-xs text-gray-500">Recurring</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-xl font-bold text-pink-400">90%</div>
+                            <div class="text-xs text-gray-500">You Keep</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trust Badges -->
+            <div class="flex flex-wrap justify-center gap-4 mt-8 text-gray-500 text-sm">
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-shield-alt text-green-500"></i>
+                    <span>Instant Approval</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-bolt text-orange-500"></i>
+                    <span>Start Earning Today</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-8 text-center text-gray-600 text-sm">
+        <p>&copy; 2026 ClockWork. People Are The Future.</p>
+    </footer>
+
+    <script>
+        // ═══════════════════════════════════════════════════════════
+        // PATF API CONFIGURATION
+        // ═══════════════════════════════════════════════════════════
+        const PATF_API_URL = 'https://patf-api.up.railway.app/api/v1/referrals/create';
+        const PATF_API_KEY = 'CLOCKWORK_API_KEY';
+
+        // ═══════════════════════════════════════════════════════════
+        // DOM ELEMENTS
+        // ═══════════════════════════════════════════════════════════
+        const form = document.getElementById('referralForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const btnText = document.getElementById('btnText');
+        const btnSpinner = document.getElementById('btnSpinner');
+        const successState = document.getElementById('successState');
+        const formCard = document.getElementById('formCard');
+        const referralCodeEl = document.getElementById('referralCode');
+        const referralLinkEl = document.getElementById('referralLink');
+        const copyBtn = document.getElementById('copyBtn');
+        const successChime = document.getElementById('successChime');
+
+        // ═══════════════════════════════════════════════════════════
+        // FORM SUBMISSION
+        // ═══════════════════════════════════════════════════════════
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const firstName = document.getElementById('firstName').value.trim();
+            const lastName = document.getElementById('lastName').value.trim();
+            const email = document.getElementById('email').value.trim();
+
+            if (!firstName || !lastName || !email) return;
+
+            // Show loading
+            btnText.classList.add('hidden');
+            btnSpinner.classList.remove('hidden');
+            submitBtn.disabled = true;
+
+            try {
+                const result = await createReferralCode(firstName, lastName, email);
+
+                if (result.success) {
+                    showSuccess(result.code, result.trackingUrl);
+                } else {
+                    throw new Error(result.error || 'Failed to create code');
+                }
+            } catch (error) {
+                console.error('API Error:', error);
+                // Fallback: Generate code locally
+                const localCode = generateLocalCode(firstName);
+                const localUrl = `https://clockwork.fit?ref=${localCode}`;
+                showSuccess(localCode, localUrl);
+            }
+        });
+
+        // ═══════════════════════════════════════════════════════════
+        // PATF API CALL
+        // ═══════════════════════════════════════════════════════════
+        async function createReferralCode(firstName, lastName, email) {
+            const response = await fetch(PATF_API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': PATF_API_KEY
+                },
+                body: JSON.stringify({
+                    userId: `cw_${Date.now()}`,
+                    email: email,
+                    name: `${firstName} ${lastName}`
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`API responded with ${response.status}`);
+            }
+
+            return response.json();
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // LOCAL CODE GENERATION (Fallback)
+        // ═══════════════════════════════════════════════════════════
+        function generateLocalCode(firstName) {
+            const clean = firstName.toUpperCase().replace(/[^A-Z]/g, '');
+            const digits = Math.floor(Math.random() * 90) + 10; // 10-99
+            return clean + digits;
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // SUCCESS STATE
+        // ═══════════════════════════════════════════════════════════
+        function showSuccess(code, trackingUrl) {
+            // Update UI
+            referralCodeEl.textContent = code;
+            referralLinkEl.value = trackingUrl;
+
+            // Update share links
+            const shareText = `Join me on ClockWork and get fit! Use my code ${code} for a special bonus.`;
+            const encodedUrl = encodeURIComponent(trackingUrl);
+            const encodedText = encodeURIComponent(shareText);
+
+            document.getElementById('shareTwitter').href =
+                `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`;
+            document.getElementById('shareFacebook').href =
+                `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}&quote=${encodedText}`;
+            document.getElementById('shareEmail').href =
+                `mailto:?subject=Join%20ClockWork%20Fitness&body=${encodedText}%20${encodedUrl}`;
+
+            // Hide form, show success
+            form.classList.add('hidden');
+            successState.classList.remove('hidden');
+
+            // Update card styling
+            formCard.classList.remove('glow-pink');
+            formCard.classList.add('glow-green', 'pulse-glow-green');
+
+            // Play sound
+            try {
+                successChime.volume = 0.5;
+                successChime.play();
+            } catch (e) {}
+
+            // Launch confetti
+            launchConfetti();
+
+            // Reset button
+            btnText.classList.remove('hidden');
+            btnSpinner.classList.add('hidden');
+            submitBtn.disabled = false;
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // COPY LINK
+        // ═══════════════════════════════════════════════════════════
+        function copyLink() {
+            const link = referralLinkEl.value;
+            navigator.clipboard.writeText(link).then(() => {
+                copyBtn.textContent = 'Copied!';
+                copyBtn.classList.add('bg-green-500', 'text-white');
+                copyBtn.classList.remove('bg-white', 'text-black');
+                setTimeout(() => {
+                    copyBtn.textContent = 'Copy Link';
+                    copyBtn.classList.remove('bg-green-500', 'text-white');
+                    copyBtn.classList.add('bg-white', 'text-black');
+                }, 2000);
+            });
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // CONFETTI
+        // ═══════════════════════════════════════════════════════════
+        function launchConfetti() {
+            const canvas = document.getElementById('confetti-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const particles = [];
+            const colors = ['#f97316', '#ec4899', '#22c55e', '#3b82f6', '#eab308', '#a855f7'];
+
+            for (let i = 0; i < 150; i++) {
+                particles.push({
+                    x: canvas.width / 2,
+                    y: canvas.height / 2,
+                    vx: (Math.random() - 0.5) * 25,
+                    vy: (Math.random() - 0.5) * 25 - 15,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    size: Math.random() * 10 + 5,
+                    rotation: Math.random() * 360,
+                    rotationSpeed: (Math.random() - 0.5) * 15
+                });
+            }
+
+            let frame = 0;
+            const maxFrames = 150;
+
+            function animate() {
+                if (frame >= maxFrames) {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    return;
+                }
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                particles.forEach(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vy += 0.5;
+                    p.rotation += p.rotationSpeed;
+                    p.vx *= 0.99;
+
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate(p.rotation * Math.PI / 180);
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+                    ctx.restore();
+                });
+
+                frame++;
+                requestAnimationFrame(animate);
+            }
+
+            animate();
+        }
+
+        // Handle resize
+        window.addEventListener('resize', () => {
+            const canvas = document.getElementById('confetti-canvas');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    </script>
+</body>
+</html>
