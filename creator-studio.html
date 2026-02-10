@@ -891,28 +891,75 @@
             const [requesting, setRequesting] = useState(false);
             const [message, setMessage] = useState(null);
             const [stripeConnected, setStripeConnected] = useState(false);
+            const [stripeLoading, setStripeLoading] = useState(false);
+            const [bankInfo, setBankInfo] = useState(null);
 
             useEffect(() => {
-                // Load payout history
-                setPayoutHistory([
-                    { id: 1, amount: 150.00, status: 'completed', date: '2024-01-15', method: 'Stripe' },
-                    { id: 2, amount: 275.50, status: 'completed', date: '2024-01-01', method: 'Stripe' },
-                    { id: 3, amount: 89.25, status: 'pending', date: '2024-01-20', method: 'Stripe' }
-                ]);
+                loadStripeStatus();
+                loadPayoutHistory();
+
+                // Check if returning from Stripe onboarding
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.get('stripe') === 'success') {
+                    setMessage({ type: 'success', text: 'Stripe account connected successfully!' });
+                    // Clear the URL parameter
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                } else if (urlParams.get('stripe') === 'refresh') {
+                    setMessage({ type: 'error', text: 'Stripe connection was interrupted. Please try again.' });
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
             }, []);
+
+            const loadStripeStatus = async () => {
+                try {
+                    const res = await api.fetch('/earnings/stripe/status');
+                    setStripeConnected(res.data.connected && res.data.onboardingComplete);
+                    if (res.data.bankLast4) {
+                        setBankInfo({
+                            last4: res.data.bankLast4,
+                            bankName: res.data.bankName
+                        });
+                    }
+                } catch (err) {
+                    console.error('Failed to load Stripe status:', err);
+                }
+            };
+
+            const loadPayoutHistory = async () => {
+                try {
+                    const res = await api.fetch('/earnings/payouts');
+                    setPayoutHistory(res.data || []);
+                } catch (err) {
+                    console.error('Failed to load payout history:', err);
+                }
+            };
+
+            const handleConnectStripe = async () => {
+                setStripeLoading(true);
+                try {
+                    const res = await api.fetch('/earnings/stripe/connect', { method: 'POST' });
+                    // Redirect to Stripe onboarding
+                    window.location.href = res.data.url;
+                } catch (err) {
+                    setMessage({ type: 'error', text: err.message });
+                    setStripeLoading(false);
+                }
+            };
 
             const handleRequestPayout = async () => {
                 setRequesting(true);
                 try {
                     await api.fetch('/earnings/payout', { method: 'POST' });
                     setMessage({ type: 'success', text: 'Payout requested successfully!' });
+                    loadPayoutHistory(); // Refresh history
                 } catch (err) {
                     setMessage({ type: 'error', text: err.message });
                 }
                 setRequesting(false);
             };
 
-            const balance = earnings?.summary?.balance || 0;
+            const balance = earnings?.summary?.balance?.available || 0;
+            const pendingBalance = earnings?.summary?.balance?.pending || 0;
             const minPayout = 50;
             const canPayout = balance >= minPayout && stripeConnected;
 
@@ -930,7 +977,10 @@
                             <div>
                                 <div className="text-gray-400 text-sm">Available Balance</div>
                                 <div className="text-4xl font-bold text-green-400">${balance.toFixed(2)}</div>
-                                <div className="text-gray-500 text-sm mt-1">Minimum payout: ${minPayout}</div>
+                                <div className="text-gray-500 text-sm mt-1">
+                                    {pendingBalance > 0 && <span>Pending: ${pendingBalance.toFixed(2)} • </span>}
+                                    Minimum payout: ${minPayout}
+                                </div>
                             </div>
                             <button
                                 onClick={handleRequestPayout}
@@ -948,20 +998,33 @@
                         {stripeConnected ? (
                             <div className="flex items-center gap-3 p-4 bg-green-500/10 rounded-lg border border-green-500/30">
                                 <i className="fas fa-check-circle text-green-400 text-xl"></i>
-                                <div>
+                                <div className="flex-1">
                                     <div className="font-medium text-green-400">Connected</div>
-                                    <div className="text-gray-500 text-sm">Your Stripe account is linked and ready for payouts</div>
+                                    <div className="text-gray-500 text-sm">
+                                        {bankInfo ? `${bankInfo.bankName} ••••${bankInfo.last4}` : 'Your Stripe account is linked and ready for payouts'}
+                                    </div>
                                 </div>
+                                <button
+                                    onClick={handleConnectStripe}
+                                    className="text-gray-400 hover:text-white text-sm"
+                                >
+                                    Update
+                                </button>
                             </div>
                         ) : (
                             <div className="text-center py-6">
                                 <i className="fab fa-stripe text-5xl text-purple-400 mb-4"></i>
                                 <p className="text-gray-400 mb-4">Connect your Stripe account to receive payouts</p>
                                 <button
-                                    onClick={() => setStripeConnected(true)}
-                                    className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-6 py-3 rounded-lg transition-colors"
+                                    onClick={handleConnectStripe}
+                                    disabled={stripeLoading}
+                                    className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-6 py-3 rounded-lg transition-colors disabled:opacity-50"
                                 >
-                                    <i className="fas fa-link mr-2"></i>Connect Stripe
+                                    {stripeLoading ? (
+                                        <><i className="fas fa-spinner fa-spin mr-2"></i>Connecting...</>
+                                    ) : (
+                                        <><i className="fas fa-link mr-2"></i>Connect Stripe</>
+                                    )}
                                 </button>
                             </div>
                         )}
@@ -974,31 +1037,32 @@
                             <p className="text-gray-500 text-center py-4">No payouts yet</p>
                         ) : (
                             <div className="space-y-3">
-                                {payoutHistory.map(payout => (
-                                    <div key={payout.id} className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                                                payout.status === 'completed' ? 'bg-green-500/20' : 'bg-yellow-500/20'
-                                            }`}>
-                                                <i className={`fas fa-${payout.status === 'completed' ? 'check' : 'clock'} ${
-                                                    payout.status === 'completed' ? 'text-green-400' : 'text-yellow-400'
-                                                }`}></i>
+                                {payoutHistory.map(payout => {
+                                    const amount = typeof payout.amount === 'number' ? payout.amount / 100 : parseFloat(payout.amount) || 0;
+                                    const statusColor = payout.status === 'completed' ? 'green' : payout.status === 'failed' ? 'red' : 'yellow';
+                                    const statusIcon = payout.status === 'completed' ? 'check' : payout.status === 'failed' ? 'times' : 'clock';
+                                    const date = new Date(payout.completedAt || payout.createdAt).toLocaleDateString();
+
+                                    return (
+                                        <div key={payout._id || payout.id} className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-${statusColor}-500/20`}>
+                                                    <i className={`fas fa-${statusIcon} text-${statusColor}-400`}></i>
+                                                </div>
+                                                <div>
+                                                    <div className="font-medium">${amount.toFixed(2)}</div>
+                                                    <div className="text-gray-500 text-sm capitalize">{payout.method?.replace('_', ' ') || 'Stripe'}</div>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <div className="font-medium">${payout.amount.toFixed(2)}</div>
-                                                <div className="text-gray-500 text-sm">{payout.method}</div>
+                                            <div className="text-right">
+                                                <span className={`text-xs px-2 py-1 rounded-full bg-${statusColor}-500/20 text-${statusColor}-400 capitalize`}>
+                                                    {payout.status}
+                                                </span>
+                                                <div className="text-gray-500 text-sm mt-1">{date}</div>
                                             </div>
                                         </div>
-                                        <div className="text-right">
-                                            <span className={`text-xs px-2 py-1 rounded-full ${
-                                                payout.status === 'completed' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
-                                            }`}>
-                                                {payout.status}
-                                            </span>
-                                            <div className="text-gray-500 text-sm mt-1">{payout.date}</div>
-                                        </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
