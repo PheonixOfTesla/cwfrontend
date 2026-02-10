@@ -343,9 +343,9 @@
         // REAL-TIME TIER QUALIFICATION SYSTEM
         // ═══════════════════════════════════════════════════════════
         const tierConfig = {
-            rising: { name: 'Rising Creator', minFollowers: 10000, commission: 10, color: 'orange' },
-            established: { name: 'Established Creator', minFollowers: 50000, commission: 12, color: 'pink', instantApproval: true },
-            elite: { name: 'Elite Creator', minFollowers: 250000, commission: 15, color: 'purple', instantApproval: true, vip: true }
+            rising: { name: 'Rising Creator', minFollowers: 10000, commission: 4.99, commissionDisplay: '$4.99/subscriber', color: 'orange' },
+            established: { name: 'Established Creator', minFollowers: 50000, commission: 4.99, commissionDisplay: '$4.99/subscriber', color: 'pink', instantApproval: true },
+            elite: { name: 'Elite Creator', minFollowers: 250000, commission: 4.99, commissionDisplay: '$4.99/subscriber', color: 'purple', instantApproval: true, vip: true }
         };
 
         function calculateTier(followers) {
@@ -372,7 +372,7 @@
             // Update tier info
             tierName.textContent = tier.name;
             tierName.className = `text-2xl font-bold text-${tier.color}-400`;
-            tierCommission.textContent = tier.commission + '%';
+            tierCommission.textContent = tier.commissionDisplay || ('$' + tier.commission + '/sub');
 
             // Show tier preview
             tierPreview.classList.remove('hidden');
@@ -406,9 +406,9 @@
             const earningsPreview = document.getElementById('earningsPreview');
             const earningsAmount = document.getElementById('earningsAmount');
 
-            // Assume 1% of followers convert, $29/mo subscription
+            // Assume 1% of followers convert, earn $4.99 per paid subscriber
             const estimatedSignups = Math.floor(followers * 0.01);
-            const monthlyEarnings = estimatedSignups * 29 * (commission / 100);
+            const monthlyEarnings = estimatedSignups * 4.99;
 
             // Show with delay for "prediction error" effect
             earningsPreview.classList.remove('hidden');
