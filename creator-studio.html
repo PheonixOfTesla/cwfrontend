@@ -1187,6 +1187,229 @@
             );
         }
 
+        // Profile Tab - Username Setup & Public Profile
+        function ProfileTab({ profile, onUpdate }) {
+            const [username, setUsername] = useState(profile?.coachProfile?.handle || '');
+            const [checkingUsername, setCheckingUsername] = useState(false);
+            const [usernameAvailable, setUsernameAvailable] = useState(null);
+            const [saving, setSaving] = useState(false);
+            const [message, setMessage] = useState(null);
+            const [profilePic, setProfilePic] = useState(profile?.coachProfile?.profilePicture || null);
+            const [uploading, setUploading] = useState(false);
+
+            useEffect(() => {
+                const checkUsername = async () => {
+                    if (!username || username === profile?.coachProfile?.handle) {
+                        setUsernameAvailable(null);
+                        return;
+                    }
+                    setCheckingUsername(true);
+                    try {
+                        const res = await api.fetch(`/coach/check-handle/${username}`);
+                        setUsernameAvailable(res.available);
+                    } catch (err) {
+                        setUsernameAvailable(false);
+                    }
+                    setCheckingUsername(false);
+                };
+
+                const timer = setTimeout(checkUsername, 500);
+                return () => clearTimeout(timer);
+            }, [username, profile]);
+
+            const handleProfilePicUpload = async () => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'image/*';
+
+                input.onchange = async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    setUploading(true);
+                    try {
+                        const formData = new FormData();
+                        formData.append('file', file);
+
+                        const uploadRes = await fetch(`${API_BASE}/upload/profile-picture`, {
+                            method: 'POST',
+                            headers: { 'Authorization': `Bearer ${localStorage.getItem('creatorToken')}` },
+                            body: formData
+                        });
+                        const uploadData = await uploadRes.json();
+
+                        if (!uploadData.success) throw new Error('Upload failed');
+                        setProfilePic(uploadData.data.url);
+                        setMessage({ type: 'success', text: 'Profile picture uploaded!' });
+                    } catch (err) {
+                        setMessage({ type: 'error', text: 'Failed to upload profile picture' });
+                    }
+                    setUploading(false);
+                };
+
+                input.click();
+            };
+
+            const handleSaveUsername = async () => {
+                if (!username || !usernameAvailable) return;
+                setSaving(true);
+                try {
+                    await api.fetch('/coach/profile', {
+                        method: 'PUT',
+                        body: JSON.stringify({
+                            coachProfile: {
+                                handle: username.toLowerCase(),
+                                profilePicture: profilePic
+                            }
+                        })
+                    });
+                    setMessage({ type: 'success', text: 'Profile updated successfully!' });
+                    onUpdate?.();
+                } catch (err) {
+                    setMessage({ type: 'error', text: err.message });
+                }
+                setSaving(false);
+            };
+
+            const currentHandle = profile?.coachProfile?.handle;
+            const profileUrl = currentHandle ? `clockwork.fit/${currentHandle}` : null;
+
+            return (
+                <div className="space-y-6">
+                    {message && (
+                        <div className={`p-4 rounded-lg ${message.type === 'error' ? 'bg-red-500/20 text-red-300' : 'bg-green-500/20 text-green-300'}`}>
+                            {message.text}
+                        </div>
+                    )}
+
+                    {/* Profile Picture */}
+                    <div className="glass rounded-xl p-6">
+                        <h2 className="text-lg font-bold mb-4"><i className="fas fa-camera gradient-text mr-2"></i>Profile Picture</h2>
+                        <div className="flex items-center gap-6">
+                            <div className="relative">
+                                {profilePic ? (
+                                    <img src={profilePic} className="w-24 h-24 rounded-full object-cover" alt="Profile" />
+                                ) : (
+                                    <div className="w-24 h-24 rounded-full bg-white/10 flex items-center justify-center">
+                                        <i className="fas fa-user text-4xl text-gray-500"></i>
+                                    </div>
+                                )}
+                                <button
+                                    onClick={handleProfilePicUpload}
+                                    disabled={uploading}
+                                    className="absolute bottom-0 right-0 w-8 h-8 rounded-full gradient-bg text-white flex items-center justify-center hover:opacity-90 disabled:opacity-50"
+                                >
+                                    {uploading ? <i className="fas fa-spinner fa-spin text-xs"></i> : <i className="fas fa-camera text-xs"></i>}
+                                </button>
+                            </div>
+                            <div>
+                                <p className="text-gray-400 text-sm">Upload a profile picture to personalize your page</p>
+                                <p className="text-gray-500 text-xs mt-1">Recommended: Square image, at least 400x400px</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Username Setup */}
+                    <div className="glass rounded-xl p-6">
+                        <h2 className="text-lg font-bold mb-4"><i className="fas fa-at gradient-text mr-2"></i>Username</h2>
+                        <p className="text-gray-400 text-sm mb-4">Choose your unique username for your public profile</p>
+
+                        <div className="mb-4">
+                            <label className="block text-gray-400 text-sm mb-2">Your Username</label>
+                            <div className="flex gap-3">
+                                <div className="flex-1 relative">
+                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">clockwork.fit/</div>
+                                    <input
+                                        type="text"
+                                        value={username}
+                                        onChange={e => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
+                                        className="w-full bg-white/5 border border-white/10 rounded-lg pl-36 pr-12 py-3 text-white focus:outline-none focus:border-orange-500"
+                                        placeholder="yourname"
+                                        maxLength={30}
+                                    />
+                                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                                        {checkingUsername && <i className="fas fa-spinner fa-spin text-gray-500"></i>}
+                                        {!checkingUsername && usernameAvailable === true && <i className="fas fa-check-circle text-green-400"></i>}
+                                        {!checkingUsername && usernameAvailable === false && <i className="fas fa-times-circle text-red-400"></i>}
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={handleSaveUsername}
+                                    disabled={saving || !usernameAvailable}
+                                    className="gradient-bg hover:opacity-90 text-white font-bold px-6 py-3 rounded-lg transition-opacity disabled:opacity-50"
+                                >
+                                    {saving ? 'Saving...' : 'Save'}
+                                </button>
+                            </div>
+                            {usernameAvailable === false && (
+                                <p className="text-red-400 text-sm mt-2">This username is already taken</p>
+                            )}
+                            {usernameAvailable === true && (
+                                <p className="text-green-400 text-sm mt-2">This username is available!</p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Profile Preview */}
+                    {profileUrl && (
+                        <div className="glass rounded-xl p-6">
+                            <h2 className="text-lg font-bold mb-4"><i className="fas fa-link gradient-text mr-2"></i>Your Profile</h2>
+                            <div className="bg-white/5 rounded-lg p-4 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    {profilePic && <img src={profilePic} className="w-12 h-12 rounded-full object-cover" alt="Profile" />}
+                                    <div>
+                                        <div className="font-medium">{profile?.name || 'Your Name'}</div>
+                                        <div className="text-sm text-gray-400">{profileUrl}</div>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => window.open(`https://${profileUrl}`, '_blank')}
+                                        className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg transition-colors"
+                                    >
+                                        <i className="fas fa-external-link-alt mr-2"></i>View Profile
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(`https://${profileUrl}`);
+                                            setMessage({ type: 'success', text: 'Profile link copied!' });
+                                            setTimeout(() => setMessage(null), 2000);
+                                        }}
+                                        className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg transition-colors"
+                                    >
+                                        <i className="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Profile Tips */}
+                    <div className="glass rounded-xl p-6 border-l-4 border-orange-500">
+                        <h3 className="font-bold mb-3"><i className="fas fa-lightbulb text-yellow-400 mr-2"></i>Profile Tips</h3>
+                        <ul className="space-y-2 text-sm text-gray-400">
+                            <li className="flex items-start gap-2">
+                                <i className="fas fa-check text-green-400 mt-1"></i>
+                                <span>Use a clear, professional profile picture</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                                <i className="fas fa-check text-green-400 mt-1"></i>
+                                <span>Choose a memorable username that represents your brand</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                                <i className="fas fa-check text-green-400 mt-1"></i>
+                                <span>Share your profile link on social media to drive traffic</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                                <i className="fas fa-check text-green-400 mt-1"></i>
+                                <span>Post regularly to keep your subscribers engaged</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            );
+        }
+
         // Settings Tab
         function SettingsTab({ profile, onUpdate }) {
             const [formData, setFormData] = useState({
@@ -1368,6 +1591,7 @@
                 { id: 'links', label: 'Links', icon: 'link' },
                 { id: 'analytics', label: 'Analytics', icon: 'chart-pie' },
                 { id: 'payouts', label: 'Payouts', icon: 'wallet' },
+                { id: 'profile', label: 'Profile', icon: 'user' },
                 { id: 'settings', label: 'Settings', icon: 'cog' }
             ];
 
@@ -1435,6 +1659,7 @@
                         {activeTab === 'links' && <LinksTab />}
                         {activeTab === 'analytics' && <AnalyticsTab earnings={earnings} />}
                         {activeTab === 'payouts' && <PayoutsTab earnings={earnings} />}
+                        {activeTab === 'profile' && <ProfileTab profile={profile} onUpdate={loadData} />}
                         {activeTab === 'settings' && <SettingsTab profile={profile} onUpdate={loadData} />}
                     </main>
                 </div>
