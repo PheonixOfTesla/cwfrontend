@@ -258,11 +258,11 @@
 
             <!-- Standard Success Message -->
             <div id="success-message" class="hidden text-center glass rounded-3xl p-8">
-                <div class="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mb-6 mx-auto">
+                <div id="success-icon" class="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mb-6 mx-auto">
                     <i class="fas fa-check text-green-500 text-3xl"></i>
                 </div>
-                <h2 class="text-2xl font-bold text-white mb-2">Application Received</h2>
-                <p class="text-gray-400 mb-6">We review every application personally. If you're a good fit, you'll hear from us within 48 hours.</p>
+                <h2 id="success-title" class="text-2xl font-bold text-white mb-2">Application Received</h2>
+                <p id="success-description" class="text-gray-400 mb-6">We review every application personally. If you're a good fit, you'll hear from us within 48 hours.</p>
 
                 <!-- Application Status Tracker -->
                 <div class="bg-white/5 rounded-xl p-4 mb-6">
@@ -564,6 +564,34 @@
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(data),
                         });
+
+                        const result = await response.json();
+
+                        // Update success message based on approval status
+                        const successTitle = document.getElementById('success-title');
+                        const successDescription = document.getElementById('success-description');
+                        const successIcon = document.getElementById('success-icon');
+
+                        if (result.application && result.application.status === 'approved') {
+                            // APPROVED!
+                            successIcon.innerHTML = '<i class="fas fa-check-circle text-green-400 text-3xl"></i>';
+                            successIcon.className = 'w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mb-6 mx-auto pulse-glow';
+                            successTitle.textContent = '✅ You\'ve Been Approved!';
+                            successTitle.className = 'text-3xl font-bold text-green-400 mb-2';
+                            successDescription.innerHTML = `
+                                <p class="text-white text-lg mb-2">Welcome to the ClockWork Creator Program!</p>
+                                <p class="text-gray-300">Check your email (<strong>${formData.get('email')}</strong>) for your account setup link and affiliate code.</p>
+                                <p class="text-gray-400 text-sm mt-4">You'll be able to start earning <strong class="text-green-400">$4.99/subscriber</strong> right away!</p>
+                            `;
+                            triggerConfetti();
+                        } else {
+                            // PENDING REVIEW
+                            successTitle.textContent = 'Application Under Review';
+                            successDescription.innerHTML = `
+                                <p class="text-gray-300">Thanks for applying! We review applications within 24-48 hours.</p>
+                                <p class="text-gray-400 text-sm mt-4">We'll email you at <strong>${formData.get('email')}</strong> with our decision.</p>
+                            `;
+                        }
 
                         formContainer.classList.add('hidden');
                         successMessage.classList.remove('hidden');
