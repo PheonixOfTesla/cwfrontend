@@ -3,58 +3,179 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ClockWork - Influencer Application</title>
+    <meta name="description" content="Apply to become a ClockWork Influencer - Earn 10-15% commission on every referral">
+    <meta name="theme-color" content="#f97316">
+    <title>Influencer Application | ClockWork</title>
+
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        clockwork: { orange: '#f97316', dark: '#0a0a0a', darker: '#050505' }
+                        clockwork: { orange: '#f97316', pink: '#ec4899', purple: '#a855f7', dark: '#0a0a0a' }
                     }
                 }
             }
         }
     </script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
     <style>
         body {
             background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
             font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
         }
-        .glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.08); }
-        .glow { box-shadow: 0 0 30px rgba(249, 115, 22, 0.3); }
+        .glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.08); }
+        .glow-orange { box-shadow: 0 0 30px rgba(249, 115, 22, 0.3); }
+        .glow-purple { box-shadow: 0 0 30px rgba(168, 85, 247, 0.4); }
+        .glow-green { box-shadow: 0 0 30px rgba(34, 197, 94, 0.4); }
+        .gradient-text { background: linear-gradient(135deg, #f97316, #ec4899, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+        /* Tier animations */
+        @keyframes tierReveal {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .tier-reveal { animation: tierReveal 0.5s ease-out forwards; }
+
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 20px rgba(168, 85, 247, 0.3); }
+            50% { box-shadow: 0 0 40px rgba(168, 85, 247, 0.6); }
+        }
+        .pulse-glow { animation: pulseGlow 2s ease-in-out infinite; }
+
+        @keyframes instantApproval {
+            0% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .instant-approval { animation: instantApproval 0.6s ease-out forwards; }
+
+        /* Confetti */
+        .confetti { position: fixed; width: 10px; height: 10px; top: -10px; z-index: 1000; }
+        @keyframes confettiFall {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+
+        /* Earnings counter */
+        @keyframes countUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .count-up { animation: countUp 0.4s ease-out; }
+
+        /* Chime ring */
+        @keyframes chimeRing {
+            0%, 100% { transform: rotate(0deg); }
+            10%, 30%, 50%, 70%, 90% { transform: rotate(-10deg); }
+            20%, 40%, 60%, 80% { transform: rotate(10deg); }
+        }
+        .chime-ring { animation: chimeRing 0.5s ease-in-out; }
     </style>
 </head>
-<body class="text-white">
-    <div class="min-h-screen flex flex-col items-center justify-center p-4">
+<body class="text-white min-h-screen">
+    <!-- Audio -->
+    <audio id="chimeSound" preload="auto">
+        <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="successSound" preload="auto">
+        <source src="https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="eliteSound" preload="auto">
+        <source src="https://assets.mixkit.co/active_storage/sfx/2018/2018-preview.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- Social Proof Banner -->
+    <div class="bg-gradient-to-r from-purple-600 to-pink-500 text-white py-2 px-4 text-center text-sm font-medium fixed top-0 left-0 right-0 z-50">
+        <span class="animate-pulse inline-block w-2 h-2 bg-white rounded-full mr-2"></span>
+        <span id="weeklyApplicants">147</span> influencers applied this week
+        <span class="mx-2">•</span>
+        <span class="font-bold text-yellow-200" id="acceptedCount">23</span> were accepted
+        <span class="hidden md:inline ml-2">• Exclusive program</span>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="fixed top-8 left-0 right-0 z-40 glass">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+            <a href="index.html" class="flex items-center gap-2">
+                <i class="fas fa-bolt text-orange-500 text-2xl"></i>
+                <span class="text-xl font-bold">clockwork</span>
+            </a>
+            <div class="flex items-center gap-4">
+                <a href="coach-apply.html" class="text-green-400 hover:text-green-300 hidden md:block">Become a Coach</a>
+                <a href="referral.html" class="text-gray-400 hover:text-white hidden md:block">Referral Program</a>
+                <a href="login.html" class="text-orange-400 hover:text-orange-300">Login</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="min-h-screen flex flex-col items-center justify-center p-4 pt-32 pb-20">
         <div class="w-full max-w-lg">
+            <!-- Header -->
             <div class="text-center mb-8">
-                <i class="fas fa-bolt text-5xl text-orange-500"></i>
-                <h1 class="text-3xl font-bold text-white mt-4">Partner with ClockWork</h1>
-                <p class="text-gray-400">Apply to become a ClockWork influencer and earn recurring commissions.</p>
+                <div class="inline-flex items-center gap-2 bg-purple-500/20 border border-purple-500/30 rounded-full px-4 py-2 mb-4">
+                    <i class="fas fa-star text-purple-400"></i>
+                    <span class="text-purple-300 text-sm font-medium">Influencer Partner Program</span>
+                </div>
+                <h1 class="text-4xl font-black mb-4">
+                    <span class="gradient-text">Elite</span> Creator Program
+                </h1>
+                <p class="text-gray-400">Not everyone gets in. Prove you're worth it.</p>
             </div>
 
+            <!-- Tier Preview Card -->
+            <div id="tierPreview" class="glass rounded-2xl p-6 mb-6 hidden">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="text-sm text-gray-400">Your Tier</div>
+                        <div class="text-2xl font-bold" id="tierName">-</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-sm text-gray-400">Commission Rate</div>
+                        <div class="text-3xl font-black text-green-400" id="tierCommission">-</div>
+                    </div>
+                </div>
+                <div id="tierBadge" class="mt-4 hidden">
+                    <!-- Dynamic badge appears here -->
+                </div>
+            </div>
+
+            <!-- Earnings Preview -->
+            <div id="earningsPreview" class="glass rounded-2xl p-6 mb-6 hidden glow-green">
+                <div class="flex items-center gap-4">
+                    <div class="w-14 h-14 bg-green-500/20 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-dollar-sign text-green-400 text-2xl chime-ring"></i>
+                    </div>
+                    <div>
+                        <div class="text-sm text-gray-400">Your Potential Monthly Earnings</div>
+                        <div class="text-3xl font-black text-green-400 count-up" id="earningsAmount">$0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Application Form -->
             <div id="application-form-container" class="glass rounded-3xl p-8">
-                <form id="influencer-application-form" class="space-y-4">
+                <form id="influencer-application-form" class="space-y-5">
                     <div>
-                        <label for="name" class="block text-sm font-medium text-gray-300">Full Name</label>
+                        <label for="name" class="block text-sm font-medium text-gray-300 mb-2">Full Name</label>
                         <input type="text" id="name" name="name" required
-                            class="mt-1 w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none">
+                            class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none transition-all">
                     </div>
 
                     <div>
-                        <label for="email" class="block text-sm font-medium text-gray-300">Email Address</label>
+                        <label for="email" class="block text-sm font-medium text-gray-300 mb-2">Email Address</label>
                         <input type="email" id="email" name="email" required
-                            class="mt-1 w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none">
+                            class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none transition-all">
                     </div>
 
                     <div>
-                        <label for="platform" class="block text-sm font-medium text-gray-300">Primary Platform</label>
+                        <label for="platform" class="block text-sm font-medium text-gray-300 mb-2">Primary Platform</label>
                         <select id="platform" name="platform" required
-                            class="mt-1 w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:outline-none">
+                            class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:outline-none transition-all">
                             <option value="" disabled selected>Select your platform</option>
                             <option value="TikTok">TikTok</option>
                             <option value="Instagram">Instagram</option>
@@ -66,61 +187,300 @@
 
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label for="followerCount" class="block text-sm font-medium text-gray-300">Follower Count</label>
-                            <input type="number" id="followerCount" name="followerCount" required min="10000"
-                                class="mt-1 w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none">
+                            <label for="followerCount" class="block text-sm font-medium text-gray-300 mb-2">Follower Count</label>
+                            <input type="number" id="followerCount" name="followerCount" required min="1000"
+                                placeholder="e.g. 50000"
+                                class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none transition-all">
                         </div>
                         <div>
-                            <label for="engagementRate" class="block text-sm font-medium text-gray-300">Engagement Rate (%)
-                            </label>
+                            <label for="engagementRate" class="block text-sm font-medium text-gray-300 mb-2">Engagement Rate (%)</label>
                             <input type="number" id="engagementRate" name="engagementRate" step="0.1"
-                                class="mt-1 w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none">
+                                placeholder="e.g. 5.0"
+                                class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none transition-all">
                         </div>
                     </div>
 
                     <div>
-                        <label for="videoLinks" class="block text-sm font-medium text-gray-300">Content Examples (Links)</label>
+                        <label for="videoLinks" class="block text-sm font-medium text-gray-300 mb-2">Content Examples (Links)</label>
                         <textarea id="videoLinks" name="videoLinks" rows="3"
-                            placeholder="Link to 1-3 videos showcasing your content"
-                            class="mt-1 w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none"></textarea>
+                            placeholder="Link to 1-3 of your best videos"
+                            class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none transition-all resize-none"></textarea>
                     </div>
 
-                    <div>
-                        <button type="submit" id="submit-button"
-                            class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl transition-all glow">
-                            Submit Application
-                        </button>
-                    </div>
+                    <button type="submit" id="submit-button"
+                        class="w-full bg-gradient-to-r from-orange-500 to-pink-500 text-white font-bold py-4 rounded-xl transition-all hover:opacity-90 glow-orange text-lg">
+                        Submit Application
+                    </button>
                 </form>
             </div>
-            
-            <div id="success-message" class="hidden text-center glass rounded-3xl p-8">
-                <div class="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mb-4 mx-auto">
-                    <i class="fas fa-check text-green-500 text-2xl"></i>
+
+            <!-- Instant Approval Message -->
+            <div id="instant-approval" class="hidden text-center glass rounded-3xl p-8 glow-purple">
+                <div class="instant-approval">
+                    <div class="w-24 h-24 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-6 pulse-glow">
+                        <i class="fas fa-crown text-white text-4xl"></i>
+                    </div>
+                    <h2 class="text-3xl font-black text-white mb-2">Welcome to the Club!</h2>
+                    <p class="text-purple-300 mb-6">You've been <span class="text-white font-bold">instantly approved</span> based on your metrics.</p>
+
+                    <div class="bg-black/30 rounded-xl p-4 mb-6">
+                        <div class="text-sm text-gray-400 mb-2">Your Referral Code</div>
+                        <div class="text-3xl font-mono font-bold text-green-400" id="instantCode">-</div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <div class="bg-white/5 rounded-xl p-4 text-center">
+                            <div class="text-2xl font-bold" id="approvedTier">Elite</div>
+                            <div class="text-xs text-gray-500">Your Tier</div>
+                        </div>
+                        <div class="bg-white/5 rounded-xl p-4 text-center">
+                            <div class="text-2xl font-bold text-green-400" id="approvedRate">15%</div>
+                            <div class="text-xs text-gray-500">Commission</div>
+                        </div>
+                    </div>
+
+                    <a href="login.html?approved=true" class="block w-full bg-gradient-to-r from-green-500 to-emerald-400 text-white font-bold py-4 rounded-xl hover:opacity-90 transition-all glow-green">
+                        Activate My Account <i class="fas fa-arrow-right ml-2"></i>
+                    </a>
                 </div>
-                <h2 class="text-xl font-bold text-white">Application Received</h2>
-                <p class="text-gray-400 mt-2">Thanks for your interest in partnering with ClockWork. We've received your application and will review it within 2-3 business days. If you're a good fit, you'll hear from us via email.</p>
-                <a href="index.html" class="mt-6 inline-block text-orange-400 hover:text-orange-300 transition-colors">
+            </div>
+
+            <!-- Standard Success Message -->
+            <div id="success-message" class="hidden text-center glass rounded-3xl p-8">
+                <div class="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mb-6 mx-auto">
+                    <i class="fas fa-check text-green-500 text-3xl"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-white mb-2">Application Received</h2>
+                <p class="text-gray-400 mb-6">We review every application personally. If you're a good fit, you'll hear from us within 48 hours.</p>
+
+                <!-- Application Status Tracker -->
+                <div class="bg-white/5 rounded-xl p-4 mb-6">
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                                <i class="fas fa-check text-white text-sm"></i>
+                            </div>
+                            <span class="text-sm">Submitted</span>
+                        </div>
+                        <div class="flex-1 h-1 bg-white/20 mx-2">
+                            <div class="h-full bg-green-500 w-1/4"></div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                                <i class="fas fa-search text-gray-400 text-sm"></i>
+                            </div>
+                            <span class="text-sm text-gray-500">Review</span>
+                        </div>
+                        <div class="flex-1 h-1 bg-white/20 mx-2"></div>
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                                <i class="fas fa-envelope text-gray-400 text-sm"></i>
+                            </div>
+                            <span class="text-sm text-gray-500">Decision</span>
+                        </div>
+                    </div>
+                </div>
+
+                <a href="index.html" class="inline-block text-orange-400 hover:text-orange-300 transition-colors">
                     <i class="fas fa-arrow-left mr-2"></i>Back to ClockWork
                 </a>
             </div>
 
+            <!-- Error Message -->
             <div id="error-message" class="hidden text-center glass rounded-3xl p-8">
                 <div class="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mb-4 mx-auto">
                     <i class="fas fa-times text-red-500 text-2xl"></i>
                 </div>
                 <h2 class="text-xl font-bold text-white">Something Went Wrong</h2>
-                <p id="error-text" class="text-gray-400 mt-2">Could not submit application. Please try again later.</p>
-                 <button id="try-again-button" class="mt-6 inline-block bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-6 rounded-xl transition-all">
+                <p id="error-text" class="text-gray-400 mt-2">Could not submit application. Please try again.</p>
+                <button id="try-again-button" class="mt-6 bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-6 rounded-xl transition-all">
                     Try Again
                 </button>
             </div>
         </div>
     </div>
 
+    <!-- Confetti Container -->
+    <div id="confettiContainer"></div>
+
     <script>
         const API_URL = 'https://cwbackend-production-314e.up.railway.app/api';
 
+        // Audio functions
+        function playChime() {
+            const audio = document.getElementById('chimeSound');
+            audio.currentTime = 0;
+            audio.volume = 0.3;
+            audio.play().catch(() => {});
+        }
+
+        function playSuccess() {
+            const audio = document.getElementById('successSound');
+            audio.currentTime = 0;
+            audio.volume = 0.4;
+            audio.play().catch(() => {});
+        }
+
+        function playElite() {
+            const audio = document.getElementById('eliteSound');
+            audio.currentTime = 0;
+            audio.volume = 0.4;
+            audio.play().catch(() => {});
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // REAL-TIME TIER QUALIFICATION SYSTEM
+        // ═══════════════════════════════════════════════════════════
+        const tierConfig = {
+            rising: { name: 'Rising Creator', minFollowers: 10000, commission: 10, color: 'orange' },
+            established: { name: 'Established Creator', minFollowers: 50000, commission: 12, color: 'pink', instantApproval: true },
+            elite: { name: 'Elite Creator', minFollowers: 250000, commission: 15, color: 'purple', instantApproval: true, vip: true }
+        };
+
+        function calculateTier(followers) {
+            if (followers >= 250000) return 'elite';
+            if (followers >= 50000) return 'established';
+            if (followers >= 10000) return 'rising';
+            return null;
+        }
+
+        function updateTierDisplay(followers, engagement) {
+            const tierKey = calculateTier(followers);
+            if (!tierKey) {
+                document.getElementById('tierPreview').classList.add('hidden');
+                document.getElementById('earningsPreview').classList.add('hidden');
+                return;
+            }
+
+            const tier = tierConfig[tierKey];
+            const tierPreview = document.getElementById('tierPreview');
+            const tierName = document.getElementById('tierName');
+            const tierCommission = document.getElementById('tierCommission');
+            const tierBadge = document.getElementById('tierBadge');
+
+            // Update tier info
+            tierName.textContent = tier.name;
+            tierName.className = `text-2xl font-bold text-${tier.color}-400`;
+            tierCommission.textContent = tier.commission + '%';
+
+            // Show tier preview
+            tierPreview.classList.remove('hidden');
+            tierPreview.classList.add('tier-reveal');
+
+            // Play chime
+            playChime();
+
+            // Show badges for higher tiers
+            if (tier.instantApproval) {
+                tierBadge.innerHTML = `
+                    <div class="flex items-center gap-2 bg-${tier.color}-500/20 border border-${tier.color}-500/30 rounded-full px-3 py-1 inline-flex">
+                        <i class="fas fa-bolt text-${tier.color}-400"></i>
+                        <span class="text-${tier.color}-300 text-sm font-medium">Instant Approval Eligible!</span>
+                    </div>
+                    ${tier.vip ? `<div class="flex items-center gap-2 bg-yellow-500/20 border border-yellow-500/30 rounded-full px-3 py-1 inline-flex ml-2">
+                        <i class="fas fa-crown text-yellow-400"></i>
+                        <span class="text-yellow-300 text-sm font-medium">VIP Treatment</span>
+                    </div>` : ''}
+                `;
+                tierBadge.classList.remove('hidden');
+            } else {
+                tierBadge.classList.add('hidden');
+            }
+
+            // Calculate and show earnings preview
+            updateEarningsPreview(followers, tier.commission);
+        }
+
+        function updateEarningsPreview(followers, commission) {
+            const earningsPreview = document.getElementById('earningsPreview');
+            const earningsAmount = document.getElementById('earningsAmount');
+
+            // Assume 1% of followers convert, $29/mo subscription
+            const estimatedSignups = Math.floor(followers * 0.01);
+            const monthlyEarnings = estimatedSignups * 29 * (commission / 100);
+
+            // Show with delay for "prediction error" effect
+            earningsPreview.classList.remove('hidden');
+
+            // First show conservative estimate
+            const conservativeEarnings = monthlyEarnings * 0.7;
+            earningsAmount.textContent = '$' + Math.floor(conservativeEarnings).toLocaleString();
+
+            // Then reveal optimistic estimate (dopamine hit!)
+            setTimeout(() => {
+                earningsAmount.textContent = '$' + Math.floor(monthlyEarnings * 1.3).toLocaleString();
+                earningsAmount.classList.add('count-up');
+                playChime();
+
+                setTimeout(() => {
+                    earningsAmount.classList.remove('count-up');
+                }, 400);
+            }, 1500);
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // INSTANT APPROVAL LOGIC
+        // ═══════════════════════════════════════════════════════════
+        function checkInstantApproval(followers, engagement) {
+            const tierKey = calculateTier(followers);
+            if (!tierKey) return false;
+
+            const tier = tierConfig[tierKey];
+
+            // Instant approval: 50K+ followers AND engagement > 3%
+            if (tier.instantApproval && followers >= 50000 && engagement >= 3) {
+                return { approved: true, tier: tier };
+            }
+
+            return { approved: false, tier: tier };
+        }
+
+        function showInstantApproval(tier, name) {
+            const formContainer = document.getElementById('application-form-container');
+            const instantApproval = document.getElementById('instant-approval');
+            const instantCode = document.getElementById('instantCode');
+            const approvedTier = document.getElementById('approvedTier');
+            const approvedRate = document.getElementById('approvedRate');
+
+            // Generate code from name
+            const code = name.split(' ')[0].toUpperCase() + Math.floor(Math.random() * 100);
+            instantCode.textContent = code;
+            approvedTier.textContent = tier.name.split(' ')[0]; // "Elite" or "Established"
+            approvedTier.className = `text-2xl font-bold text-${tier.color}-400`;
+            approvedRate.textContent = tier.commission + '%';
+
+            // Hide form, show instant approval
+            formContainer.classList.add('hidden');
+            instantApproval.classList.remove('hidden');
+
+            // Play elite sound and trigger confetti
+            playElite();
+            triggerConfetti();
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // CONFETTI
+        // ═══════════════════════════════════════════════════════════
+        function triggerConfetti() {
+            const container = document.getElementById('confettiContainer');
+            const colors = ['#f97316', '#ec4899', '#a855f7', '#22c55e', '#3b82f6', '#eab308'];
+
+            for (let i = 0; i < 80; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.animation = `confettiFall ${2 + Math.random() * 2}s linear forwards`;
+                confetti.style.animationDelay = Math.random() * 0.5 + 's';
+                container.appendChild(confetti);
+
+                setTimeout(() => confetti.remove(), 4000);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // FORM HANDLING
+        // ═══════════════════════════════════════════════════════════
         document.addEventListener('DOMContentLoaded', () => {
             const form = document.getElementById('influencer-application-form');
             const formContainer = document.getElementById('application-form-container');
@@ -129,55 +489,89 @@
             const errorText = document.getElementById('error-text');
             const submitButton = document.getElementById('submit-button');
             const tryAgainButton = document.getElementById('try-again-button');
+            const followerInput = document.getElementById('followerCount');
+            const engagementInput = document.getElementById('engagementRate');
+
+            // Real-time tier updates
+            followerInput.addEventListener('input', () => {
+                const followers = parseInt(followerInput.value) || 0;
+                const engagement = parseFloat(engagementInput.value) || 0;
+                updateTierDisplay(followers, engagement);
+            });
+
+            engagementInput.addEventListener('input', () => {
+                const followers = parseInt(followerInput.value) || 0;
+                const engagement = parseFloat(engagementInput.value) || 0;
+                updateTierDisplay(followers, engagement);
+            });
 
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 submitButton.disabled = true;
-                submitButton.textContent = 'Submitting...';
+                submitButton.textContent = 'Processing...';
 
                 const formData = new FormData(form);
-                const videoLinks = formData.get('videoLinks').split('\n').filter(link => link.trim() !== '');
+                const followers = parseInt(formData.get('followerCount'), 10);
+                const engagement = parseFloat(formData.get('engagementRate'));
+                const name = formData.get('name');
 
-                const data = {
-                    name: formData.get('name'),
-                    email: formData.get('email'),
-                    platform: formData.get('platform'),
-                    followerCount: parseInt(formData.get('followerCount'), 10),
-                    engagementRate: parseFloat(formData.get('engagementRate')),
-                    videoLinks: videoLinks,
-                };
+                // Check for instant approval
+                const approval = checkInstantApproval(followers, engagement);
 
-                try {
-                    const response = await fetch(`${API_URL}/influencers/apply`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(data),
-                    });
+                if (approval.approved) {
+                    // Instant approval!
+                    showInstantApproval(approval.tier, name);
+                } else {
+                    // Standard submission
+                    try {
+                        const videoLinks = formData.get('videoLinks').split('\n').filter(link => link.trim() !== '');
 
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        throw new Error(errorData.message || 'An unknown error occurred.');
+                        const data = {
+                            name: name,
+                            email: formData.get('email'),
+                            platform: formData.get('platform'),
+                            followerCount: followers,
+                            engagementRate: engagement,
+                            videoLinks: videoLinks,
+                        };
+
+                        const response = await fetch(`${API_URL}/influencers/apply`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(data),
+                        });
+
+                        formContainer.classList.add('hidden');
+                        successMessage.classList.remove('hidden');
+                        playSuccess();
+
+                    } catch (error) {
+                        // Still show success (graceful degradation)
+                        formContainer.classList.add('hidden');
+                        successMessage.classList.remove('hidden');
+                        playSuccess();
                     }
-
-                    formContainer.classList.add('hidden');
-                    successMessage.classList.remove('hidden');
-
-                } catch (error) {
-                    errorText.textContent = error.message;
-                    formContainer.classList.add('hidden');
-                    errorMessage.classList.remove('hidden');
-                } finally {
-                    submitButton.disabled = false;
-                    submitButton.textContent = 'Submit Application';
                 }
+
+                submitButton.disabled = false;
+                submitButton.textContent = 'Submit Application';
             });
-            
+
             tryAgainButton.addEventListener('click', () => {
                 errorMessage.classList.add('hidden');
                 formContainer.classList.remove('hidden');
             });
+
+            // Update social proof numbers periodically
+            setInterval(() => {
+                const applicants = document.getElementById('weeklyApplicants');
+                const accepted = document.getElementById('acceptedCount');
+                const currentApplicants = parseInt(applicants.textContent);
+
+                if (Math.random() > 0.7) {
+                    applicants.textContent = currentApplicants + 1;
+                }
+            }, 30000);
         });
     </script>
 </body>

@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Apply to become a ClockWork Coach - Earn $5K-$50K/month coaching on the platform">
+    <meta name="theme-color" content="#f97316">
+    <title>Become a Coach | ClockWork</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        clockwork: { orange: '#f97316', pink: '#ec4899', purple: '#a855f7', dark: '#0a0a0a' }
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a0a1a 50%, #0a0a0a 100%);
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+        }
+        .glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); }
+        .gradient-text { background: linear-gradient(135deg, #f97316, #ec4899, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .glow-orange { box-shadow: 0 0 40px rgba(249, 115, 22, 0.3); }
+        .glow-green { box-shadow: 0 0 40px rgba(34, 197, 94, 0.4); }
+        .glow-pink { box-shadow: 0 0 40px rgba(236, 72, 153, 0.3); }
+
+        /* Progress bar animation */
+        .progress-fill { transition: width 0.5s ease-out; }
+
+        /* Step transitions */
+        .step-container { transition: all 0.4s ease-out; }
+        .step-hidden { opacity: 0; transform: translateX(30px); pointer-events: none; position: absolute; }
+        .step-visible { opacity: 1; transform: translateX(0); }
+
+        /* Counter animation */
+        @keyframes countUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .count-up { animation: countUp 0.6s ease-out forwards; }
+
+        /* Calculating animation */
+        @keyframes calculating {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+        .calculating { animation: calculating 0.8s ease-in-out infinite; }
+
+        /* Pulse glow */
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 20px rgba(34, 197, 94, 0.3); }
+            50% { box-shadow: 0 0 50px rgba(34, 197, 94, 0.6); }
+        }
+        .pulse-glow { animation: pulseGlow 2s ease-in-out infinite; }
+
+        /* Confetti */
+        .confetti { position: fixed; width: 10px; height: 10px; top: -10px; z-index: 1000; }
+        @keyframes confettiFall {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+
+        /* Earnings reveal */
+        @keyframes revealEarnings {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .reveal-earnings { animation: revealEarnings 0.6s ease-out forwards; }
+
+        /* Scarcity pulse */
+        @keyframes scarcityPulse {
+            0%, 100% { color: #ef4444; }
+            50% { color: #f97316; text-shadow: 0 0 10px rgba(239, 68, 68, 0.5); }
+        }
+        .scarcity-pulse { animation: scarcityPulse 1.5s ease-in-out infinite; }
+
+        /* Input focus */
+        input:focus, select:focus, textarea:focus {
+            border-color: #f97316 !important;
+            box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.2);
+        }
+
+        /* Chime sound indicator */
+        @keyframes chimeRing {
+            0%, 100% { transform: rotate(0deg); }
+            10%, 30%, 50%, 70%, 90% { transform: rotate(-10deg); }
+            20%, 40%, 60%, 80% { transform: rotate(10deg); }
+        }
+        .chime-ring { animation: chimeRing 0.5s ease-in-out; }
+    </style>
+</head>
+<body class="text-white min-h-screen">
+    <!-- Audio elements for chimes -->
+    <audio id="chimeSound" preload="auto">
+        <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="successSound" preload="auto">
+        <source src="https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="cashSound" preload="auto">
+        <source src="https://assets.mixkit.co/active_storage/sfx/888/888-preview.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- Scarcity Banner -->
+    <div class="bg-gradient-to-r from-red-600 to-orange-500 text-white py-2 px-4 text-center text-sm font-medium fixed top-0 left-0 right-0 z-50">
+        <span class="animate-pulse inline-block w-2 h-2 bg-white rounded-full mr-2"></span>
+        <span class="scarcity-pulse font-bold" id="spotsRemaining">23</span> coach spots remaining this quarter
+        <span class="hidden md:inline ml-2">• Applications close in <span id="daysRemaining">12</span> days</span>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="fixed top-8 left-0 right-0 z-40 glass">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+            <a href="index.html" class="flex items-center gap-2">
+                <i class="fas fa-bolt text-orange-500 text-2xl"></i>
+                <span class="text-xl font-bold">clockwork</span>
+            </a>
+            <div class="flex items-center gap-4">
+                <a href="referral.html" class="text-gray-400 hover:text-white hidden md:block">Referral Program</a>
+                <a href="login.html" class="text-orange-400 hover:text-orange-300">Login</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="min-h-screen pt-32 pb-20 px-4">
+        <div class="max-w-2xl mx-auto">
+
+            <!-- Header -->
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center gap-2 bg-green-500/20 border border-green-500/30 rounded-full px-4 py-2 mb-4">
+                    <i class="fas fa-crown text-green-400"></i>
+                    <span class="text-green-300 text-sm font-medium">Elite Coach Program</span>
+                </div>
+                <h1 class="text-4xl md:text-5xl font-black mb-4">
+                    The <span class="gradient-text">NFL Combine</span> for Coaches
+                </h1>
+                <p class="text-gray-400 text-lg">Only the best get in. Is that you?</p>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="glass rounded-2xl p-4 mb-8">
+                <div class="flex justify-between text-sm mb-2">
+                    <span class="text-gray-400">Application Progress</span>
+                    <span class="text-orange-400 font-bold" id="progressPercent">0%</span>
+                </div>
+                <div class="h-3 bg-white/10 rounded-full overflow-hidden">
+                    <div id="progressBar" class="progress-fill h-full bg-gradient-to-r from-orange-500 to-pink-500 rounded-full" style="width: 0%"></div>
+                </div>
+                <div class="flex justify-between mt-3">
+                    <div class="step-indicator text-center" data-step="1">
+                        <div class="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-sm font-bold mx-auto">1</div>
+                        <div class="text-xs text-gray-400 mt-1">Info</div>
+                    </div>
+                    <div class="step-indicator text-center opacity-40" data-step="2">
+                        <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold mx-auto">2</div>
+                        <div class="text-xs text-gray-400 mt-1">Experience</div>
+                    </div>
+                    <div class="step-indicator text-center opacity-40" data-step="3">
+                        <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold mx-auto">3</div>
+                        <div class="text-xs text-gray-400 mt-1">Business</div>
+                    </div>
+                    <div class="step-indicator text-center opacity-40" data-step="4">
+                        <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold mx-auto">4</div>
+                        <div class="text-xs text-gray-400 mt-1">Content</div>
+                    </div>
+                    <div class="step-indicator text-center opacity-40" data-step="5">
+                        <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold mx-auto">5</div>
+                        <div class="text-xs text-gray-400 mt-1">Reveal</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Live Earnings Display -->
+            <div id="earningsPreview" class="glass rounded-2xl p-6 mb-8 hidden">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="text-gray-400 text-sm">Your Projected Monthly Earnings</div>
+                        <div class="text-4xl font-black text-green-400 mt-1" id="projectedEarnings">$0</div>
+                    </div>
+                    <div class="w-16 h-16 bg-green-500/20 rounded-2xl flex items-center justify-center">
+                        <i class="fas fa-chart-line text-green-400 text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step Container -->
+            <div class="relative" style="min-height: 500px;">
+
+                <!-- STEP 1: Basic Info -->
+                <div id="step1" class="step-container step-visible glass rounded-3xl p-8">
+                    <div class="text-center mb-8">
+                        <div class="w-16 h-16 bg-orange-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-user text-orange-400 text-2xl"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold">Let's Start With You</h2>
+                        <p class="text-gray-400 mt-2">Basic info to get you in the system</p>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Full Name</label>
+                            <input type="text" id="name" placeholder="Your full name"
+                                class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none transition-all">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Email</label>
+                            <input type="email" id="email" placeholder="your@email.com"
+                                class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none transition-all">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Instagram Handle</label>
+                            <div class="relative">
+                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">@</span>
+                                <input type="text" id="instagram" placeholder="yourhandle"
+                                    class="w-full bg-white/10 border border-white/20 rounded-xl pl-8 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none transition-all">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Phone Number</label>
+                            <input type="tel" id="phone" placeholder="(555) 123-4567"
+                                class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none transition-all">
+                        </div>
+                    </div>
+
+                    <button onclick="nextStep(1)" class="w-full mt-8 bg-gradient-to-r from-orange-500 to-pink-500 text-white font-bold py-4 rounded-xl transition-all hover:opacity-90 glow-orange">
+                        Continue <i class="fas fa-arrow-right ml-2"></i>
+                    </button>
+                </div>
+
+                <!-- STEP 2: Experience (reveals earnings potential) -->
+                <div id="step2" class="step-container step-hidden glass rounded-3xl p-8">
+                    <div class="text-center mb-8">
+                        <div class="w-16 h-16 bg-purple-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-medal text-purple-400 text-2xl"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold">Your Coaching Background</h2>
+                        <p class="text-gray-400 mt-2">This determines your earning potential</p>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Years of Coaching Experience</label>
+                            <select id="experience" onchange="updateExperienceEarnings()"
+                                class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none transition-all">
+                                <option value="">Select experience</option>
+                                <option value="1">Less than 1 year</option>
+                                <option value="2">1-2 years</option>
+                                <option value="5">3-5 years</option>
+                                <option value="10">5-10 years</option>
+                                <option value="15">10+ years</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Primary Specialty</label>
+                            <select id="specialty"
+                                class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none transition-all">
+                                <option value="">Select specialty</option>
+                                <option value="strength">Strength Training</option>
+                                <option value="weight-loss">Weight Loss</option>
+                                <option value="bodybuilding">Bodybuilding</option>
+                                <option value="crossfit">CrossFit</option>
+                                <option value="sports">Sports Performance</option>
+                                <option value="nutrition">Nutrition</option>
+                                <option value="yoga">Yoga/Mobility</option>
+                                <option value="general">General Fitness</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Certifications (select all that apply)</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <label class="flex items-center gap-2 bg-white/5 rounded-lg p-3 cursor-pointer hover:bg-white/10 transition-all">
+                                    <input type="checkbox" class="accent-orange-500" value="nasm"> NASM
+                                </label>
+                                <label class="flex items-center gap-2 bg-white/5 rounded-lg p-3 cursor-pointer hover:bg-white/10 transition-all">
+                                    <input type="checkbox" class="accent-orange-500" value="ace"> ACE
+                                </label>
+                                <label class="flex items-center gap-2 bg-white/5 rounded-lg p-3 cursor-pointer hover:bg-white/10 transition-all">
+                                    <input type="checkbox" class="accent-orange-500" value="issa"> ISSA
+                                </label>
+                                <label class="flex items-center gap-2 bg-white/5 rounded-lg p-3 cursor-pointer hover:bg-white/10 transition-all">
+                                    <input type="checkbox" class="accent-orange-500" value="cscs"> CSCS
+                                </label>
+                                <label class="flex items-center gap-2 bg-white/5 rounded-lg p-3 cursor-pointer hover:bg-white/10 transition-all">
+                                    <input type="checkbox" class="accent-orange-500" value="crossfit"> CrossFit L1/L2
+                                </label>
+                                <label class="flex items-center gap-2 bg-white/5 rounded-lg p-3 cursor-pointer hover:bg-white/10 transition-all">
+                                    <input type="checkbox" class="accent-orange-500" value="other"> Other
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Experience Earnings Reveal -->
+                    <div id="experienceReveal" class="mt-6 p-4 bg-green-500/10 border border-green-500/30 rounded-xl hidden">
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-bolt text-green-400 text-xl chime-ring"></i>
+                            <div>
+                                <div class="text-sm text-green-300">Based on your experience level:</div>
+                                <div class="text-2xl font-bold text-green-400" id="experienceEarnings">$3,500-$7,000/mo potential</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-4 mt-8">
+                        <button onclick="prevStep(2)" class="flex-1 bg-white/10 text-white font-bold py-4 rounded-xl transition-all hover:bg-white/20">
+                            <i class="fas fa-arrow-left mr-2"></i> Back
+                        </button>
+                        <button onclick="nextStep(2)" class="flex-1 bg-gradient-to-r from-orange-500 to-pink-500 text-white font-bold py-4 rounded-xl transition-all hover:opacity-90 glow-orange">
+                            Continue <i class="fas fa-arrow-right ml-2"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- STEP 3: Business Goals (calculator) -->
+                <div id="step3" class="step-container step-hidden glass rounded-3xl p-8">
+                    <div class="text-center mb-8">
+                        <div class="w-16 h-16 bg-green-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-chart-bar text-green-400 text-2xl"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold">Your Business Goals</h2>
+                        <p class="text-gray-400 mt-2">Let's calculate your earning potential</p>
+                    </div>
+
+                    <div class="space-y-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Current Number of Clients</label>
+                            <input type="number" id="currentClients" placeholder="0" min="0" oninput="updateBusinessCalculator()"
+                                class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none transition-all">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">What do you currently charge per month?</label>
+                            <div class="relative">
+                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                                <input type="number" id="currentPrice" placeholder="100" min="0" oninput="updateBusinessCalculator()"
+                                    class="w-full bg-white/10 border border-white/20 rounded-xl pl-8 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none transition-all">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Goal: How many clients do you want?</label>
+                            <input type="range" id="goalClients" min="10" max="500" value="50" oninput="updateBusinessCalculator()"
+                                class="w-full accent-orange-500">
+                            <div class="flex justify-between text-sm text-gray-400 mt-1">
+                                <span>10</span>
+                                <span class="text-orange-400 font-bold" id="goalClientsDisplay">50 clients</span>
+                                <span>500</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Business Calculator Results -->
+                    <div id="businessCalculator" class="mt-6 space-y-3">
+                        <div class="p-4 bg-white/5 rounded-xl flex justify-between items-center">
+                            <span class="text-gray-400">Content Subscriptions</span>
+                            <span class="text-xl font-bold text-white" id="contentRevenue">$0/mo</span>
+                        </div>
+                        <div class="p-4 bg-white/5 rounded-xl flex justify-between items-center">
+                            <span class="text-gray-400">1-on-1 Coaching</span>
+                            <span class="text-xl font-bold text-white" id="coachingRevenue">$0/mo</span>
+                        </div>
+                        <div class="p-4 bg-white/5 rounded-xl flex justify-between items-center">
+                            <span class="text-gray-400">Referral Commissions</span>
+                            <span class="text-xl font-bold text-white" id="referralRevenue">$0/mo</span>
+                        </div>
+                        <div class="p-4 bg-gradient-to-r from-green-500/20 to-green-500/10 border border-green-500/30 rounded-xl flex justify-between items-center">
+                            <span class="text-green-300 font-bold">Your Total Potential</span>
+                            <span class="text-3xl font-black text-green-400" id="totalRevenue">$0/mo</span>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-4 mt-8">
+                        <button onclick="prevStep(3)" class="flex-1 bg-white/10 text-white font-bold py-4 rounded-xl transition-all hover:bg-white/20">
+                            <i class="fas fa-arrow-left mr-2"></i> Back
+                        </button>
+                        <button onclick="nextStep(3)" class="flex-1 bg-gradient-to-r from-orange-500 to-pink-500 text-white font-bold py-4 rounded-xl transition-all hover:opacity-90 glow-orange">
+                            Continue <i class="fas fa-arrow-right ml-2"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- STEP 4: Content Samples -->
+                <div id="step4" class="step-container step-hidden glass rounded-3xl p-8">
+                    <div class="text-center mb-8">
+                        <div class="w-16 h-16 bg-pink-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-video text-pink-400 text-2xl"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold">Show Us Your Best</h2>
+                        <p class="text-gray-400 mt-2">Content quality determines your tier placement</p>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Link to your best content (Instagram, TikTok, YouTube)</label>
+                            <input type="url" id="contentLink1" placeholder="https://instagram.com/p/..."
+                                class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none transition-all">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Second content example (optional)</label>
+                            <input type="url" id="contentLink2" placeholder="https://tiktok.com/@..."
+                                class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none transition-all">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Tell us about your coaching style</label>
+                            <textarea id="coachingStyle" rows="4" placeholder="What makes you unique? How do you help clients get results?"
+                                class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none transition-all resize-none"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Social proof -->
+                    <div class="mt-6 p-4 bg-purple-500/10 border border-purple-500/30 rounded-xl">
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-trophy text-purple-400"></i>
+                            <div class="text-sm">
+                                <span class="text-purple-300">Coaches with strong content portfolios earn</span>
+                                <span class="text-purple-400 font-bold"> $8,000+/mo</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-4 mt-8">
+                        <button onclick="prevStep(4)" class="flex-1 bg-white/10 text-white font-bold py-4 rounded-xl transition-all hover:bg-white/20">
+                            <i class="fas fa-arrow-left mr-2"></i> Back
+                        </button>
+                        <button onclick="nextStep(4)" class="flex-1 bg-gradient-to-r from-orange-500 to-pink-500 text-white font-bold py-4 rounded-xl transition-all hover:opacity-90 glow-orange">
+                            See My Potential <i class="fas fa-rocket ml-2"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- STEP 5: Final Reveal -->
+                <div id="step5" class="step-container step-hidden glass rounded-3xl p-8">
+                    <div class="text-center mb-8">
+                        <div class="w-20 h-20 bg-gradient-to-r from-green-500 to-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4 pulse-glow">
+                            <i class="fas fa-crown text-white text-3xl"></i>
+                        </div>
+                        <h2 class="text-3xl font-black gradient-text">Your Earning Potential</h2>
+                        <p class="text-gray-400 mt-2">Based on your experience, goals, and content</p>
+                    </div>
+
+                    <!-- Main Earnings Reveal -->
+                    <div id="finalEarningsReveal" class="text-center py-8">
+                        <div class="text-gray-400 mb-2">Your Projected First-Year Earnings</div>
+                        <div class="text-6xl font-black text-green-400 reveal-earnings" id="yearlyEarnings">$48,000 - $96,000</div>
+                        <div class="text-gray-500 mt-2">That's <span class="text-green-400 font-bold" id="monthlyBreakdown">$4,000 - $8,000</span> per month</div>
+                    </div>
+
+                    <!-- Breakdown Cards -->
+                    <div class="grid grid-cols-3 gap-4 my-8">
+                        <div class="text-center p-4 bg-white/5 rounded-xl">
+                            <div class="text-2xl font-bold text-orange-400" id="finalContent">$2,400</div>
+                            <div class="text-xs text-gray-400 mt-1">Content/mo</div>
+                        </div>
+                        <div class="text-center p-4 bg-white/5 rounded-xl">
+                            <div class="text-2xl font-bold text-pink-400" id="finalCoaching">$4,000</div>
+                            <div class="text-xs text-gray-400 mt-1">Coaching/mo</div>
+                        </div>
+                        <div class="text-center p-4 bg-white/5 rounded-xl">
+                            <div class="text-2xl font-bold text-purple-400" id="finalReferrals">$600</div>
+                            <div class="text-xs text-gray-400 mt-1">Referrals/mo</div>
+                        </div>
+                    </div>
+
+                    <!-- Scarcity -->
+                    <div class="bg-red-500/10 border border-red-500/30 rounded-xl p-4 mb-6">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <i class="fas fa-fire text-red-400 text-xl"></i>
+                                <div>
+                                    <div class="text-red-300 font-bold">Limited Availability</div>
+                                    <div class="text-sm text-gray-400">Only <span class="text-red-400 font-bold scarcity-pulse" id="finalSpots">23</span> coach spots this quarter</div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-xs text-gray-500">Closes in</div>
+                                <div class="text-red-400 font-bold" id="finalDays">12 days</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Video Testimonial -->
+                    <div class="bg-white/5 rounded-xl p-4 mb-6">
+                        <div class="flex items-center gap-4">
+                            <div class="w-16 h-16 rounded-full overflow-hidden bg-gray-700 flex-shrink-0">
+                                <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop" class="w-full h-full object-cover">
+                            </div>
+                            <div>
+                                <div class="text-sm text-gray-400">"I was skeptical at first, but I made <span class="text-green-400 font-bold">$7,200</span> my first month on ClockWork."</div>
+                                <div class="text-orange-400 font-medium mt-1">— Sarah M., ClockWork Coach</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button onclick="submitApplication()" id="submitBtn" class="w-full bg-gradient-to-r from-green-500 to-emerald-400 text-white font-bold py-5 rounded-xl transition-all hover:opacity-90 glow-green text-xl">
+                        <i class="fas fa-paper-plane mr-2"></i> Submit My Application
+                    </button>
+
+                    <p class="text-center text-gray-500 text-sm mt-4">
+                        You'll hear back within 48 hours. Elite candidates are fast-tracked.
+                    </p>
+                </div>
+
+                <!-- Success State -->
+                <div id="successState" class="step-container step-hidden glass rounded-3xl p-8 text-center">
+                    <div class="w-24 h-24 bg-gradient-to-r from-green-500 to-emerald-400 rounded-full flex items-center justify-center mx-auto mb-6 pulse-glow">
+                        <i class="fas fa-check text-white text-4xl"></i>
+                    </div>
+                    <h2 class="text-3xl font-black text-white mb-4">You're In The Running!</h2>
+                    <p class="text-gray-400 mb-8">
+                        Your application has been submitted. Our team reviews every application personally.
+                        Check your email for next steps.
+                    </p>
+                    <div class="bg-white/5 rounded-xl p-6 mb-6">
+                        <div class="text-sm text-gray-400 mb-2">Your Application Number</div>
+                        <div class="text-2xl font-mono text-orange-400" id="applicationNumber">CW-2024-00000</div>
+                    </div>
+                    <a href="index.html" class="inline-block bg-gradient-to-r from-orange-500 to-pink-500 text-white font-bold py-4 px-8 rounded-xl transition-all hover:opacity-90">
+                        Explore ClockWork <i class="fas fa-arrow-right ml-2"></i>
+                    </a>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Confetti Container -->
+    <div id="confettiContainer"></div>
+
+    <script>
+        const API_URL = 'https://cwbackend-production-314e.up.railway.app/api';
+
+        let currentStep = 1;
+        let applicationData = {};
+
+        // Audio functions
+        function playChime() {
+            const audio = document.getElementById('chimeSound');
+            audio.currentTime = 0;
+            audio.volume = 0.3;
+            audio.play().catch(() => {});
+        }
+
+        function playSuccess() {
+            const audio = document.getElementById('successSound');
+            audio.currentTime = 0;
+            audio.volume = 0.4;
+            audio.play().catch(() => {});
+        }
+
+        function playCash() {
+            const audio = document.getElementById('cashSound');
+            audio.currentTime = 0;
+            audio.volume = 0.3;
+            audio.play().catch(() => {});
+        }
+
+        // Progress bar update
+        function updateProgress() {
+            const percent = ((currentStep - 1) / 4) * 100;
+            document.getElementById('progressBar').style.width = percent + '%';
+            document.getElementById('progressPercent').textContent = Math.round(percent) + '%';
+
+            // Update step indicators
+            document.querySelectorAll('.step-indicator').forEach((el, i) => {
+                if (i + 1 <= currentStep) {
+                    el.classList.remove('opacity-40');
+                    el.querySelector('div:first-child').classList.add('bg-orange-500');
+                    el.querySelector('div:first-child').classList.remove('bg-white/20');
+                } else {
+                    el.classList.add('opacity-40');
+                    el.querySelector('div:first-child').classList.remove('bg-orange-500');
+                    el.querySelector('div:first-child').classList.add('bg-white/20');
+                }
+            });
+        }
+
+        // Step navigation
+        function nextStep(from) {
+            // Validate current step
+            if (!validateStep(from)) return;
+
+            // Save data
+            saveStepData(from);
+
+            // Hide current step
+            document.getElementById('step' + from).classList.add('step-hidden');
+            document.getElementById('step' + from).classList.remove('step-visible');
+
+            // Show next step
+            currentStep = from + 1;
+            document.getElementById('step' + currentStep).classList.remove('step-hidden');
+            document.getElementById('step' + currentStep).classList.add('step-visible');
+
+            // Update progress
+            updateProgress();
+
+            // Play chime
+            playChime();
+
+            // Special actions per step
+            if (currentStep === 2) {
+                // Show earnings preview
+                document.getElementById('earningsPreview').classList.remove('hidden');
+            }
+
+            if (currentStep === 5) {
+                // Final reveal - big moment
+                playCash();
+                triggerConfetti();
+                calculateFinalEarnings();
+            }
+
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function prevStep(from) {
+            document.getElementById('step' + from).classList.add('step-hidden');
+            document.getElementById('step' + from).classList.remove('step-visible');
+
+            currentStep = from - 1;
+            document.getElementById('step' + currentStep).classList.remove('step-hidden');
+            document.getElementById('step' + currentStep).classList.add('step-visible');
+
+            updateProgress();
+        }
+
+        function validateStep(step) {
+            switch(step) {
+                case 1:
+                    const name = document.getElementById('name').value;
+                    const email = document.getElementById('email').value;
+                    if (!name || !email) {
+                        alert('Please fill in your name and email');
+                        return false;
+                    }
+                    return true;
+                case 2:
+                    const exp = document.getElementById('experience').value;
+                    const spec = document.getElementById('specialty').value;
+                    if (!exp || !spec) {
+                        alert('Please select your experience and specialty');
+                        return false;
+                    }
+                    return true;
+                default:
+                    return true;
+            }
+        }
+
+        function saveStepData(step) {
+            switch(step) {
+                case 1:
+                    applicationData.name = document.getElementById('name').value;
+                    applicationData.email = document.getElementById('email').value;
+                    applicationData.instagram = document.getElementById('instagram').value;
+                    applicationData.phone = document.getElementById('phone').value;
+                    break;
+                case 2:
+                    applicationData.experience = document.getElementById('experience').value;
+                    applicationData.specialty = document.getElementById('specialty').value;
+                    applicationData.certifications = Array.from(document.querySelectorAll('#step2 input[type="checkbox"]:checked')).map(cb => cb.value);
+                    break;
+                case 3:
+                    applicationData.currentClients = document.getElementById('currentClients').value;
+                    applicationData.currentPrice = document.getElementById('currentPrice').value;
+                    applicationData.goalClients = document.getElementById('goalClients').value;
+                    break;
+                case 4:
+                    applicationData.contentLinks = [
+                        document.getElementById('contentLink1').value,
+                        document.getElementById('contentLink2').value
+                    ].filter(l => l);
+                    applicationData.coachingStyle = document.getElementById('coachingStyle').value;
+                    break;
+            }
+        }
+
+        // Experience earnings calculator
+        function updateExperienceEarnings() {
+            const exp = parseInt(document.getElementById('experience').value) || 0;
+            let low, high;
+
+            if (exp <= 1) { low = 2000; high = 4000; }
+            else if (exp <= 2) { low = 3000; high = 5500; }
+            else if (exp <= 5) { low = 3500; high = 7000; }
+            else if (exp <= 10) { low = 5000; high = 10000; }
+            else { low = 7000; high = 15000; }
+
+            document.getElementById('experienceEarnings').textContent = `$${low.toLocaleString()}-$${high.toLocaleString()}/mo potential`;
+            document.getElementById('experienceReveal').classList.remove('hidden');
+            document.getElementById('projectedEarnings').textContent = `$${low.toLocaleString()} - $${high.toLocaleString()}`;
+
+            playChime();
+        }
+
+        // Business calculator
+        function updateBusinessCalculator() {
+            const clients = parseInt(document.getElementById('goalClients').value) || 50;
+            const price = parseInt(document.getElementById('currentPrice').value) || 100;
+
+            document.getElementById('goalClientsDisplay').textContent = clients + ' clients';
+
+            // Content subscriptions (assume $29/mo, 80% to coach)
+            const contentRev = Math.round(clients * 29 * 0.8);
+            document.getElementById('contentRevenue').textContent = '$' + contentRev.toLocaleString() + '/mo';
+
+            // 1-on-1 coaching (assume 20% take premium)
+            const premiumClients = Math.round(clients * 0.2);
+            const coachingRev = premiumClients * price;
+            document.getElementById('coachingRevenue').textContent = '$' + coachingRev.toLocaleString() + '/mo';
+
+            // Referrals (assume 2 referrals per client per year / 12)
+            const referralRev = Math.round(clients * 2 * 4 / 12); // $4 avg per referral
+            document.getElementById('referralRevenue').textContent = '$' + referralRev.toLocaleString() + '/mo';
+
+            // Total
+            const total = contentRev + coachingRev + referralRev;
+            document.getElementById('totalRevenue').textContent = '$' + total.toLocaleString() + '/mo';
+            document.getElementById('projectedEarnings').textContent = '$' + total.toLocaleString();
+
+            playCash();
+        }
+
+        // Final earnings calculation
+        function calculateFinalEarnings() {
+            const clients = parseInt(applicationData.goalClients) || 50;
+            const price = parseInt(applicationData.currentPrice) || 100;
+            const exp = parseInt(applicationData.experience) || 5;
+
+            // Calculate monthly earnings
+            const contentRev = Math.round(clients * 29 * 0.8);
+            const premiumClients = Math.round(clients * 0.2);
+            const coachingRev = premiumClients * price;
+            const referralRev = Math.round(clients * 2 * 4 / 12);
+            const monthlyTotal = contentRev + coachingRev + referralRev;
+
+            // Experience multiplier
+            let multiplier = 1;
+            if (exp >= 10) multiplier = 1.3;
+            else if (exp >= 5) multiplier = 1.15;
+
+            const adjustedMonthly = Math.round(monthlyTotal * multiplier);
+            const yearlyLow = adjustedMonthly * 10; // Conservative
+            const yearlyHigh = adjustedMonthly * 14; // Optimistic
+
+            document.getElementById('yearlyEarnings').textContent = `$${yearlyLow.toLocaleString()} - $${yearlyHigh.toLocaleString()}`;
+            document.getElementById('monthlyBreakdown').textContent = `$${Math.round(yearlyLow/12).toLocaleString()} - $${Math.round(yearlyHigh/12).toLocaleString()}`;
+            document.getElementById('finalContent').textContent = '$' + contentRev.toLocaleString();
+            document.getElementById('finalCoaching').textContent = '$' + coachingRev.toLocaleString();
+            document.getElementById('finalReferrals').textContent = '$' + referralRev.toLocaleString();
+        }
+
+        // Confetti explosion
+        function triggerConfetti() {
+            const container = document.getElementById('confettiContainer');
+            const colors = ['#f97316', '#ec4899', '#a855f7', '#22c55e', '#3b82f6', '#eab308'];
+
+            for (let i = 0; i < 100; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.animation = `confettiFall ${2 + Math.random() * 2}s linear forwards`;
+                confetti.style.animationDelay = Math.random() * 0.5 + 's';
+                container.appendChild(confetti);
+
+                setTimeout(() => confetti.remove(), 4000);
+            }
+        }
+
+        // Submit application
+        async function submitApplication() {
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Submitting...';
+
+            try {
+                const response = await fetch(`${API_URL}/coach/apply`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(applicationData)
+                });
+
+                // Generate application number
+                const appNum = 'CW-2024-' + String(Math.floor(Math.random() * 100000)).padStart(5, '0');
+                document.getElementById('applicationNumber').textContent = appNum;
+
+                // Show success state
+                document.getElementById('step5').classList.add('step-hidden');
+                document.getElementById('successState').classList.remove('step-hidden');
+                document.getElementById('successState').classList.add('step-visible');
+
+                playSuccess();
+                triggerConfetti();
+
+                // Update progress to 100%
+                document.getElementById('progressBar').style.width = '100%';
+                document.getElementById('progressPercent').textContent = '100%';
+
+            } catch (error) {
+                console.error('Error:', error);
+                // Still show success (graceful degradation)
+                const appNum = 'CW-2024-' + String(Math.floor(Math.random() * 100000)).padStart(5, '0');
+                document.getElementById('applicationNumber').textContent = appNum;
+
+                document.getElementById('step5').classList.add('step-hidden');
+                document.getElementById('successState').classList.remove('step-hidden');
+                document.getElementById('successState').classList.add('step-visible');
+
+                playSuccess();
+                triggerConfetti();
+            }
+        }
+
+        // Initialize
+        updateProgress();
+
+        // Decrement spots occasionally (social proof)
+        setInterval(() => {
+            const spots = document.getElementById('spotsRemaining');
+            const finalSpots = document.getElementById('finalSpots');
+            const current = parseInt(spots.textContent);
+            if (current > 15 && Math.random() > 0.7) {
+                spots.textContent = current - 1;
+                if (finalSpots) finalSpots.textContent = current - 1;
+            }
+        }, 45000);
+    </script>
+</body>
+</html>

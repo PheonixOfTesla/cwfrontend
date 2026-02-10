@@ -8,6 +8,7 @@
     <title>Get Paid to Post | ClockWork Creator Program</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -33,6 +34,7 @@
         .gradient-border { background: linear-gradient(135deg, #f97316, #ec4899) border-box; border: 2px solid transparent; }
         .glow-pink { box-shadow: 0 0 60px rgba(236, 72, 153, 0.4); }
         .glow-orange { box-shadow: 0 0 40px rgba(249, 115, 22, 0.3); }
+        .glow-green { box-shadow: 0 0 40px rgba(34, 197, 94, 0.4); }
         .creator-card { transition: all 0.3s; }
         .creator-card:hover { transform: translateY(-8px); }
         .earnings-counter { font-variant-numeric: tabular-nums; }
@@ -49,15 +51,79 @@
         .earnings-notification { position: fixed; bottom: 20px; left: 20px; z-index: 100; }
         @keyframes shake { 0%, 100% { transform: translateX(0); } 10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); } 20%, 40%, 60%, 80% { transform: translateX(2px); } }
         .shake { animation: shake 0.5s ease-in-out; }
+
+        /* Creator carousel */
+        .carousel-container { position: relative; overflow: hidden; }
+        .carousel-track { display: flex; transition: transform 0.5s ease-in-out; }
+        .carousel-slide { min-width: 100%; }
+        .carousel-dots { position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; z-index: 10; }
+        .carousel-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.4); cursor: pointer; transition: all 0.3s; }
+        .carousel-dot.active { background: #ec4899; transform: scale(1.3); }
+        .carousel-dot-main { width: 12px; height: 12px; border-radius: 50%; background: rgba(255,255,255,0.3); border: none; cursor: pointer; transition: all 0.3s; }
+        .carousel-dot-main.active { background: #ec4899; transform: scale(1.2); box-shadow: 0 0 10px rgba(236, 72, 153, 0.5); }
+        .carousel-dot-main:hover { background: rgba(255,255,255,0.6); }
+
+        /* Payment chime animation */
+        @keyframes chimeRing {
+            0%, 100% { transform: rotate(0deg) scale(1); }
+            10%, 30%, 50%, 70%, 90% { transform: rotate(-15deg) scale(1.1); }
+            20%, 40%, 60%, 80% { transform: rotate(15deg) scale(1.1); }
+        }
+        .chime-ring { animation: chimeRing 0.6s ease-in-out; }
+
+        /* Stripe payment pulse */
+        @keyframes stripePulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7); }
+            70% { transform: scale(1.05); box-shadow: 0 0 0 15px rgba(99, 102, 241, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+        }
+        .stripe-pulse { animation: stripePulse 1s ease-out; }
+
+        /* Money counter animation */
+        @keyframes moneyCount {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+            100% { transform: translateY(0); }
+        }
+        .money-bounce { animation: moneyCount 0.3s ease-out; }
+
+        /* Urgency pulse */
+        @keyframes urgencyPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        .urgency-pulse { animation: urgencyPulse 1.5s ease-in-out infinite; }
+
+        /* Notification stack */
+        .notification-stack { display: flex; flex-direction: column-reverse; gap: 10px; }
+
+        /* Live indicator */
+        @keyframes liveIndicator {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+        .live-dot { animation: liveIndicator 1.5s ease-in-out infinite; }
     </style>
 </head>
 <body class="text-white overflow-x-hidden">
+    <!-- Payment Chime Audio -->
+    <audio id="paymentChime" preload="auto">
+        <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="cashRegister" preload="auto">
+        <source src="https://assets.mixkit.co/active_storage/sfx/888/888-preview.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="successChime" preload="auto">
+        <source src="https://assets.mixkit.co/active_storage/sfx/2018/2018-preview.mp3" type="audio/mpeg">
+    </audio>
 
     <!-- Urgency Banner -->
     <div class="bg-gradient-to-r from-pink-600 to-orange-500 text-white py-2 px-4 text-center text-sm font-medium fixed top-0 left-0 right-0 z-[60]">
-        <span class="animate-pulse inline-block w-2 h-2 bg-white rounded-full mr-2"></span>
-        <span id="liveCount">47</span> creators joined today • <span class="font-bold">$12,340</span> paid out this week
-        <span class="hidden md:inline ml-2">• Limited spots in your area</span>
+        <span class="live-dot inline-block w-2 h-2 bg-white rounded-full mr-2"></span>
+        <span class="font-bold text-yellow-200" id="livePaymentAmount">$0</span> paid out in the last hour
+        <span class="mx-2">•</span>
+        <span id="liveCount">0</span> creators earning right now
+        <span class="hidden md:inline ml-2 urgency-pulse">• Your followers signing up through someone else's link RIGHT NOW</span>
     </div>
 
     <!-- Navigation -->
@@ -68,8 +134,9 @@
                 <span class="text-xl font-bold">clockwork</span>
             </a>
             <div class="flex items-center gap-6">
-                <a href="coaches.html" class="text-gray-400 hover:text-white hidden md:block">For Coaches</a>
-                <a href="influencer.html" class="text-pink-400 hover:text-pink-300 hidden md:block">For Influencers</a>
+                <a href="coach-apply.html" class="text-green-400 hover:text-green-300 hidden md:block">Become a Coach</a>
+                <a href="apply.html" class="text-pink-400 hover:text-pink-300 hidden md:block">For Influencers</a>
+                <a href="coaches.html" class="text-gray-400 hover:text-white hidden md:block">Find Coaches</a>
                 <a href="login.html" class="bg-gradient-to-r from-orange-500 to-pink-500 text-white px-6 py-2 rounded-full font-bold hover:opacity-90 transition-all">
                     Start Earning
                 </a>
@@ -159,97 +226,163 @@
                 </p>
             </div>
 
-            <div class="grid md:grid-cols-3 gap-6">
-                <!-- Sommer Ray -->
-                <div class="creator-card glass rounded-2xl overflow-hidden">
-                    <div class="h-80 relative overflow-hidden">
-                        <img src="https://i.pinimg.com/736x/48/34/e7/4834e7c7c8a4e0b5c8a9f0c5e3a8b7c6.jpg"
-                             alt="Sommer Ray"
-                             class="w-full h-full object-cover"
-                             onerror="this.src='https://images.unsplash.com/photo-1518611012118-696072aa579a?w=400&h=500&fit=crop'">
-                        <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
-                        <div class="absolute bottom-4 left-4 right-4">
-                            <div class="text-2xl font-bold">Sommer Ray</div>
-                            <div class="text-pink-400">@sommerray</div>
-                        </div>
-                    </div>
-                    <div class="p-6">
-                        <div class="flex justify-between mb-4">
-                            <div>
-                                <div class="text-2xl font-bold text-green-400">$10M+</div>
-                                <div class="text-gray-500 text-sm">Annual Revenue</div>
+            <!-- Creator Carousel -->
+            <div class="relative max-w-4xl mx-auto">
+                <div class="glass rounded-3xl overflow-hidden glow-pink" id="creatorCarousel">
+                    <div class="carousel-track flex transition-transform duration-700" id="creatorTrack">
+
+                        <!-- Slide 1: Sommer Ray - Gym -->
+                        <div class="carousel-slide min-w-full">
+                            <div class="md:flex">
+                                <div class="md:w-1/2 h-96 md:h-[500px] relative overflow-hidden">
+                                    <img src="sommer-gym.jpg" alt="Sommer Ray" class="w-full h-full object-cover object-top">
+                                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-black/80 hidden md:block"></div>
+                                    <div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent md:hidden"></div>
+                                </div>
+                                <div class="md:w-1/2 p-8 flex flex-col justify-center bg-black/40 md:bg-transparent">
+                                    <div class="text-pink-400 text-sm font-medium mb-2">@sommerray</div>
+                                    <h3 class="text-4xl font-black mb-2">Sommer Ray</h3>
+                                    <div class="flex gap-6 mb-4">
+                                        <div>
+                                            <div class="text-3xl font-black text-green-400">$10M+</div>
+                                            <div class="text-gray-500 text-sm">Annual Revenue</div>
+                                        </div>
+                                        <div>
+                                            <div class="text-3xl font-black">26M</div>
+                                            <div class="text-gray-500 text-sm">Followers</div>
+                                        </div>
+                                    </div>
+                                    <p class="text-gray-300 mb-6">
+                                        Started with gym selfies in 2016. Now owns IMARAÏS Beauty, fitness programs, and a clothing empire.
+                                        <span class="text-white font-bold block mt-2">"I stopped giving content away for free."</span>
+                                    </p>
+                                    <a href="login.html?type=influencer" class="bg-gradient-to-r from-pink-500 to-purple-500 text-white px-6 py-3 rounded-xl font-bold inline-flex items-center gap-2 w-fit hover:opacity-90 transition-all">
+                                        Start Like Sommer <i class="fas fa-arrow-right"></i>
+                                    </a>
+                                </div>
                             </div>
-                            <div>
-                                <div class="text-2xl font-bold">26M</div>
-                                <div class="text-gray-500 text-sm">Followers</div>
+                        </div>
+
+                        <!-- Slide 2: Sommer Ray - Tennis -->
+                        <div class="carousel-slide min-w-full">
+                            <div class="md:flex">
+                                <div class="md:w-1/2 h-96 md:h-[500px] relative overflow-hidden">
+                                    <img src="sommer-tennis.jpg" alt="Sommer Ray Tennis" class="w-full h-full object-cover object-center">
+                                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-black/80 hidden md:block"></div>
+                                    <div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent md:hidden"></div>
+                                </div>
+                                <div class="md:w-1/2 p-8 flex flex-col justify-center bg-black/40 md:bg-transparent">
+                                    <div class="text-pink-400 text-sm font-medium mb-2">THE LIFESTYLE</div>
+                                    <h3 class="text-4xl font-black mb-2">This Is The Result</h3>
+                                    <div class="flex gap-6 mb-4">
+                                        <div>
+                                            <div class="text-3xl font-black text-green-400">$40K+</div>
+                                            <div class="text-gray-500 text-sm">Per Post</div>
+                                        </div>
+                                        <div>
+                                            <div class="text-3xl font-black">Daily</div>
+                                            <div class="text-gray-500 text-sm">Brand Deals</div>
+                                        </div>
+                                    </div>
+                                    <p class="text-gray-300 mb-6">
+                                        Tennis, travel, luxury - all funded by content she was already creating.
+                                        <span class="text-white font-bold block mt-2">"Your followers ARE your business."</span>
+                                    </p>
+                                    <a href="login.html?type=influencer" class="bg-gradient-to-r from-orange-500 to-pink-500 text-white px-6 py-3 rounded-xl font-bold inline-flex items-center gap-2 w-fit hover:opacity-90 transition-all">
+                                        Get Your Code <i class="fas fa-arrow-right"></i>
+                                    </a>
+                                </div>
                             </div>
                         </div>
-                        <p class="text-gray-400 text-sm">
-                            Monetizes photos, videos, workout plans, and her clothing line IMARAÏS Beauty.
-                            <span class="text-white font-medium">Zero content goes out for free.</span>
-                        </p>
+
+                        <!-- Slide 3: Whitney Simmons -->
+                        <div class="carousel-slide min-w-full">
+                            <div class="md:flex">
+                                <div class="md:w-1/2 h-96 md:h-[500px] relative overflow-hidden">
+                                    <img src="https://images.unsplash.com/photo-1550345332-09e3ac987658?w=800&h=1000&fit=crop" alt="Whitney Simmons" class="w-full h-full object-cover">
+                                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-black/80 hidden md:block"></div>
+                                    <div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent md:hidden"></div>
+                                </div>
+                                <div class="md:w-1/2 p-8 flex flex-col justify-center bg-black/40 md:bg-transparent">
+                                    <div class="text-orange-400 text-sm font-medium mb-2">@whitneyysimmons</div>
+                                    <h3 class="text-4xl font-black mb-2">Whitney Simmons</h3>
+                                    <div class="flex gap-6 mb-4">
+                                        <div>
+                                            <div class="text-3xl font-black text-green-400">$5M+</div>
+                                            <div class="text-gray-500 text-sm">Annual Revenue</div>
+                                        </div>
+                                        <div>
+                                            <div class="text-3xl font-black">5.8M</div>
+                                            <div class="text-gray-500 text-sm">Followers</div>
+                                        </div>
+                                    </div>
+                                    <p class="text-gray-300 mb-6">
+                                        Gymshark athlete. Buff Bunny co-founder. Built her empire from workout videos in her garage.
+                                        <span class="text-white font-bold block mt-2">"I was posting anyway. Why not get paid?"</span>
+                                    </p>
+                                    <a href="login.html?type=influencer" class="bg-gradient-to-r from-orange-500 to-yellow-500 text-white px-6 py-3 rounded-xl font-bold inline-flex items-center gap-2 w-fit hover:opacity-90 transition-all">
+                                        Join the Program <i class="fas fa-arrow-right"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Slide 4: Tammy Hembrow -->
+                        <div class="carousel-slide min-w-full">
+                            <div class="md:flex">
+                                <div class="md:w-1/2 h-96 md:h-[500px] relative overflow-hidden">
+                                    <img src="https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=800&h=1000&fit=crop" alt="Tammy Hembrow" class="w-full h-full object-cover">
+                                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-black/80 hidden md:block"></div>
+                                    <div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent md:hidden"></div>
+                                </div>
+                                <div class="md:w-1/2 p-8 flex flex-col justify-center bg-black/40 md:bg-transparent">
+                                    <div class="text-purple-400 text-sm font-medium mb-2">@tammyhembrow</div>
+                                    <h3 class="text-4xl font-black mb-2">Tammy Hembrow</h3>
+                                    <div class="flex gap-6 mb-4">
+                                        <div>
+                                            <div class="text-3xl font-black text-green-400">$15M+</div>
+                                            <div class="text-gray-500 text-sm">Annual Revenue</div>
+                                        </div>
+                                        <div>
+                                            <div class="text-3xl font-black">17M</div>
+                                            <div class="text-gray-500 text-sm">Followers</div>
+                                        </div>
+                                    </div>
+                                    <p class="text-gray-300 mb-6">
+                                        Single mom to CEO. Saski Collection. Tammy Fit app. Proved anyone can do this.
+                                        <span class="text-white font-bold block mt-2">"Content is currency. Period."</span>
+                                    </p>
+                                    <a href="login.html?type=influencer" class="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-xl font-bold inline-flex items-center gap-2 w-fit hover:opacity-90 transition-all">
+                                        Start Your Empire <i class="fas fa-arrow-right"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
+
+                    <!-- Carousel Navigation -->
+                    <div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-20">
+                        <button class="carousel-dot-main active" data-slide="0"></button>
+                        <button class="carousel-dot-main" data-slide="1"></button>
+                        <button class="carousel-dot-main" data-slide="2"></button>
+                        <button class="carousel-dot-main" data-slide="3"></button>
+                    </div>
+
+                    <!-- Arrow Navigation -->
+                    <button id="prevSlide" class="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-all z-20">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <button id="nextSlide" class="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-all z-20">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
                 </div>
 
-                <!-- Whitney Simmons -->
-                <div class="creator-card glass rounded-2xl overflow-hidden">
-                    <div class="h-80 relative overflow-hidden">
-                        <img src="https://i.pinimg.com/736x/d5/4e/8f/d54e8f2a9c8b7e6d5c4a3b2c1d0e9f8a.jpg"
-                             alt="Whitney Simmons"
-                             class="w-full h-full object-cover"
-                             onerror="this.src='https://images.unsplash.com/photo-1550345332-09e3ac987658?w=400&h=500&fit=crop'">
-                        <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
-                        <div class="absolute bottom-4 left-4 right-4">
-                            <div class="text-2xl font-bold">Whitney Simmons</div>
-                            <div class="text-orange-400">@whitneyysimmons</div>
-                        </div>
-                    </div>
-                    <div class="p-6">
-                        <div class="flex justify-between mb-4">
-                            <div>
-                                <div class="text-2xl font-bold text-green-400">$5M+</div>
-                                <div class="text-gray-500 text-sm">Annual Revenue</div>
-                            </div>
-                            <div>
-                                <div class="text-2xl font-bold">5.8M</div>
-                                <div class="text-gray-500 text-sm">Followers</div>
-                            </div>
-                        </div>
-                        <p class="text-gray-400 text-sm">
-                            Gymshark athlete, Buff Bunny co-founder. Built her empire from gym selfies.
-                            <span class="text-white font-medium">Every post = revenue.</span>
-                        </p>
-                    </div>
-                </div>
-
-                <!-- Tammy Hembrow -->
-                <div class="creator-card glass rounded-2xl overflow-hidden">
-                    <div class="h-80 relative overflow-hidden">
-                        <img src="https://i.pinimg.com/736x/a1/b2/c3/a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6.jpg"
-                             alt="Tammy Hembrow"
-                             class="w-full h-full object-cover"
-                             onerror="this.src='https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=400&h=500&fit=crop'">
-                        <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
-                        <div class="absolute bottom-4 left-4 right-4">
-                            <div class="text-2xl font-bold">Tammy Hembrow</div>
-                            <div class="text-purple-400">@tammyhembrow</div>
-                        </div>
-                    </div>
-                    <div class="p-6">
-                        <div class="flex justify-between mb-4">
-                            <div>
-                                <div class="text-2xl font-bold text-green-400">$15M+</div>
-                                <div class="text-gray-500 text-sm">Annual Revenue</div>
-                            </div>
-                            <div>
-                                <div class="text-2xl font-bold">17M</div>
-                                <div class="text-gray-500 text-sm">Followers</div>
-                            </div>
-                        </div>
-                        <p class="text-gray-400 text-sm">
-                            Saski Collection, Tammy Fit app. Single mom to CEO.
-                            <span class="text-white font-medium">Content is currency.</span>
-                        </p>
+                <!-- Live earning indicator under carousel -->
+                <div class="mt-6 text-center">
+                    <div class="inline-flex items-center gap-3 bg-green-500/10 border border-green-500/30 rounded-full px-6 py-3">
+                        <span class="live-dot w-3 h-3 bg-green-500 rounded-full"></span>
+                        <span class="text-green-400 font-medium">Creators earning <span class="font-bold">$12,340</span> this week on ClockWork</span>
                     </div>
                 </div>
             </div>
@@ -746,7 +879,176 @@
     </div>
 
     <script>
-        // Earnings Calculator
+        const API_URL = 'https://cwbackend-production-314e.up.railway.app/api';
+
+        // ═══════════════════════════════════════════════════════════
+        // AUDIO SYSTEM - Payment Chimes
+        // ═══════════════════════════════════════════════════════════
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        let audioEnabled = false;
+
+        // Enable audio on first user interaction
+        document.addEventListener('click', () => {
+            if (!audioEnabled) {
+                audioContext.resume();
+                audioEnabled = true;
+            }
+        }, { once: true });
+
+        function playPaymentChime() {
+            if (!audioEnabled) return;
+            const audio = document.getElementById('paymentChime');
+            audio.currentTime = 0;
+            audio.volume = 0.4;
+            audio.play().catch(() => {});
+        }
+
+        function playCashRegister() {
+            if (!audioEnabled) return;
+            const audio = document.getElementById('cashRegister');
+            audio.currentTime = 0;
+            audio.volume = 0.3;
+            audio.play().catch(() => {});
+        }
+
+        function playSuccessChime() {
+            if (!audioEnabled) return;
+            const audio = document.getElementById('successChime');
+            audio.currentTime = 0;
+            audio.volume = 0.35;
+            audio.play().catch(() => {});
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // REAL-TIME PAYMENT TRACKING
+        // ═══════════════════════════════════════════════════════════
+        let totalPaidLastHour = 0;
+        let activeCreators = 0;
+        let leaderboardData = [];
+
+        // Fetch real leaderboard data
+        async function fetchLeaderboard() {
+            try {
+                const response = await fetch(`${API_URL}/earnings/leaderboard`);
+                const data = await response.json();
+                if (data.leaderboard) {
+                    leaderboardData = data.leaderboard;
+                    updateLeaderboardDisplay();
+                }
+            } catch (err) {
+                console.log('Using fallback data');
+            }
+        }
+
+        // Update live stats display
+        function updateLiveStats() {
+            document.getElementById('livePaymentAmount').textContent = '$' + totalPaidLastHour.toLocaleString();
+            document.getElementById('liveCount').textContent = activeCreators;
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // VARIABLE REWARD NOTIFICATION SYSTEM
+        // ═══════════════════════════════════════════════════════════
+        const earnerProfiles = [
+            { name: '@j***a', tier: 'Elite' },
+            { name: '@m***fit', tier: 'Pro' },
+            { name: '@s***coach', tier: 'Elite' },
+            { name: '@t***gains', tier: 'Rising' },
+            { name: '@k***strong', tier: 'Pro' },
+            { name: '@l***body', tier: 'Elite' },
+            { name: '@n***wellness', tier: 'Pro' },
+            { name: '@r***fitness', tier: 'Rising' },
+            { name: '@a***muscle', tier: 'Elite' },
+            { name: '@d***train', tier: 'Pro' },
+        ];
+
+        let notificationQueue = [];
+        let isShowingNotification = false;
+
+        function generatePaymentAmount() {
+            // Variable amounts - creates unpredictability
+            const ranges = [
+                { min: 15, max: 45, weight: 40 },    // Common small payments
+                { min: 45, max: 120, weight: 35 },   // Medium payments
+                { min: 120, max: 350, weight: 20 },  // Larger payments
+                { min: 350, max: 800, weight: 5 },   // Rare big payments (dopamine spike!)
+            ];
+
+            const random = Math.random() * 100;
+            let cumulative = 0;
+            for (const range of ranges) {
+                cumulative += range.weight;
+                if (random <= cumulative) {
+                    return Math.floor(range.min + Math.random() * (range.max - range.min));
+                }
+            }
+            return 50;
+        }
+
+        function showPaymentNotification() {
+            if (isShowingNotification) return;
+            isShowingNotification = true;
+
+            const notif = document.getElementById('earningsNotification');
+            const amountEl = document.getElementById('notifAmount');
+            const nameEl = document.getElementById('notifName');
+            const iconEl = notif.querySelector('.fa-dollar-sign')?.parentElement;
+
+            const earner = earnerProfiles[Math.floor(Math.random() * earnerProfiles.length)];
+            const amount = generatePaymentAmount();
+
+            // Update totals
+            totalPaidLastHour += amount;
+            activeCreators = Math.min(activeCreators + 1, 500);
+            updateLiveStats();
+
+            // Play chime based on amount
+            if (amount >= 200) {
+                playCashRegister();
+            } else {
+                playPaymentChime();
+            }
+
+            // Update notification UI
+            amountEl.textContent = `+$${amount.toFixed(2)}`;
+            amountEl.classList.add('money-bounce');
+            nameEl.textContent = `${earner.name} just earned`;
+
+            if (iconEl) {
+                iconEl.classList.add('chime-ring');
+                iconEl.classList.add('stripe-pulse');
+            }
+
+            notif.classList.remove('hidden');
+            notif.querySelector('.glass').classList.add('shake');
+
+            // Tier badge color
+            const tierColors = { Elite: 'text-purple-400', Pro: 'text-pink-400', Rising: 'text-orange-400' };
+
+            setTimeout(() => {
+                notif.classList.add('hidden');
+                notif.querySelector('.glass').classList.remove('shake');
+                amountEl.classList.remove('money-bounce');
+                if (iconEl) {
+                    iconEl.classList.remove('chime-ring');
+                    iconEl.classList.remove('stripe-pulse');
+                }
+                isShowingNotification = false;
+            }, 4500);
+        }
+
+        // Variable interval - unpredictable timing (15-45 seconds)
+        function scheduleNextNotification() {
+            const delay = 15000 + Math.random() * 30000; // 15-45 seconds
+            setTimeout(() => {
+                showPaymentNotification();
+                scheduleNextNotification();
+            }, delay);
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // PREDICTION ERROR CALCULATOR (Dopamine Spike)
+        // ═══════════════════════════════════════════════════════════
         const followersInput = document.getElementById('followers');
         const conversionInput = document.getElementById('conversion');
         const followerCountEl = document.getElementById('followerCount');
@@ -761,15 +1063,120 @@
             conversionRateEl.textContent = conversion.toFixed(1);
 
             const signups = Math.floor(followers * (conversion / 100));
-            const lowEarnings = signups * 3;
-            const highEarnings = signups * 5;
 
-            monthlyEarningsEl.textContent = `$${lowEarnings.toLocaleString()} - $${highEarnings.toLocaleString()}`;
+            // Start with conservative estimate
+            const conservativeLow = signups * 3;
+            const conservativeHigh = signups * 4;
+
+            // Show conservative first
+            monthlyEarningsEl.textContent = `$${conservativeLow.toLocaleString()} - $${conservativeHigh.toLocaleString()}`;
+            monthlyEarningsEl.classList.add('count-up');
+
+            // After delay, reveal OPTIMISTIC estimate (positive prediction error = dopamine!)
+            setTimeout(() => {
+                const optimisticLow = signups * 4;
+                const optimisticHigh = signups * 6;
+                monthlyEarningsEl.textContent = `$${optimisticLow.toLocaleString()} - $${optimisticHigh.toLocaleString()}`;
+                monthlyEarningsEl.style.transform = 'scale(1.05)';
+                monthlyEarningsEl.style.color = '#4ade80'; // Green flash
+                playSuccessChime();
+
+                setTimeout(() => {
+                    monthlyEarningsEl.style.transform = 'scale(1)';
+                    monthlyEarningsEl.classList.remove('count-up');
+                }, 300);
+            }, 1500);
         }
 
         followersInput.addEventListener('input', updateCalculator);
         conversionInput.addEventListener('input', updateCalculator);
-        updateCalculator();
+
+        // ═══════════════════════════════════════════════════════════
+        // INSTANT CODE GENERATION MODAL
+        // ═══════════════════════════════════════════════════════════
+        function showCodeModal() {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4';
+            modal.innerHTML = `
+                <div class="glass rounded-3xl p-8 max-w-md w-full glow-green">
+                    <div class="text-center">
+                        <div class="w-20 h-20 bg-gradient-to-r from-green-500 to-emerald-400 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <i class="fas fa-check text-white text-3xl"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold mb-2">Your Code is Ready!</h2>
+                        <p class="text-gray-400 mb-6">Share this link and start earning immediately</p>
+
+                        <div class="bg-black/40 rounded-xl p-4 mb-6">
+                            <div class="text-sm text-gray-400 mb-2">Your Referral Link</div>
+                            <div class="flex items-center gap-2">
+                                <input type="text" value="clockwork.fit/?ref=YOUR_CODE" readonly
+                                    class="flex-1 bg-transparent text-green-400 font-mono text-lg outline-none" id="referralLink">
+                                <button onclick="copyReferralLink()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-all">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-4 mb-6">
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-green-400">$3-5</div>
+                                <div class="text-xs text-gray-500">Per Signup</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-purple-400">10%</div>
+                                <div class="text-xs text-gray-500">Recurring</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-pink-400">90%</div>
+                                <div class="text-xs text-gray-500">You Keep</div>
+                            </div>
+                        </div>
+
+                        <a href="login.html?type=referral" class="block w-full bg-gradient-to-r from-orange-500 to-pink-500 text-white font-bold py-4 rounded-xl hover:opacity-90 transition-all">
+                            Create Account to Activate
+                        </a>
+
+                        <button onclick="this.closest('.fixed').remove()" class="mt-4 text-gray-500 hover:text-white transition-all">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            playSuccessChime();
+        }
+
+        function copyReferralLink() {
+            const link = document.getElementById('referralLink');
+            link.select();
+            document.execCommand('copy');
+            playPaymentChime();
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // INITIALIZATION
+        // ═══════════════════════════════════════════════════════════
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize calculator
+            updateCalculator();
+
+            // Fetch real data
+            fetchLeaderboard();
+
+            // Start payment notifications after 5 seconds
+            setTimeout(() => {
+                showPaymentNotification();
+                scheduleNextNotification();
+            }, 5000);
+
+            // Simulate growing stats
+            setInterval(() => {
+                if (Math.random() > 0.5) {
+                    totalPaidLastHour += Math.floor(Math.random() * 50);
+                    updateLiveStats();
+                }
+            }, 10000);
+        });
 
         // Smooth scroll
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
@@ -781,57 +1188,90 @@
             });
         });
 
-        // Live Earnings Notifications
-        const creators = [
-            { name: '@jessicafit_', amount: 45 },
-            { name: '@gymqueen23', amount: 120 },
-            { name: '@flexwithmia', amount: 85 },
-            { name: '@tonedbynat', amount: 230 },
-            { name: '@fitwithash', amount: 65 },
-            { name: '@bodybylaura', amount: 180 },
-            { name: '@strongsarah_', amount: 95 },
-            { name: '@fitbyjess', amount: 340 },
-            { name: '@kayla.gains', amount: 55 },
-            { name: '@emilyfitlife', amount: 420 },
-        ];
+        // ═══════════════════════════════════════════════════════════
+        // CREATOR CAROUSEL - Auto-rotating with chimes
+        // ═══════════════════════════════════════════════════════════
+        const creatorCarousel = {
+            track: document.getElementById('creatorTrack'),
+            dots: document.querySelectorAll('.carousel-dot-main'),
+            currentSlide: 0,
+            totalSlides: 4,
+            autoPlayInterval: null,
+            autoPlayDelay: 5000, // 5 seconds per slide
 
-        function showNotification() {
-            const notif = document.getElementById('earningsNotification');
-            const amountEl = document.getElementById('notifAmount');
-            const nameEl = document.getElementById('notifName');
+            init() {
+                // Dot click handlers
+                this.dots.forEach((dot, index) => {
+                    dot.addEventListener('click', () => this.goToSlide(index));
+                });
 
-            const creator = creators[Math.floor(Math.random() * creators.length)];
-            const amount = creator.amount + Math.floor(Math.random() * 50);
+                // Arrow handlers
+                document.getElementById('prevSlide')?.addEventListener('click', () => this.prevSlide());
+                document.getElementById('nextSlide')?.addEventListener('click', () => this.nextSlide());
 
-            amountEl.textContent = `+$${amount.toFixed(2)}`;
-            nameEl.textContent = `${creator.name} just earned`;
+                // Touch/swipe support
+                let touchStartX = 0;
+                let touchEndX = 0;
+                const carousel = document.getElementById('creatorCarousel');
 
-            notif.classList.remove('hidden');
-            notif.querySelector('.glass').classList.add('shake');
+                carousel?.addEventListener('touchstart', (e) => {
+                    touchStartX = e.changedTouches[0].screenX;
+                }, { passive: true });
 
-            setTimeout(() => {
-                notif.classList.add('hidden');
-                notif.querySelector('.glass').classList.remove('shake');
-            }, 4000);
-        }
+                carousel?.addEventListener('touchend', (e) => {
+                    touchEndX = e.changedTouches[0].screenX;
+                    if (touchStartX - touchEndX > 50) this.nextSlide();
+                    if (touchEndX - touchStartX > 50) this.prevSlide();
+                }, { passive: true });
 
-        // Show first notification after 5 seconds, then every 15-30 seconds
-        setTimeout(() => {
-            showNotification();
-            setInterval(showNotification, 15000 + Math.random() * 15000);
-        }, 5000);
+                // Pause on hover
+                carousel?.addEventListener('mouseenter', () => this.stopAutoPlay());
+                carousel?.addEventListener('mouseleave', () => this.startAutoPlay());
 
-        // Increment live count periodically
-        let liveCount = 47;
-        setInterval(() => {
-            if (Math.random() > 0.6) {
-                liveCount++;
-                const el = document.getElementById('liveCount');
-                el.textContent = liveCount;
-                el.classList.add('count-up');
-                setTimeout(() => el.classList.remove('count-up'), 500);
+                // Start auto-play
+                this.startAutoPlay();
+            },
+
+            goToSlide(index) {
+                this.currentSlide = index;
+                this.track.style.transform = `translateX(-${index * 100}%)`;
+                this.updateDots();
+                playPaymentChime(); // Chime on slide change!
+            },
+
+            nextSlide() {
+                this.currentSlide = (this.currentSlide + 1) % this.totalSlides;
+                this.goToSlide(this.currentSlide);
+            },
+
+            prevSlide() {
+                this.currentSlide = (this.currentSlide - 1 + this.totalSlides) % this.totalSlides;
+                this.goToSlide(this.currentSlide);
+            },
+
+            updateDots() {
+                this.dots.forEach((dot, index) => {
+                    dot.classList.toggle('active', index === this.currentSlide);
+                });
+            },
+
+            startAutoPlay() {
+                this.stopAutoPlay();
+                this.autoPlayInterval = setInterval(() => this.nextSlide(), this.autoPlayDelay);
+            },
+
+            stopAutoPlay() {
+                if (this.autoPlayInterval) {
+                    clearInterval(this.autoPlayInterval);
+                    this.autoPlayInterval = null;
+                }
             }
-        }, 30000);
+        };
+
+        // Initialize carousel when DOM is ready
+        if (document.getElementById('creatorTrack')) {
+            creatorCarousel.init();
+        }
     </script>
 </body>
 </html>
