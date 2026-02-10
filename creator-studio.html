@@ -71,12 +71,11 @@
         // API Helper
         const api = {
             async fetch(endpoint, options = {}) {
-                const token = localStorage.getItem('creatorToken');
                 const res = await fetch(`${API_BASE}${endpoint}`, {
                     ...options,
+                    credentials: 'include',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': token ? `Bearer ${token}` : '',
                         ...options.headers
                     }
                 });
@@ -440,7 +439,7 @@
 
                             const uploadRes = await fetch(`${API_BASE}/upload/carousel`, {
                                 method: 'POST',
-                                headers: { 'Authorization': `Bearer ${localStorage.getItem('creatorToken')}` },
+                                credentials: 'include',
                                 body: formData
                             });
                             const uploadData = await uploadRes.json();
@@ -454,7 +453,7 @@
 
                             const uploadRes = await fetch(`${API_BASE}/upload/media`, {
                                 method: 'POST',
-                                headers: { 'Authorization': `Bearer ${localStorage.getItem('creatorToken')}` },
+                                credentials: 'include',
                                 body: formData
                             });
                             const uploadData = await uploadRes.json();
@@ -1383,7 +1382,7 @@
 
                         const uploadRes = await fetch(`${API_BASE}/upload/profile-picture`, {
                             method: 'POST',
-                            headers: { 'Authorization': `Bearer ${localStorage.getItem('creatorToken')}` },
+                            credentials: 'include',
                             body: formData
                         });
                         const uploadData = await uploadRes.json();
@@ -1823,19 +1822,11 @@
 
             useEffect(() => {
                 const checkAuth = async () => {
-                    const token = localStorage.getItem('creatorToken');
-                    if (!token) {
-                        // No token - redirect to login
-                        window.location.href = '/influencer';
-                        return;
-                    }
-
                     try {
                         const res = await api.fetch('/users/profile');
                         setUser(res.user || res);
                     } catch (err) {
-                        // Invalid token - clear and redirect
-                        localStorage.removeItem('creatorToken');
+                        // Invalid or missing auth cookie - redirect to login
                         window.location.href = '/influencer';
                         return;
                     }
@@ -1845,7 +1836,7 @@
             }, []);
 
             const handleLogout = () => {
-                localStorage.removeItem('creatorToken');
+                // Cookie will be cleared by backend or expire naturally
                 window.location.href = '/influencer';
             };
 
