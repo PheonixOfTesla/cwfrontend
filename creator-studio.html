@@ -709,6 +709,29 @@
             const [editingLink, setEditingLink] = useState(null);
             const [newLink, setNewLink] = useState({ title: '', url: '' });
             const [draggedItem, setDraggedItem] = useState(null);
+            const [referralCode, setReferralCode] = useState(null);
+            const [copyMessage, setCopyMessage] = useState('');
+
+            useEffect(() => {
+                const loadReferralCode = async () => {
+                    try {
+                        const res = await api.fetch('/earnings/referral-code');
+                        if (res.success && res.data) {
+                            setReferralCode(res.data.referralCode);
+                        }
+                    } catch (err) {
+                        console.error('Failed to load referral code:', err);
+                    }
+                };
+                loadReferralCode();
+            }, []);
+
+            const copyToClipboard = (text, label) => {
+                navigator.clipboard.writeText(text).then(() => {
+                    setCopyMessage(`${label} copied!`);
+                    setTimeout(() => setCopyMessage(''), 2000);
+                }).catch(console.error);
+            };
 
             const handleDragStart = (e, index) => {
                 setDraggedItem(index);
@@ -753,6 +776,70 @@
 
             return (
                 <div className="space-y-6">
+                    {/* Referral Code Section */}
+                    {referralCode && (
+                        <div className="glass rounded-xl p-6 border-l-4 border-orange-500">
+                            {copyMessage && (
+                                <div className="mb-4 p-3 bg-green-500/20 text-green-300 rounded-lg text-sm">
+                                    <i className="fas fa-check mr-2"></i>{copyMessage}
+                                </div>
+                            )}
+                            <div className="flex items-center gap-3 mb-4">
+                                <i className="fas fa-gift text-3xl text-orange-400"></i>
+                                <div>
+                                    <h2 className="text-lg font-bold">Your Referral Code</h2>
+                                    <p className="text-gray-400 text-sm">Share this code to earn commissions on signups</p>
+                                </div>
+                            </div>
+                            <div className="grid md:grid-cols-2 gap-4">
+                                <div className="bg-white/5 rounded-lg p-4">
+                                    <div className="text-gray-400 text-xs mb-2">Referral Code</div>
+                                    <div className="flex items-center gap-2">
+                                        <code className="text-2xl font-bold font-mono text-orange-400">{referralCode}</code>
+                                        <button
+                                            onClick={() => copyToClipboard(referralCode, 'Code')}
+                                            className="text-gray-400 hover:text-white transition-colors"
+                                            title="Copy code"
+                                        >
+                                            <i className="fas fa-copy"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="bg-white/5 rounded-lg p-4">
+                                    <div className="text-gray-400 text-xs mb-2">Referral Link</div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="text-sm font-mono text-blue-400 truncate flex-1">
+                                            clockwork.fit?ref={referralCode}
+                                        </div>
+                                        <button
+                                            onClick={() => copyToClipboard(`https://clockwork.fit?ref=${referralCode}`, 'Link')}
+                                            className="text-gray-400 hover:text-white transition-colors"
+                                            title="Copy link"
+                                        >
+                                            <i className="fas fa-copy"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="mt-4 flex gap-2">
+                                <button
+                                    onClick={() => copyToClipboard(`https://clockwork.fit/coach-apply?ref=${referralCode}`, 'Coach signup link')}
+                                    className="flex-1 bg-white/5 hover:bg-white/10 rounded-lg p-3 text-sm transition-colors text-left"
+                                >
+                                    <i className="fas fa-dumbbell text-orange-400 mr-2"></i>
+                                    <span>Copy Coach Signup Link</span>
+                                </button>
+                                <button
+                                    onClick={() => copyToClipboard(`https://clockwork.fit/apply?ref=${referralCode}`, 'Influencer signup link')}
+                                    className="flex-1 bg-white/5 hover:bg-white/10 rounded-lg p-3 text-sm transition-colors text-left"
+                                >
+                                    <i className="fas fa-video text-pink-400 mr-2"></i>
+                                    <span>Copy Influencer Signup Link</span>
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="glass rounded-xl p-6">
                         <h2 className="text-lg font-bold mb-4"><i className="fas fa-link gradient-text mr-2"></i>Your Links</h2>
                         <p className="text-gray-400 text-sm mb-4">Drag to reorder. Links appear in this order on your profile.</p>
@@ -1086,10 +1173,14 @@
                     {earningsData && (
                         <div className="glass rounded-xl p-6">
                             <h2 className="text-lg font-bold mb-4"><i className="fas fa-chart-pie gradient-text mr-2"></i>Revenue Breakdown</h2>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 <div className="bg-white/5 rounded-lg p-4">
                                     <div className="text-gray-400 text-sm mb-1">Total Lifetime Earnings</div>
                                     <div className="text-2xl font-bold text-green-400">${(earningsData.lifetime?.total || 0).toFixed(2)}</div>
+                                </div>
+                                <div className="bg-white/5 rounded-lg p-4">
+                                    <div className="text-gray-400 text-sm mb-1">From Influencer Revenue</div>
+                                    <div className="text-2xl font-bold text-orange-400">${(earningsData.lifetime?.fromInfluencer || 0).toFixed(2)}</div>
                                 </div>
                                 <div className="bg-white/5 rounded-lg p-4">
                                     <div className="text-gray-400 text-sm mb-1">From Referrals</div>
