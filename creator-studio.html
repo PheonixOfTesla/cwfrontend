@@ -1765,13 +1765,20 @@
             useEffect(() => {
                 const checkAuth = async () => {
                     const token = localStorage.getItem('creatorToken');
-                    if (token) {
-                        try {
-                            const res = await api.fetch('/users/profile');
-                            setUser(res.user || res);
-                        } catch (err) {
-                            localStorage.removeItem('creatorToken');
-                        }
+                    if (!token) {
+                        // No token - redirect to login
+                        window.location.href = '/influencer';
+                        return;
+                    }
+
+                    try {
+                        const res = await api.fetch('/users/profile');
+                        setUser(res.user || res);
+                    } catch (err) {
+                        // Invalid token - clear and redirect
+                        localStorage.removeItem('creatorToken');
+                        window.location.href = '/influencer';
+                        return;
                     }
                     setChecking(false);
                 };
@@ -1780,7 +1787,7 @@
 
             const handleLogout = () => {
                 localStorage.removeItem('creatorToken');
-                setUser(null);
+                window.location.href = '/influencer';
             };
 
             if (checking) {
