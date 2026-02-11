@@ -1602,7 +1602,8 @@
                     tiktok: profile?.socialLinks?.tiktok || '',
                     youtube: profile?.socialLinks?.youtube || '',
                     twitter: profile?.socialLinks?.twitter || ''
-                }
+                },
+                subscriptionPrice: profile?.coachProfile?.pricing?.subscriptionPrice || 999
             });
             const [notifications, setNotifications] = useState({
                 earnings: true,
@@ -1617,9 +1618,15 @@
             const handleSave = async () => {
                 setSaving(true);
                 try {
+                    // Save profile settings
                     await api.fetch('/coach/profile', {
                         method: 'PUT',
                         body: JSON.stringify({ ...formData, notifications })
+                    });
+                    // Save pricing separately
+                    await api.fetch('/coach/creator-profile', {
+                        method: 'PUT',
+                        body: JSON.stringify({ pricing: { subscriptionPrice: formData.subscriptionPrice } })
                     });
                     setMessage({ type: 'success', text: 'Settings saved successfully!' });
                     onUpdate?.();
@@ -1694,6 +1701,34 @@
                                 </div>
                             ))}
                         </div>
+                    </div>
+
+                    {/* Subscription Pricing */}
+                    <div className="glass rounded-xl p-6">
+                        <h2 className="text-lg font-bold mb-4"><i className="fas fa-dollar-sign gradient-text mr-2"></i>Subscription Pricing</h2>
+                        <p className="text-gray-400 text-sm mb-4">Set your monthly subscription price for exclusive content access.</p>
+                        <div className="flex items-center gap-4">
+                            <div className="flex-1">
+                                <label className="block text-gray-400 text-sm mb-2">Monthly Price (USD)</label>
+                                <div className="relative">
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="999"
+                                        step="0.01"
+                                        value={(formData.subscriptionPrice / 100).toFixed(2)}
+                                        onChange={e => setFormData({ ...formData, subscriptionPrice: Math.round(parseFloat(e.target.value || 0) * 100) })}
+                                        className="w-full bg-white/5 border border-white/10 rounded-lg pl-8 pr-4 py-3 text-white text-xl font-bold focus:outline-none focus:border-orange-500"
+                                    />
+                                </div>
+                            </div>
+                            <div className="text-center p-4 bg-white/5 rounded-lg">
+                                <div className="text-2xl font-bold gradient-text">${(formData.subscriptionPrice / 100).toFixed(2)}</div>
+                                <div className="text-gray-400 text-xs">per month</div>
+                            </div>
+                        </div>
+                        <p className="text-gray-500 text-xs mt-3">Subscribers pay this amount monthly for access to your subscriber-only content.</p>
                     </div>
 
                     {/* Notification Preferences */}

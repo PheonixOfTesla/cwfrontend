@@ -113,6 +113,15 @@
                 <!-- Populated by JS -->
             </div>
 
+            <!-- Subscribe Button -->
+            <div id="subscribeSection" class="mb-6">
+                <button id="subscribeBtn" onclick="handleSubscribe()" class="w-full py-4 px-6 bg-gradient-to-r from-accent-orange to-accent-pink rounded-xl font-bold text-lg shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all">
+                    <i class="fas fa-star mr-2"></i>
+                    Subscribe for <span id="subscribePrice">$9.99</span>/mo
+                </button>
+                <p class="text-center text-gray-500 text-xs mt-2">Cancel anytime • Instant access to exclusive content</p>
+            </div>
+
             <!-- Referral Code Card -->
             <div id="referralCard" class="glass-card rounded-2xl p-5 mb-6 hidden">
                 <div class="text-center mb-3">
@@ -236,6 +245,9 @@
         /**
          * Renders the main profile details onto the page.
          */
+        // Store creator info for subscribe
+        let currentCreator = null;
+
         function renderProfileDetails(profile, handle) {
             document.title = `${profile.name || '@' + handle} | ClockWork`;
             safeSet('coverImage', 'src', profile.coverImage || DEFAULT_COVER_IMAGE);
@@ -247,6 +259,22 @@
             if (profile.verified) {
                 getElement('verifiedBadge')?.classList.remove('hidden');
             }
+
+            // Set subscription price
+            const price = profile.pricing?.subscriptionPrice || 999;
+            const priceFormatted = `$${(price / 100).toFixed(2)}`;
+            safeSet('subscribePrice', 'textContent', priceFormatted);
+
+            // Store creator info
+            currentCreator = { id: profile._id, handle, name: profile.name, price };
+        }
+
+        // Handle subscribe button click
+        function handleSubscribe() {
+            if (!currentCreator) return;
+            // Redirect to login/signup with return URL, or show modal
+            const returnUrl = encodeURIComponent(window.location.href);
+            window.location.href = `/influencer?subscribe=${currentCreator.id}&return=${returnUrl}`;
         }
 
         /**
@@ -318,8 +346,8 @@
                         <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
                             <i class="fas fa-fire text-accent-orange"></i> Recent Content
                         </h3>
-                        <div class="grid grid-cols-3 gap-2">
-                            ${posts.slice(0, 6).map(post => {
+                        <div class="grid grid-cols-2 gap-3">
+                            ${posts.slice(0, 4).map(post => {
                                 const thumbnail = post.thumbnail || post.mediaUrl || post.image;
                                 const isLocked = post.isLocked;
                                 const lockedClass = isLocked ? 'locked' : '';
