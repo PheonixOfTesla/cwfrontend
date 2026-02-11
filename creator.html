@@ -145,8 +145,8 @@
 
     <script>
         /**
-         * ROBUST RENDERING SCRIPT
-         * This script is designed to be defensive and not crash if data is missing.
+         * ULTRA-ROBUST RENDERING SCRIPT V3
+         * This script is designed to handle eventual consistency by retrying the API fetch.
          */
 
         // --- CONFIGURATION ---
@@ -163,8 +163,6 @@
 
         /**
          * Safely gets a DOM element by its ID.
-         * @param {string} id The ID of the element.
-         * @returns {HTMLElement|null}
          */
         function getElement(id) {
             return document.getElementById(id);
@@ -172,46 +170,60 @@
 
         /**
          * Safely sets a property on a DOM element.
-         * Prevents script-crashing TypeErrors if the element doesn't exist.
-         * @param {string} id The ID of the element.
-         * @param {string} property The property to set (e.g., 'textContent', 'src').
-         * @param {*} value The value to set.
          */
         function safeSet(id, property, value) {
             const element = getElement(id);
-            if (element) {
+            if (element && value !== undefined && value !== null) {
                 element[property] = value;
-            } else {
-                console.warn(`Attempted to set property '${property}' on non-existent element with ID: '${id}'`);
+            } else if (!element) {
+                console.warn(`safeSet: Element with ID '${id}' not found.`);
             }
         }
         
         /**
-         * Gets the creator handle from the URL path or query parameters.
-         * @returns {string|null}
+         * Gets the creator handle from the URL.
          */
         function getHandle() {
-            // Priority 1: /@handle
             let match = window.location.pathname.match(/^\/@(.+?)\/?$/);
             if (match) return match[1];
-
-            // Priority 2: /creator/handle
             match = window.location.pathname.match(/\/creator\/(.+?)\/?$/);
             if (match) return match[1];
-            
-            // Priority 3: ?handle=
             const params = new URLSearchParams(window.location.search);
             return params.get('handle');
+        }
+
+        /**
+         * Fetches a URL with a retry mechanism for eventual consistency issues.
+         */
+        async function fetchWithRetry(url, options, retries = 3, delay = 500, backoff = 2) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    // Only retry on 404, which indicates a potential DB replication lag.
+                    if (response.status === 404 && i < retries - 1) {
+                        console.warn(`[Retry] Attempt ${i + 1} failed with 404. Retrying in ${delay}ms...`);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        delay *= backoff;
+                        continue;
+                    }
+                    return response;
+                } catch (error) {
+                    if (i < retries - 1) {
+                        console.warn(`[Retry] Attempt ${i + 1} failed with network error. Retrying in ${delay}ms...`);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        delay *= backoff;
+                    } else {
+                        throw error;
+                    }
+                }
+            }
         }
         
         /**
          * Renders the main profile details onto the page.
-         * @param {object} profile The creator profile data.
-         * @param {string} handle The creator's handle.
          */
         function renderProfileDetails(profile, handle) {
             document.title = `${profile.name || '@' + handle} | ClockWork`;
-
             safeSet('coverImage', 'src', profile.coverImage || DEFAULT_COVER_IMAGE);
             safeSet('profilePicture', 'src', profile.profilePicture || `${DEFAULT_AVATAR_API}${encodeURIComponent(profile.name || handle)}`);
             safeSet('creatorName', 'textContent', profile.name || handle);
@@ -225,25 +237,24 @@
 
         /**
          * Renders social media icons.
-         * @param {object} socialLinks The object containing social media handles.
          */
         function renderSocialIcons(socialLinks = {}) {
             const container = getElement('socialIcons');
             if (!container) return;
             
-            container.innerHTML = ''; // Clear existing icons
+            container.innerHTML = '';
             const platforms = [
-                { key: 'instagram', icon: 'fa-instagram', baseUrl: 'https://instagram.com/' },
-                { key: 'tiktok', icon: 'fa-tiktok', baseUrl: 'https://tiktok.com/@' },
-                { key: 'youtube', icon: 'fa-youtube', baseUrl: 'https://youtube.com/' },
-                { key: 'twitter', icon: 'fa-x-twitter', baseUrl: 'https://x.com/' }
+                { key: 'instagram', icon: 'fa-instagram' },
+                { key: 'tiktok', icon: 'fa-tiktok' },
+                { key: 'youtube', icon: 'fa-youtube' },
+                { key: 'twitter', icon: 'fa-x-twitter' }
             ];
 
             platforms.forEach(platform => {
                 const handle = socialLinks[platform.key];
                 if (handle) {
                     const link = document.createElement('a');
-                    link.href = handle.startsWith('http') ? handle : platform.baseUrl + handle.replace('@', '');
+                    link.href = handle.startsWith('http') ? handle : `https://${platform.key}.com/${handle.replace('@','')}`;
                     link.target = '_blank';
                     link.rel = 'noopener noreferrer';
                     link.className = 'social-icon w-11 h-11 rounded-full glass-card flex items-center justify-center hover:bg-white/10';
@@ -255,13 +266,12 @@
         
         /**
          * Renders the creator's public links.
-         * @param {Array} links The array of link objects.
          */
         function renderLinks(links = []) {
             const container = getElement('linksSection');
             if (!container) return;
 
-            container.innerHTML = ''; // Clear existing links
+            container.innerHTML = '';
             links.forEach(link => {
                 const btn = document.createElement('a');
                 btn.href = link.url;
@@ -279,45 +289,31 @@
         }
         
         /**
-         * Renders either the content feed or a paywall for it.
-         * @param {HTMLElement} container The element to render into.
-         * @param {string} handle The creator's handle.
-         * @param {string} name The creator's name.
+         * Renders the content feed area.
          */
         async function renderPostArea(container, handle, name) {
-            // For now, we will assume no subscription is required and just show a "coming soon" for posts.
-            // This avoids the bug with the missing #feed element and the subscription check.
-            const feedRes = await fetch(`${API_BASE}/api/coach/${handle}/feed`);
-            if (feedRes.ok) {
+            try {
+                const feedRes = await fetch(`${API_BASE}/api/coach/${handle}/feed`);
+                if (!feedRes.ok) throw new Error('Feed not available');
+                
                 const feed = await feedRes.json();
                 const posts = feed.posts || [];
                 
                 if (posts.length > 0) {
                      container.innerHTML = `
                         <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                            <i class="fas fa-fire text-accent-orange"></i>
-                            Recent Content
+                            <i class="fas fa-fire text-accent-orange"></i> Recent Content
                         </h3>
-                        <div id="contentGrid" class="grid grid-cols-3 gap-2">
+                        <div class="grid grid-cols-3 gap-2">
                             ${posts.slice(0, 3).map(post => {
                                 const thumbnail = post.thumbnail || post.mediaUrl || post.image;
-                                if (thumbnail) {
-                                    return `<div class="post-card aspect-square rounded-xl overflow-hidden cursor-pointer relative group">
-                                                <img src="${thumbnail}" alt="${post.title || 'Post'}" class="w-full h-full object-cover">
-                                            </div>`;
-                                }
-                                return '';
+                                return thumbnail ? `<div class="post-card aspect-square rounded-xl overflow-hidden"><img src="${thumbnail}" alt="Post" class="w-full h-full object-cover"></div>` : '';
                             }).join('')}
-                        </div>
-                    `;
+                        </div>`;
                 }
-            } else {
-                 container.innerHTML = `
-                    <div class="text-center py-10 px-6 glass-card rounded-xl">
-                         <h3 class="text-xl font-bold text-white mb-3">Content Coming Soon</h3>
-                         <p class="text-gray-400">Check back later for exclusive posts from ${name}.</p>
-                    </div>
-                `;
+            } catch (err) {
+                 console.warn(err.message);
+                 container.innerHTML = `<div class="text-center py-10 px-6 glass-card rounded-xl"><h3 class="text-xl font-bold">Content Coming Soon</h3><p class="text-gray-400">Check back later for exclusive posts from ${name}.</p></div>`;
             }
         }
 
@@ -333,20 +329,21 @@
             }
 
             try {
-                // 1. Fetch profile data
-                const profileRes = await fetch(`${API_BASE}/api/coach/${handle}/public`);
+                // 1. Fetch profile data with retry logic for eventual consistency
+                console.log(`Fetching profile for handle: ${handle}`);
+                const profileRes = await fetchWithRetry(`${API_BASE}/api/coach/${handle}/public`);
+
                 if (!profileRes.ok) {
-                    throw new Error(`Profile not found. Status: ${profileRes.status}`);
+                    throw new Error(`Profile not found. Final status: ${profileRes.status}`);
                 }
                 const responseData = await profileRes.json();
-
-                // 2. Correctly access the nested profile object
                 const profile = responseData.coach;
+
                 if (!profile) {
                     throw new Error("API response did not contain a 'coach' object.");
                 }
 
-                // 3. Render the page content safely
+                // 2. Render the page content safely
                 renderProfileDetails(profile, handle);
                 renderSocialIcons(profile.socialLinks);
                 renderLinks(profile.links);
@@ -356,7 +353,7 @@
                     await renderPostArea(postArea, handle, profile.name);
                 }
                 
-                // 4. Show the fully rendered content
+                // 3. Show the fully rendered content
                 loadingEl?.classList.add('hidden');
                 contentEl?.classList.remove('hidden');
 
