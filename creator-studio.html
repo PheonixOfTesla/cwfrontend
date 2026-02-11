@@ -761,16 +761,34 @@
             const addLink = () => {
                 if (!newLink.title || !newLink.url) return;
                 const link = { id: Date.now(), ...newLink, clicks: 0, active: true };
-                setLinks([...links, link]);
+                const updatedLinks = [...links, link];
+                setLinks(updatedLinks);
                 setNewLink({ title: '', url: '' });
+                // Save to API
+                api.fetch('/coach/links', {
+                    method: 'PUT',
+                    body: JSON.stringify({ links: updatedLinks })
+                }).catch(console.error);
             };
 
             const deleteLink = (id) => {
-                setLinks(links.filter(l => l.id !== id));
+                const updatedLinks = links.filter(l => l.id !== id);
+                setLinks(updatedLinks);
+                // Save to API
+                api.fetch('/coach/links', {
+                    method: 'PUT',
+                    body: JSON.stringify({ links: updatedLinks })
+                }).catch(console.error);
             };
 
             const toggleActive = (id) => {
-                setLinks(links.map(l => l.id === id ? { ...l, active: !l.active } : l));
+                const updatedLinks = links.map(l => l.id === id ? { ...l, active: !l.active } : l);
+                setLinks(updatedLinks);
+                // Save to API
+                api.fetch('/coach/links', {
+                    method: 'PUT',
+                    body: JSON.stringify({ links: updatedLinks })
+                }).catch(console.error);
             };
 
             const updateLink = () => {
