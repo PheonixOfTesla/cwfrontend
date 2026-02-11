@@ -2,11 +2,14 @@
   "version": 2,
   "cleanUrls": true,
   "trailingSlash": false,
-  "rewrites": [
+  "redirects": [
     {
-      "source": "/:path(@[^/]+)",
-      "destination": "/creator.html?handle=:path"
-    },
+      "source": "/@:handle",
+      "destination": "/creator/:handle",
+      "permanent": false
+    }
+  ],
+  "rewrites": [
     {
       "source": "/api/:path*",
       "destination": "https://cwbackend-production-314e.up.railway.app/api/:path*"
