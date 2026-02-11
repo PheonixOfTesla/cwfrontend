@@ -335,7 +335,7 @@
                 // Fetch profile data
                 const profileRes = await fetch(`${API_BASE}/api/coach/${handle}/public`);
                 if (!profileRes.ok) throw new Error('Profile not found');
-                const profile = await profileRes.json();
+                const { coach: profile } = await profileRes.json();
 
                 // Update page title
                 document.title = `${profile.name || profile.displayName || '@' + handle} | ClockWork`;
