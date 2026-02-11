@@ -179,7 +179,7 @@
                         ` : ''}
                         ${profile.verified ? `<i class="fas fa-check-circle text-indigo-500"></i>` : ''}
                     </div>
-                    <p class="text-gray-500">@${profile.username || profile.name.toLowerCase().replace(/\s+/g, '')}</p>
+                    <p class="text-gray-500">@${profile.coachProfile?.handle || profile.name.toLowerCase().replace(/\s+/g, '')}</p>
                     <p class="mt-2 text-gray-300">${profile.bio || 'No bio yet'}</p>
 
                     <!-- Specialties/Tags -->

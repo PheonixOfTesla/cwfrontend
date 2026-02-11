@@ -185,9 +185,9 @@
          */
         function getHandle() {
             let match = window.location.pathname.match(/^\/@(.+?)\/?$/);
-            if (match) return match[1];
+            if (match) return decodeURIComponent(match[1]);
             match = window.location.pathname.match(/\/creator\/(.+?)\/?$/);
-            if (match) return match[1];
+            if (match) return decodeURIComponent(match[1]);
             const params = new URLSearchParams(window.location.search);
             return params.get('handle');
         }
@@ -293,7 +293,7 @@
          */
         async function renderPostArea(container, handle, name) {
             try {
-                const feedRes = await fetch(`${API_BASE}/api/coach/${handle}/feed`);
+                const feedRes = await fetch(`${API_BASE}/api/coach/${encodeURIComponent(handle)}/feed`);
                 if (!feedRes.ok) throw new Error('Feed not available');
                 
                 const feed = await feedRes.json();
@@ -331,7 +331,7 @@
             try {
                 // 1. Fetch profile data with retry logic for eventual consistency
                 console.log(`Fetching profile for handle: ${handle}`);
-                const profileRes = await fetchWithRetry(`${API_BASE}/api/coach/${handle}/public`);
+                const profileRes = await fetchWithRetry(`${API_BASE}/api/coach/${encodeURIComponent(handle)}/public`);
 
                 if (!profileRes.ok) {
                     throw new Error(`Profile not found. Final status: ${profileRes.status}`);
