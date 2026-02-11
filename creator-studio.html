@@ -1594,14 +1594,14 @@
         // Settings Tab
         function SettingsTab({ profile, onUpdate }) {
             const [formData, setFormData] = useState({
-                displayName: profile?.displayName || '',
-                bio: profile?.bio || '',
+                displayName: profile?.name || profile?.displayName || '',
+                bio: profile?.coachProfile?.bio || profile?.bio || '',
                 email: profile?.email || '',
                 socialLinks: {
-                    instagram: profile?.socialLinks?.instagram || '',
-                    tiktok: profile?.socialLinks?.tiktok || '',
-                    youtube: profile?.socialLinks?.youtube || '',
-                    twitter: profile?.socialLinks?.twitter || ''
+                    instagram: profile?.coachProfile?.socialLinks?.instagram || profile?.socialLinks?.instagram || '',
+                    tiktok: profile?.coachProfile?.socialLinks?.tiktok || profile?.socialLinks?.tiktok || '',
+                    youtube: profile?.coachProfile?.socialLinks?.youtube || profile?.socialLinks?.youtube || '',
+                    twitter: profile?.coachProfile?.socialLinks?.twitter || profile?.socialLinks?.twitter || ''
                 },
                 subscriptionPrice: (profile?.coachProfile?.pricing?.subscriptionPrice || 999) / 100
             });
