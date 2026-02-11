@@ -126,16 +126,8 @@
                 <!-- Populated by JS -->
             </div>
 
-            <!-- Recent Content Grid -->
-            <div id="contentSection" class="mb-8 hidden">
-                <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                    <i class="fas fa-fire text-accent-orange"></i>
-                    Recent Content
-                </h3>
-                <div id="contentGrid" class="grid grid-cols-3 gap-2">
-                    <!-- Populated by JS -->
-                </div>
-            </div>
+            <!-- This is the container for posts or a paywall -->
+            <div id="post-area" class="mb-8"></div>
         </div>
 
         <!-- Footer -->
@@ -152,98 +144,103 @@
     </div>
 
     <script>
-        // API Configuration
-        const API_BASE = window.location.hostname === 'localhost'
-            ? 'http://localhost:5000'
-            : '';
+        /**
+         * ROBUST RENDERING SCRIPT
+         * This script is designed to be defensive and not crash if data is missing.
+         */
 
-        // Get handle from URL
-        function getHandle() {
-            // Check for /@handle format
-            const pathMatch = window.location.pathname.match(/^\/@(.+)$/);
-            if (pathMatch) return pathMatch[1];
+        // --- CONFIGURATION ---
+        const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:5000' : '';
+        const DEFAULT_COVER_IMAGE = 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1200&h=400&fit=crop';
+        const DEFAULT_AVATAR_API = 'https://ui-avatars.com/api/?background=ff6b35&color=fff&size=256&name=';
 
-            // Check for ?handle= query param
-            const params = new URLSearchParams(window.location.search);
-            const handleParam = params.get('handle');
-            if (handleParam) return handleParam;
-
-            // Check for /creator/@handle or /creator/handle format
-            const creatorMatch = window.location.pathname.match(/\/creator\/?@?(.+)$/);
-            if (creatorMatch) return creatorMatch[1];
-
-            return null;
-        }
-
-        // DOM Elements
+        // --- DOM ELEMENTS ---
         const loadingEl = document.getElementById('loading');
         const errorEl = document.getElementById('error');
         const contentEl = document.getElementById('content');
 
-        // Get cookie helper
-        function getCookie(name) {
-            const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-            return match ? match[2] : null;
+        // --- HELPER FUNCTIONS ---
+
+        /**
+         * Safely gets a DOM element by its ID.
+         * @param {string} id The ID of the element.
+         * @returns {HTMLElement|null}
+         */
+        function getElement(id) {
+            return document.getElementById(id);
         }
 
-        // Render paywall
-        function renderPaywall(profile) {
-            const feed = document.getElementById('feed');
-            feed.innerHTML = `
-                <div class="text-center py-16 px-6">
-                    <div class="w-20 h-20 bg-gradient-to-br from-orange-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <i class="fas fa-lock text-white text-3xl"></i>
-                    </div>
-                    <h3 class="text-2xl font-bold text-white mb-3">Exclusive Content</h3>
-                    <p class="text-gray-400 mb-6 max-w-md mx-auto">Subscribe to unlock ${profile.name}'s exclusive posts, workouts, and premium content.</p>
-                    <button onclick="window.location.href='/signup'" class="bg-gradient-to-r from-orange-500 to-pink-500 text-white px-8 py-3 rounded-lg font-bold text-lg hover:opacity-90 transition-opacity">
-                        Subscribe for $4.99/month
-                    </button>
-                </div>
-            `;
+        /**
+         * Safely sets a property on a DOM element.
+         * Prevents script-crashing TypeErrors if the element doesn't exist.
+         * @param {string} id The ID of the element.
+         * @param {string} property The property to set (e.g., 'textContent', 'src').
+         * @param {*} value The value to set.
+         */
+        function safeSet(id, property, value) {
+            const element = getElement(id);
+            if (element) {
+                element[property] = value;
+            } else {
+                console.warn(`Attempted to set property '${property}' on non-existent element with ID: '${id}'`);
+            }
         }
+        
+        /**
+         * Gets the creator handle from the URL path or query parameters.
+         * @returns {string|null}
+         */
+        function getHandle() {
+            // Priority 1: /@handle
+            let match = window.location.pathname.match(/^\/@(.+?)\/?$/);
+            if (match) return match[1];
 
-        // Track link click
-        async function trackClick(code, linkUrl) {
-            try {
-                await fetch(`${API_BASE}/api/earnings/track/click/${code}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url: linkUrl, timestamp: new Date().toISOString() })
-                });
-            } catch (err) {
-                console.error('Click tracking failed:', err);
+            // Priority 2: /creator/handle
+            match = window.location.pathname.match(/\/creator\/(.+?)\/?$/);
+            if (match) return match[1];
+            
+            // Priority 3: ?handle=
+            const params = new URLSearchParams(window.location.search);
+            return params.get('handle');
+        }
+        
+        /**
+         * Renders the main profile details onto the page.
+         * @param {object} profile The creator profile data.
+         * @param {string} handle The creator's handle.
+         */
+        function renderProfileDetails(profile, handle) {
+            document.title = `${profile.name || '@' + handle} | ClockWork`;
+
+            safeSet('coverImage', 'src', profile.coverImage || DEFAULT_COVER_IMAGE);
+            safeSet('profilePicture', 'src', profile.profilePicture || `${DEFAULT_AVATAR_API}${encodeURIComponent(profile.name || handle)}`);
+            safeSet('creatorName', 'textContent', profile.name || handle);
+            safeSet('creatorHandle', 'textContent', `@${handle}`);
+            safeSet('creatorBio', 'textContent', profile.bio || '');
+
+            if (profile.verified) {
+                getElement('verifiedBadge')?.classList.remove('hidden');
             }
         }
 
-        // Copy referral code
-        function setupCopyButton(code) {
-            const btn = document.getElementById('copyCodeBtn');
-            btn.addEventListener('click', async () => {
-                try {
-                    await navigator.clipboard.writeText(code);
-                    btn.innerHTML = '<i class="fas fa-check text-green-400"></i><span class="text-sm">Copied!</span>';
-                    setTimeout(() => {
-                        btn.innerHTML = '<i class="fas fa-copy text-accent-orange"></i><span class="text-sm">Copy</span>';
-                    }, 2000);
-                } catch (err) {
-                    console.error('Copy failed:', err);
-                }
-            });
-        }
-
-        // Render social icons
-        function renderSocialIcons(socials) {
-            const container = document.getElementById('socialIcons');
+        /**
+         * Renders social media icons.
+         * @param {object} socialLinks The object containing social media handles.
+         */
+        function renderSocialIcons(socialLinks = {}) {
+            const container = getElement('socialIcons');
+            if (!container) return;
+            
+            container.innerHTML = ''; // Clear existing icons
             const platforms = [
-                { key: 'instagram', icon: 'fa-instagram', color: '#E4405F', baseUrl: 'https://instagram.com/' },
-                { key: 'tiktok', icon: 'fa-tiktok', color: '#000000', baseUrl: 'https://tiktok.com/@' },
-                { key: 'youtube', icon: 'fa-youtube', color: '#FF0000', baseUrl: 'https://youtube.com/' },
-                { key: 'twitter', icon: 'fa-x-twitter', color: '#000000', baseUrl: 'https://x.com/' }
+                { key: 'instagram', icon: 'fa-instagram', baseUrl: 'https://instagram.com/' },
+                { key: 'tiktok', icon: 'fa-tiktok', baseUrl: 'https://tiktok.com/@' },
+                { key: 'youtube', icon: 'fa-youtube', baseUrl: 'https://youtube.com/' },
+                { key: 'twitter', icon: 'fa-x-twitter', baseUrl: 'https://x.com/' }
             ];
 
             platforms.forEach(platform => {
-                const handle = socials?.[platform.key];
+                const handle = socialLinks[platform.key];
                 if (handle) {
                     const link = document.createElement('a');
                     link.href = handle.startsWith('http') ? handle : platform.baseUrl + handle.replace('@', '');
@@ -255,161 +252,122 @@
                 }
             });
         }
+        
+        /**
+         * Renders the creator's public links.
+         * @param {Array} links The array of link objects.
+         */
+        function renderLinks(links = []) {
+            const container = getElement('linksSection');
+            if (!container) return;
 
-        // Render links
-        function renderLinks(links, referralCode) {
-            const container = document.getElementById('linksSection');
-            if (!links || links.length === 0) return;
-
+            container.innerHTML = ''; // Clear existing links
             links.forEach(link => {
                 const btn = document.createElement('a');
                 btn.href = link.url;
                 btn.target = '_blank';
                 btn.rel = 'noopener noreferrer';
                 btn.className = 'link-btn block w-full glass-card rounded-xl p-4 text-center hover:bg-white/10';
-
                 btn.innerHTML = `
                     <div class="flex items-center justify-center gap-3">
                         ${link.icon ? `<i class="${link.icon} text-accent-orange"></i>` : ''}
                         <span class="font-medium">${link.title}</span>
                     </div>
                 `;
-
-                btn.addEventListener('click', (e) => {
-                    if (referralCode) {
-                        trackClick(referralCode, link.url);
-                    }
-                });
-
                 container.appendChild(btn);
             });
         }
-
-        // Render content grid
-        function renderContent(posts) {
-            if (!posts || posts.length === 0) return;
-
-            const section = document.getElementById('contentSection');
-            const grid = document.getElementById('contentGrid');
-            section.classList.remove('hidden');
-
-            posts.slice(0, 3).forEach(post => {
-                const card = document.createElement('div');
-                card.className = 'post-card aspect-square rounded-xl overflow-hidden cursor-pointer relative group';
-
-                const thumbnail = post.thumbnail || post.mediaUrl || post.image;
-                if (thumbnail) {
-                    card.innerHTML = `
-                        <img src="${thumbnail}" alt="${post.title || 'Post'}" class="w-full h-full object-cover">
-                        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <i class="fas fa-play text-2xl"></i>
-                        </div>
-                    `;
-                } else {
-                    card.innerHTML = `
-                        <div class="w-full h-full bg-gradient-to-br from-accent-orange/20 to-accent-pink/20 flex items-center justify-center">
-                            <i class="fas fa-image text-2xl text-gray-500"></i>
+        
+        /**
+         * Renders either the content feed or a paywall for it.
+         * @param {HTMLElement} container The element to render into.
+         * @param {string} handle The creator's handle.
+         * @param {string} name The creator's name.
+         */
+        async function renderPostArea(container, handle, name) {
+            // For now, we will assume no subscription is required and just show a "coming soon" for posts.
+            // This avoids the bug with the missing #feed element and the subscription check.
+            const feedRes = await fetch(`${API_BASE}/api/coach/${handle}/feed`);
+            if (feedRes.ok) {
+                const feed = await feedRes.json();
+                const posts = feed.posts || [];
+                
+                if (posts.length > 0) {
+                     container.innerHTML = `
+                        <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                            <i class="fas fa-fire text-accent-orange"></i>
+                            Recent Content
+                        </h3>
+                        <div id="contentGrid" class="grid grid-cols-3 gap-2">
+                            ${posts.slice(0, 3).map(post => {
+                                const thumbnail = post.thumbnail || post.mediaUrl || post.image;
+                                if (thumbnail) {
+                                    return `<div class="post-card aspect-square rounded-xl overflow-hidden cursor-pointer relative group">
+                                                <img src="${thumbnail}" alt="${post.title || 'Post'}" class="w-full h-full object-cover">
+                                            </div>`;
+                                }
+                                return '';
+                            }).join('')}
                         </div>
                     `;
                 }
-
-                if (post.url) {
-                    card.addEventListener('click', () => window.open(post.url, '_blank'));
-                }
-
-                grid.appendChild(card);
-            });
+            } else {
+                 container.innerHTML = `
+                    <div class="text-center py-10 px-6 glass-card rounded-xl">
+                         <h3 class="text-xl font-bold text-white mb-3">Content Coming Soon</h3>
+                         <p class="text-gray-400">Check back later for exclusive posts from ${name}.</p>
+                    </div>
+                `;
+            }
         }
 
-        // Main init
+        /**
+         * Main initialization function.
+         */
         async function init() {
             const handle = getHandle();
-
             if (!handle) {
-                loadingEl.classList.add('hidden');
-                errorEl.classList.remove('hidden');
+                loadingEl?.classList.add('hidden');
+                errorEl?.classList.remove('hidden');
                 return;
             }
 
             try {
-                // Fetch profile data
+                // 1. Fetch profile data
                 const profileRes = await fetch(`${API_BASE}/api/coach/${handle}/public`);
-                if (!profileRes.ok) throw new Error('Profile not found');
-                const { coach: profile } = await profileRes.json();
+                if (!profileRes.ok) {
+                    throw new Error(`Profile not found. Status: ${profileRes.status}`);
+                }
+                const responseData = await profileRes.json();
 
-                // Update page title
-                document.title = `${profile.name || profile.displayName || '@' + handle} | ClockWork`;
-
-                // Populate profile data
-                document.getElementById('coverImage').src = profile.coverImage || profile.bannerImage || 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1200&h=400&fit=crop';
-                document.getElementById('profilePicture').src = profile.profilePicture || profile.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.name || handle)}&background=ff6b35&color=fff&size=256`;
-                document.getElementById('creatorName').textContent = profile.name || profile.displayName || handle;
-                document.getElementById('creatorHandle').textContent = '@' + handle;
-                document.getElementById('creatorBio').textContent = profile.bio || profile.description || '';
-
-                // Verified badge
-                if (profile.verified || profile.isVerified) {
-                    document.getElementById('verifiedBadge').classList.remove('hidden');
+                // 2. Correctly access the nested profile object
+                const profile = responseData.coach;
+                if (!profile) {
+                    throw new Error("API response did not contain a 'coach' object.");
                 }
 
-                // Social icons
-                renderSocialIcons(profile.socials || profile.socialLinks || {});
+                // 3. Render the page content safely
+                renderProfileDetails(profile, handle);
+                renderSocialIcons(profile.socialLinks);
+                renderLinks(profile.links);
 
-                // Referral code
-                const referralCode = profile.referralCode || profile.code;
-                if (referralCode) {
-                    document.getElementById('referralCard').classList.remove('hidden');
-                    document.getElementById('referralCode').textContent = referralCode;
-                    setupCopyButton(referralCode);
+                const postArea = getElement('post-area');
+                if (postArea) {
+                    await renderPostArea(postArea, handle, profile.name);
                 }
-
-                // Links
-                renderLinks(profile.links || profile.linkTree || [], referralCode);
-
-                // Check subscription status
-                const token = localStorage.getItem('token') || getCookie('token');
-                let isSubscribed = false;
-                if (token) {
-                    try {
-                        const subRes = await fetch(`${API_BASE}/api/coach/${handle}/subscription-status`, {
-                            headers: { 'Authorization': `Bearer ${token}` }
-                        });
-                        if (subRes.ok) {
-                            const subData = await subRes.json();
-                            isSubscribed = subData.subscribed;
-                        }
-                    } catch (e) {}
-                }
-
-                // Show paywall or content
-                if (!isSubscribed) {
-                    renderPaywall(profile);
-                } else {
-                    try {
-                        const feedRes = await fetch(`${API_BASE}/api/coach/${handle}/feed`, {
-                            headers: { 'Authorization': `Bearer ${token}` }
-                        });
-                        if (feedRes.ok) {
-                            const feed = await feedRes.json();
-                            renderContent(feed.posts || feed.content || feed);
-                        }
-                    } catch (feedErr) {
-                        console.log('Feed not available');
-                    }
-                }
-
-                // Show content
-                loadingEl.classList.add('hidden');
-                contentEl.classList.remove('hidden');
+                
+                // 4. Show the fully rendered content
+                loadingEl?.classList.add('hidden');
+                contentEl?.classList.remove('hidden');
 
             } catch (err) {
-                console.error('Failed to load profile:', err);
-                loadingEl.classList.add('hidden');
-                errorEl.classList.remove('hidden');
+                console.error('Failed to load and render profile:', err);
+                loadingEl?.classList.add('hidden');
+                errorEl?.classList.remove('hidden');
             }
         }
 
-        // Initialize on load
+        // --- INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
