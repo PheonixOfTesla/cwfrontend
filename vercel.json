@@ -4,8 +4,8 @@
   "trailingSlash": false,
   "rewrites": [
     {
-      "source": "/@:handle*",
-      "destination": "/creator.html"
+      "source": "/@([^/]+)",
+      "destination": "/creator.html?handle=$1"
     },
     {
       "source": "/api/:path*",
