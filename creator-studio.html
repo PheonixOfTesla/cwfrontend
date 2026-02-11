@@ -1388,8 +1388,22 @@
                         const uploadData = await uploadRes.json();
 
                         if (!uploadData.success) throw new Error('Upload failed');
-                        setProfilePic(uploadData.data.url);
+
+                        const newProfilePicUrl = uploadData.data.url;
+                        setProfilePic(newProfilePicUrl);
+
+                        // Save to database immediately
+                        await api.fetch('/coach/profile', {
+                            method: 'PUT',
+                            body: JSON.stringify({
+                                coachProfile: {
+                                    profilePicture: newProfilePicUrl
+                                }
+                            })
+                        });
+
                         setMessage({ type: 'success', text: 'Profile picture uploaded!' });
+                        onUpdate?.(); // Refresh profile data
                     } catch (err) {
                         setMessage({ type: 'error', text: 'Failed to upload profile picture' });
                     }
