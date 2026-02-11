@@ -1603,7 +1603,7 @@
                     youtube: profile?.socialLinks?.youtube || '',
                     twitter: profile?.socialLinks?.twitter || ''
                 },
-                subscriptionPrice: profile?.coachProfile?.pricing?.subscriptionPrice || 999
+                subscriptionPrice: (profile?.coachProfile?.pricing?.subscriptionPrice || 999) / 100
             });
             const [notifications, setNotifications] = useState({
                 earnings: true,
@@ -1623,10 +1623,10 @@
                         method: 'PUT',
                         body: JSON.stringify({ ...formData, notifications })
                     });
-                    // Save pricing separately
+                    // Save pricing separately (convert dollars to cents)
                     await api.fetch('/coach/creator-profile', {
                         method: 'PUT',
-                        body: JSON.stringify({ pricing: { subscriptionPrice: formData.subscriptionPrice } })
+                        body: JSON.stringify({ pricing: { subscriptionPrice: Math.round(formData.subscriptionPrice * 100) } })
                     });
                     setMessage({ type: 'success', text: 'Settings saved successfully!' });
                     onUpdate?.();
@@ -1717,14 +1717,14 @@
                                         min="1"
                                         max="999"
                                         step="0.01"
-                                        value={(formData.subscriptionPrice / 100).toFixed(2)}
-                                        onChange={e => setFormData({ ...formData, subscriptionPrice: Math.round(parseFloat(e.target.value || 0) * 100) })}
+                                        value={formData.subscriptionPrice}
+                                        onChange={e => setFormData({ ...formData, subscriptionPrice: parseFloat(e.target.value) || 0 })}
                                         className="w-full bg-white/5 border border-white/10 rounded-lg pl-8 pr-4 py-3 text-white text-xl font-bold focus:outline-none focus:border-orange-500"
                                     />
                                 </div>
                             </div>
                             <div className="text-center p-4 bg-white/5 rounded-lg">
-                                <div className="text-2xl font-bold gradient-text">${(formData.subscriptionPrice / 100).toFixed(2)}</div>
+                                <div className="text-2xl font-bold gradient-text">${formData.subscriptionPrice.toFixed(2)}</div>
                                 <div className="text-gray-400 text-xs">per month</div>
                             </div>
                         </div>
