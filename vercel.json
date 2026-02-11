@@ -4,6 +4,10 @@
   "trailingSlash": false,
   "rewrites": [
     {
+      "source": "/@:handle*",
+      "destination": "/creator.html"
+    },
+    {
       "source": "/api/:path*",
       "destination": "https://cwbackend-production-314e.up.railway.app/api/:path*"
     },
@@ -38,10 +42,6 @@
     {
       "source": "/coach/:id",
       "destination": "/coach.html"
-    },
-    {
-      "source": "/@:handle",
-      "destination": "/creator.html"
     },
     {
       "source": "/creator-studio",
