@@ -2,10 +2,17 @@
   "version": 2,
   "cleanUrls": true,
   "trailingSlash": false,
+  "redirects": [
+    {
+      "source": "/creator/:handle",
+      "destination": "/@:handle",
+      "statusCode": 301
+    }
+  ],
   "rewrites": [
     {
       "source": "/@:handle",
-      "destination": "/creator.html?handle=:handle"
+      "destination": "/creator.html"
     },
     {
       "source": "/api/:path*",
@@ -46,10 +53,6 @@
     {
       "source": "/creator-studio",
       "destination": "/creator-studio.html"
-    },
-    {
-      "source": "/creator/:handle",
-      "destination": "/creator.html"
     }
   ]
 }
