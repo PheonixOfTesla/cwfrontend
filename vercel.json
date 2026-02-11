@@ -11,6 +11,10 @@
   ],
   "rewrites": [
     {
+      "source": "/creator/:handle",
+      "destination": "/creator.html"
+    },
+    {
       "source": "/api/:path*",
       "destination": "https://cwbackend-production-314e.up.railway.app/api/:path*"
     },
@@ -49,10 +53,6 @@
     {
       "source": "/creator-studio",
       "destination": "/creator-studio.html"
-    },
-    {
-      "source": "/creator/:handle",
-      "destination": "/creator.html"
     }
   ]
 }
