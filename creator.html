@@ -33,8 +33,22 @@
         .social-icon:hover { transform: scale(1.15); }
         .copy-btn { transition: all 0.2s ease; }
         .copy-btn:hover { background: rgba(255, 107, 53, 0.2); }
-        .post-card { transition: all 0.3s ease; }
+        .post-card { transition: all 0.3s ease; position: relative; }
         .post-card:hover { transform: scale(1.02); }
+        .post-card.locked img { filter: blur(20px); }
+        .post-card.locked .lock-overlay {
+            position: absolute; inset: 0;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.4); border-radius: inherit;
+        }
+        .post-card.locked .lock-icon {
+            width: 40px; height: 40px;
+            background: linear-gradient(135deg, #ff6b35, #ff2d7a);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 8px;
+        }
+        .post-card.locked .lock-text { font-size: 10px; color: white; font-weight: 600; text-transform: uppercase; }
         .shimmer { background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0) 100%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
         @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
         .verified-badge { display: inline-flex; align-items: center; justify-content: center; }
@@ -295,19 +309,42 @@
             try {
                 const feedRes = await fetch(`${API_BASE}/api/coach/${encodeURIComponent(handle)}/feed`);
                 if (!feedRes.ok) throw new Error('Feed not available');
-                
+
                 const feed = await feedRes.json();
                 const posts = feed.posts || [];
-                
+
                 if (posts.length > 0) {
                      container.innerHTML = `
                         <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
                             <i class="fas fa-fire text-accent-orange"></i> Recent Content
                         </h3>
                         <div class="grid grid-cols-3 gap-2">
-                            ${posts.slice(0, 3).map(post => {
+                            ${posts.slice(0, 6).map(post => {
                                 const thumbnail = post.thumbnail || post.mediaUrl || post.image;
-                                return thumbnail ? `<div class="post-card aspect-square rounded-xl overflow-hidden"><img src="${thumbnail}" alt="Post" class="w-full h-full object-cover"></div>` : '';
+                                const isLocked = post.isLocked;
+                                const lockedClass = isLocked ? 'locked' : '';
+                                const lockOverlay = isLocked ? `
+                                    <div class="lock-overlay">
+                                        <div class="lock-icon"><i class="fas fa-lock text-white text-sm"></i></div>
+                                        <span class="lock-text">Subscribe</span>
+                                    </div>
+                                ` : '';
+
+                                if (thumbnail) {
+                                    return `<div class="post-card ${lockedClass} aspect-square rounded-xl overflow-hidden">
+                                        <img src="${thumbnail}" alt="Post" class="w-full h-full object-cover">
+                                        ${lockOverlay}
+                                    </div>`;
+                                } else if (isLocked) {
+                                    // Locked post without media - show placeholder
+                                    return `<div class="post-card locked aspect-square rounded-xl overflow-hidden bg-dark-700">
+                                        <div class="lock-overlay">
+                                            <div class="lock-icon"><i class="fas fa-lock text-white text-sm"></i></div>
+                                            <span class="lock-text">Subscribe</span>
+                                        </div>
+                                    </div>`;
+                                }
+                                return '';
                             }).join('')}
                         </div>`;
                 }
