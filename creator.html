@@ -220,7 +220,12 @@
                             profilePicture: document.getElementById('profilePicture')?.src,
                             price: currentCreator.price,
                         }, () => {
-                            this.createCheckoutSession();
+                            // Close modal and proceed to checkout
+                            AuthModal.close();
+                            // Small delay to let modal close animation complete
+                            setTimeout(() => {
+                                this.createCheckoutSession();
+                            }, 300);
                         });
                     }
                 },
@@ -439,9 +444,18 @@
                         <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
                             ${posts.slice(0, 6).map(post => {
                                 const shouldBeLocked = post.access === 'subscribers' && !isSubscribed;
+                                const hasMedia = post.thumbnail || post.mediaUrl || (post.carousel && post.carousel.length > 0);
+                                const mediaUrl = post.thumbnail || post.mediaUrl || (post.carousel && post.carousel[0]?.url) || '';
+                                const postContent = post.content || post.caption || '';
+
                                 return `
-                                <div class="post-card ${shouldBeLocked ? 'locked' : ''} aspect-square rounded-xl overflow-hidden bg-dark-800">
-                                    <img src="${post.thumbnail || post.mediaUrl || ''}" alt="Post" class="w-full h-full object-cover">
+                                <div class="post-card ${shouldBeLocked ? 'locked' : ''} aspect-square rounded-xl overflow-hidden bg-dark-800 relative">
+                                    ${hasMedia ?
+                                        `<img src="${mediaUrl}" alt="${postContent.substring(0, 50)}" class="w-full h-full object-cover">` :
+                                        `<div class="w-full h-full flex items-center justify-center p-4 bg-gradient-to-br from-orange-500/20 to-pink-500/20">
+                                            <p class="text-white text-sm line-clamp-6 text-center">${postContent}</p>
+                                         </div>`
+                                    }
                                     ${shouldBeLocked ? `<div class="lock-overlay"><div class="lock-icon"><i class="fas fa-lock text-white text-sm"></i></div><span class="lock-text">Subscribe</span></div>` : ''}
                                 </div>`;
                             }).join('')}

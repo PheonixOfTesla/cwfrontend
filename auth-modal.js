@@ -459,7 +459,7 @@ const AuthModal = {
                 this.onSuccess(null, data.user);
             }
 
-            this.close();
+            // Do NOT close the modal, let the onSuccess callback handle the next step.
 
         } catch (error) {
             this.showError(error.message || 'Login failed. Please try again.');
@@ -507,7 +507,7 @@ const AuthModal = {
                 this.onSuccess(null, data.user);
             }
 
-            this.close();
+            // Do NOT close the modal, let the onSuccess callback handle the next step.
 
         } catch (error) {
             this.showError(error.message || 'Signup failed. Please try again.');
