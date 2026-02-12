@@ -9,7 +9,8 @@ const AuthModal = {
 
     // State
     isOpen: false,
-    mode: 'login', // 'login' or 'signup'
+    mode: 'login', // 'login', 'signup', 'forgot', or 'reset'
+    resetEmail: null, // Email for password reset flow
     context: null, // 'subscribe' or 'referral'
     contextData: null, // Creator info for subscribe, or referral info
     onSuccess: null, // Callback after successful auth
@@ -77,6 +78,61 @@ const AuthModal = {
                                     </svg>
                                 </span>
                             </button>
+                            <button type="button" onclick="AuthModal.switchMode('forgot')" class="w-full text-center text-orange-400 hover:text-orange-300 text-sm mt-3">
+                                Forgot Password?
+                            </button>
+                        </form>
+
+                        <!-- Forgot Password Form -->
+                        <form id="forgotForm" class="space-y-4 hidden">
+                            <p class="text-gray-400 text-sm mb-4">Enter your email and we'll send you a reset code.</p>
+                            <div>
+                                <label class="text-gray-400 text-sm block mb-2">Email</label>
+                                <input type="email" id="forgotEmail" required placeholder="you@example.com"
+                                    class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-orange-500 transition-colors">
+                            </div>
+                            <button type="submit" id="forgotBtn" class="w-full py-4 bg-gradient-to-r from-orange-500 to-pink-500 rounded-xl font-bold text-white hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
+                                <span id="forgotBtnText">Send Reset Code</span>
+                                <span id="forgotSpinner" class="hidden">
+                                    <svg class="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                </span>
+                            </button>
+                            <button type="button" onclick="AuthModal.switchMode('login')" class="w-full text-center text-gray-400 hover:text-white text-sm mt-2">
+                                <i class="fas fa-arrow-left mr-2"></i>Back to Login
+                            </button>
+                        </form>
+
+                        <!-- Reset Password Form (enter code + new password) -->
+                        <form id="resetForm" class="space-y-4 hidden">
+                            <div id="resetSuccess" class="p-3 bg-green-500/20 border border-green-500/50 rounded-xl text-green-400 text-sm mb-4">
+                                <i class="fas fa-check-circle mr-2"></i>
+                                <span>Code sent! Check your email.</span>
+                            </div>
+                            <div>
+                                <label class="text-gray-400 text-sm block mb-2">6-Digit Code</label>
+                                <input type="text" id="resetCode" required placeholder="123456" maxlength="6" pattern="[0-9]{6}"
+                                    class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-orange-500 transition-colors text-center text-2xl tracking-widest">
+                            </div>
+                            <div>
+                                <label class="text-gray-400 text-sm block mb-2">New Password</label>
+                                <input type="password" id="resetPassword" required placeholder="Min 6 characters" minlength="6"
+                                    class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-orange-500 transition-colors">
+                            </div>
+                            <button type="submit" id="resetBtn" class="w-full py-4 bg-gradient-to-r from-orange-500 to-pink-500 rounded-xl font-bold text-white hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
+                                <span id="resetBtnText">Reset Password</span>
+                                <span id="resetSpinner" class="hidden">
+                                    <svg class="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                </span>
+                            </button>
+                            <button type="button" onclick="AuthModal.switchMode('login')" class="w-full text-center text-gray-400 hover:text-white text-sm mt-2">
+                                <i class="fas fa-arrow-left mr-2"></i>Back to Login
+                            </button>
                         </form>
 
                         <!-- Signup Form -->
@@ -135,6 +191,16 @@ const AuthModal = {
         document.getElementById('signupForm').addEventListener('submit', (e) => {
             e.preventDefault();
             AuthModal.handleSignup();
+        });
+
+        document.getElementById('forgotForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            AuthModal.handleForgotPassword();
+        });
+
+        document.getElementById('resetForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            AuthModal.handleResetPassword();
         });
 
         // Close on escape key
@@ -244,7 +310,7 @@ const AuthModal = {
     },
 
     /**
-     * Switch between login and signup modes
+     * Switch between login, signup, forgot, and reset modes
      */
     switchMode(mode) {
         this.mode = mode;
@@ -253,13 +319,24 @@ const AuthModal = {
 
         const loginForm = document.getElementById('loginForm');
         const signupForm = document.getElementById('signupForm');
+        const forgotForm = document.getElementById('forgotForm');
+        const resetForm = document.getElementById('resetForm');
 
+        // Hide all forms
+        loginForm.classList.add('hidden');
+        signupForm.classList.add('hidden');
+        forgotForm.classList.add('hidden');
+        resetForm.classList.add('hidden');
+
+        // Show the selected form
         if (mode === 'login') {
             loginForm.classList.remove('hidden');
-            signupForm.classList.add('hidden');
-        } else {
-            loginForm.classList.add('hidden');
+        } else if (mode === 'signup') {
             signupForm.classList.remove('hidden');
+        } else if (mode === 'forgot') {
+            forgotForm.classList.remove('hidden');
+        } else if (mode === 'reset') {
+            resetForm.classList.remove('hidden');
         }
     },
 
@@ -269,6 +346,15 @@ const AuthModal = {
     updateTabs() {
         const loginTab = document.getElementById('loginTab');
         const signupTab = document.getElementById('signupTab');
+        const tabContainer = loginTab.parentElement;
+
+        // Hide tabs for forgot/reset modes
+        if (this.mode === 'forgot' || this.mode === 'reset') {
+            tabContainer.classList.add('hidden');
+            return;
+        } else {
+            tabContainer.classList.remove('hidden');
+        }
 
         if (this.mode === 'login') {
             loginTab.classList.add('text-white', 'border-orange-500');
@@ -297,7 +383,11 @@ const AuthModal = {
      * Hide error message
      */
     hideError() {
-        document.getElementById('authError').classList.add('hidden');
+        const errorEl = document.getElementById('authError');
+        errorEl.classList.add('hidden');
+        // Reset to error styling
+        errorEl.classList.remove('bg-green-500/20', 'border-green-500/50', 'text-green-400');
+        errorEl.classList.add('bg-red-500/20', 'border-red-500/50', 'text-red-400');
     },
 
     /**
@@ -306,6 +396,9 @@ const AuthModal = {
     resetForms() {
         document.getElementById('loginForm').reset();
         document.getElementById('signupForm').reset();
+        document.getElementById('forgotForm').reset();
+        document.getElementById('resetForm').reset();
+        this.resetEmail = null;
         this.hideError();
     },
 
@@ -313,28 +406,25 @@ const AuthModal = {
      * Set loading state
      */
     setLoading(isLoading) {
-        const loginBtn = document.getElementById('loginBtn');
-        const signupBtn = document.getElementById('signupBtn');
-        const loginBtnText = document.getElementById('loginBtnText');
-        const signupBtnText = document.getElementById('signupBtnText');
-        const loginSpinner = document.getElementById('loginSpinner');
-        const signupSpinner = document.getElementById('signupSpinner');
+        const buttons = ['login', 'signup', 'forgot', 'reset'];
 
-        if (isLoading) {
-            loginBtn.disabled = true;
-            signupBtn.disabled = true;
-            loginBtnText.classList.add('hidden');
-            signupBtnText.classList.add('hidden');
-            loginSpinner.classList.remove('hidden');
-            signupSpinner.classList.remove('hidden');
-        } else {
-            loginBtn.disabled = false;
-            signupBtn.disabled = false;
-            loginBtnText.classList.remove('hidden');
-            signupBtnText.classList.remove('hidden');
-            loginSpinner.classList.add('hidden');
-            signupSpinner.classList.add('hidden');
-        }
+        buttons.forEach(name => {
+            const btn = document.getElementById(`${name}Btn`);
+            const btnText = document.getElementById(`${name}BtnText`);
+            const spinner = document.getElementById(`${name}Spinner`);
+
+            if (!btn) return;
+
+            if (isLoading) {
+                btn.disabled = true;
+                if (btnText) btnText.classList.add('hidden');
+                if (spinner) spinner.classList.remove('hidden');
+            } else {
+                btn.disabled = false;
+                if (btnText) btnText.classList.remove('hidden');
+                if (spinner) spinner.classList.add('hidden');
+            }
+        });
     },
 
     /**
@@ -421,6 +511,85 @@ const AuthModal = {
 
         } catch (error) {
             this.showError(error.message || 'Signup failed. Please try again.');
+        } finally {
+            this.setLoading(false);
+        }
+    },
+
+    /**
+     * Handle forgot password - request reset code
+     */
+    async handleForgotPassword() {
+        this.hideError();
+        this.setLoading(true);
+
+        const email = document.getElementById('forgotEmail').value.trim();
+
+        try {
+            const response = await fetch(`${this.API_BASE}/api/auth/reset-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+            });
+
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.message || 'Failed to send reset code');
+            }
+
+            // Store email for reset step
+            this.resetEmail = email;
+
+            // Switch to reset form
+            this.switchMode('reset');
+
+        } catch (error) {
+            this.showError(error.message || 'Failed to send reset code. Please try again.');
+        } finally {
+            this.setLoading(false);
+        }
+    },
+
+    /**
+     * Handle password reset with code
+     */
+    async handleResetPassword() {
+        this.hideError();
+        this.setLoading(true);
+
+        const code = document.getElementById('resetCode').value.trim();
+        const password = document.getElementById('resetPassword').value;
+
+        try {
+            const response = await fetch(`${this.API_BASE}/api/auth/reset-password/${code}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    password,
+                    email: this.resetEmail
+                })
+            });
+
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.message || 'Failed to reset password');
+            }
+
+            // Success! Switch back to login
+            this.resetEmail = null;
+            this.switchMode('login');
+
+            // Show success message in the error container (reusing for simplicity)
+            const errorEl = document.getElementById('authError');
+            const errorText = document.getElementById('authErrorText');
+            errorEl.classList.remove('hidden', 'bg-red-500/20', 'border-red-500/50', 'text-red-400');
+            errorEl.classList.add('bg-green-500/20', 'border-green-500/50', 'text-green-400');
+            errorText.innerHTML = '<i class="fas fa-check-circle mr-2"></i>Password reset! You can now log in.';
+
+        } catch (error) {
+            this.showError(error.message || 'Invalid code or reset failed. Please try again.');
         } finally {
             this.setLoading(false);
         }
