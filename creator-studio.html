@@ -706,7 +706,8 @@
                 { id: 3, title: 'Instagram', url: 'https://instagram.com/creator', clicks: 123, active: true }
             ]);
             const [editingLink, setEditingLink] = useState(null);
-            const [newLink, setNewLink] = useState({ title: '', url: '' });
+            const [newLink, setNewLink] = useState({ title: '', url: '', thumbnail: null });
+            const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
             const [draggedItem, setDraggedItem] = useState(null);
             const [referralCode, setReferralCode] = useState(null);
             const [copyMessage, setCopyMessage] = useState('');
@@ -758,12 +759,37 @@
                 }).catch(console.error);
             };
 
+            const uploadThumbnail = async (file, forEditing = false) => {
+                setUploadingThumbnail(true);
+                try {
+                    const formData = new FormData();
+                    formData.append('image', file);
+                    const res = await fetch(`${API_BASE}/upload/image`, {
+                        method: 'POST',
+                        credentials: 'include',
+                        body: formData
+                    });
+                    const data = await res.json();
+                    if (data.success && data.url) {
+                        if (forEditing && editingLink) {
+                            setEditingLink({ ...editingLink, thumbnail: data.url });
+                        } else {
+                            setNewLink({ ...newLink, thumbnail: data.url });
+                        }
+                    }
+                } catch (err) {
+                    console.error('Failed to upload thumbnail:', err);
+                } finally {
+                    setUploadingThumbnail(false);
+                }
+            };
+
             const addLink = () => {
                 if (!newLink.title || !newLink.url) return;
                 const link = { id: Date.now(), ...newLink, clicks: 0, active: true };
                 const updatedLinks = [...links, link];
                 setLinks(updatedLinks);
-                setNewLink({ title: '', url: '' });
+                setNewLink({ title: '', url: '', thumbnail: null });
                 // Save to API
                 api.fetch('/coach/links', {
                     method: 'PUT',
@@ -831,6 +857,43 @@
                                             placeholder="https://..."
                                             className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500"
                                         />
+                                    </div>
+                                    <div>
+                                        <label className="block text-gray-400 text-sm mb-2">Thumbnail Image</label>
+                                        <div className="flex items-center gap-3">
+                                            {editingLink.thumbnail ? (
+                                                <img src={editingLink.thumbnail} alt="" className="w-16 h-16 rounded-lg object-cover" />
+                                            ) : (
+                                                <div className="w-16 h-16 rounded-lg bg-white/10 flex items-center justify-center">
+                                                    <i className="fas fa-image text-gray-500 text-xl"></i>
+                                                </div>
+                                            )}
+                                            <div className="flex-1">
+                                                <label className="cursor-pointer">
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        className="hidden"
+                                                        onChange={e => e.target.files[0] && uploadThumbnail(e.target.files[0], true)}
+                                                    />
+                                                    <span className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors">
+                                                        {uploadingThumbnail ? (
+                                                            <><i className="fas fa-spinner animate-spin"></i> Uploading...</>
+                                                        ) : (
+                                                            <><i className="fas fa-upload"></i> {editingLink.thumbnail ? 'Change' : 'Upload'}</>
+                                                        )}
+                                                    </span>
+                                                </label>
+                                                {editingLink.thumbnail && (
+                                                    <button
+                                                        onClick={() => setEditingLink({ ...editingLink, thumbnail: null })}
+                                                        className="ml-2 text-red-400 hover:text-red-300 text-sm"
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
                                     <div className="flex gap-3 pt-2">
                                         <button
@@ -934,6 +997,13 @@
                                 >
                                     <div className="flex items-center gap-4">
                                         <i className="fas fa-grip-vertical text-gray-500"></i>
+                                        {link.thumbnail ? (
+                                            <img src={link.thumbnail} alt="" className="w-12 h-12 rounded-lg object-cover" />
+                                        ) : (
+                                            <div className="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center">
+                                                <i className="fas fa-link text-gray-500"></i>
+                                            </div>
+                                        )}
                                         <div className="flex-1 min-w-0">
                                             <div className="font-medium">{link.title}</div>
                                             <div className="text-gray-500 text-sm truncate">{link.url}</div>
@@ -962,28 +1032,61 @@
                     {/* Add New Link */}
                     <div className="glass rounded-xl p-6">
                         <h3 className="text-sm font-bold text-gray-400 mb-4">ADD NEW LINK</h3>
-                        <div className="flex gap-3">
-                            <input
-                                type="text"
-                                value={newLink.title}
-                                onChange={e => setNewLink({ ...newLink, title: e.target.value })}
-                                placeholder="Link title"
-                                className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500"
-                            />
-                            <input
-                                type="url"
-                                value={newLink.url}
-                                onChange={e => setNewLink({ ...newLink, url: e.target.value })}
-                                placeholder="https://..."
-                                className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500"
-                            />
-                            <button
-                                onClick={addLink}
-                                disabled={!newLink.title || !newLink.url}
-                                className="gradient-bg hover:opacity-90 text-white font-bold px-6 py-2 rounded-lg transition-opacity disabled:opacity-50"
-                            >
-                                <i className="fas fa-plus"></i>
-                            </button>
+                        <div className="space-y-4">
+                            <div className="flex gap-3 items-center">
+                                {/* Thumbnail Preview/Upload */}
+                                <label className="cursor-pointer flex-shrink-0">
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={e => e.target.files[0] && uploadThumbnail(e.target.files[0])}
+                                    />
+                                    {newLink.thumbnail ? (
+                                        <img src={newLink.thumbnail} alt="" className="w-14 h-14 rounded-lg object-cover hover:opacity-80 transition-opacity" />
+                                    ) : (
+                                        <div className="w-14 h-14 rounded-lg bg-white/10 hover:bg-white/20 flex flex-col items-center justify-center transition-colors">
+                                            {uploadingThumbnail ? (
+                                                <i className="fas fa-spinner animate-spin text-gray-400"></i>
+                                            ) : (
+                                                <>
+                                                    <i className="fas fa-image text-gray-500 text-lg"></i>
+                                                    <span className="text-[10px] text-gray-500 mt-1">Photo</span>
+                                                </>
+                                            )}
+                                        </div>
+                                    )}
+                                </label>
+                                <input
+                                    type="text"
+                                    value={newLink.title}
+                                    onChange={e => setNewLink({ ...newLink, title: e.target.value })}
+                                    placeholder="Link title"
+                                    className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500"
+                                />
+                                <input
+                                    type="url"
+                                    value={newLink.url}
+                                    onChange={e => setNewLink({ ...newLink, url: e.target.value })}
+                                    placeholder="https://..."
+                                    className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500"
+                                />
+                                <button
+                                    onClick={addLink}
+                                    disabled={!newLink.title || !newLink.url}
+                                    className="gradient-bg hover:opacity-90 text-white font-bold px-6 py-2 rounded-lg transition-opacity disabled:opacity-50"
+                                >
+                                    <i className="fas fa-plus"></i>
+                                </button>
+                            </div>
+                            {newLink.thumbnail && (
+                                <button
+                                    onClick={() => setNewLink({ ...newLink, thumbnail: null })}
+                                    className="text-red-400 hover:text-red-300 text-sm"
+                                >
+                                    <i className="fas fa-times mr-1"></i> Remove thumbnail
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
