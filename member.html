@@ -350,15 +350,15 @@
         // Load subscriptions
         async function loadSubscriptions() {
             try {
-                const response = await fetch(`${API_BASE}/api/user/subscriptions`, {
+                const response = await fetch(`${API_BASE}/api/users/subscriptions`, {
                     credentials: 'include'
                 });
 
                 document.getElementById('subscriptionsLoading').classList.add('hidden');
 
                 if (response.ok) {
-                    const data = await response.json();
-                    const subscriptions = data.subscriptions || [];
+                    const res = await response.json();
+                    const subscriptions = res.data || [];
 
                     document.getElementById('subscriptionCount').textContent = subscriptions.length;
 
@@ -381,20 +381,53 @@
             const container = document.getElementById('subscriptionsContent');
             container.classList.remove('hidden');
 
-            container.innerHTML = subscriptions.map(sub => `
-                <a href="/@${sub.coach?.handle || sub.coachId}" class="flex items-center gap-4 p-3 rounded-xl bg-dark-900/30 hover:bg-dark-900/50 transition-colors">
-                    <img src="${sub.coach?.profilePicture || 'https://ui-avatars.com/api/?background=ff6b35&color=fff&size=48&name=' + encodeURIComponent(sub.coach?.name || 'Creator')}"
-                        alt="${sub.coach?.name}" class="w-12 h-12 rounded-full object-cover">
-                    <div class="flex-1 min-w-0">
-                        <p class="font-semibold truncate">${sub.coach?.name || 'Creator'}</p>
-                        <p class="text-gray-400 text-sm">@${sub.coach?.handle || 'creator'}</p>
+            container.innerHTML = subscriptions.map(sub => {
+                const creator = sub.creatorId;
+                const statusColor = sub.status === 'active' ? 'text-green-400' : 'text-yellow-400';
+                return `
+                <div class="flex items-center gap-4 p-3 rounded-xl bg-dark-900/30">
+                    <a href="/@${creator?.coachProfile?.handle || creator?._id}" class="flex items-center gap-4 flex-1 min-w-0">
+                        <img src="${creator?.coachProfile?.profilePicture || 'https://ui-avatars.com/api/?background=ff6b35&color=fff&size=48&name=' + encodeURIComponent(creator?.name || 'C')}"
+                            alt="${creator?.name}" class="w-12 h-12 rounded-full object-cover">
+                        <div class="flex-1 min-w-0">
+                            <p class="font-semibold truncate">${creator?.name || 'Creator'}</p>
+                            <p class="text-gray-400 text-sm">@${creator?.coachProfile?.handle || 'creator'}</p>
+                        </div>
+                    </a>
+                    <div class="text-right flex-shrink-0">
+                         <div class="flex items-center gap-3">
+                            <p class="font-semibold ${statusColor} capitalize">${sub.status.replace('_', ' ')}</p>
+                            <button onclick="manageSubscription(event)" class="px-3 py-1 bg-white/10 text-white text-xs font-semibold rounded-md hover:bg-white/20 transition">
+                                Manage
+                            </button>
+                        </div>
+                        <p class="text-gray-500 text-xs mt-1">Renews on ${new Date(sub.currentPeriodEnd).toLocaleDateString()}</p>
                     </div>
-                    <div class="text-right">
-                        <p class="text-orange-400 font-semibold">$${(sub.amount / 100).toFixed(2)}/mo</p>
-                        <p class="text-gray-500 text-xs">${sub.status}</p>
-                    </div>
-                </a>
-            `).join('');
+                </div>
+            `}).join('');
+        }
+
+        async function manageSubscription(event) {
+            event.preventDefault();
+            event.target.textContent = 'Loading...';
+            event.target.disabled = true;
+
+            try {
+                const response = await fetch(`${API_BASE}/api/subscriptions/portal`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                if (data.success && data.data.url) {
+                    window.location.href = data.data.url;
+                } else {
+                    throw new Error(data.message || 'Failed to open management portal.');
+                }
+            } catch (error) {
+                alert(error.message);
+                event.target.textContent = 'Manage';
+                event.target.disabled = false;
+            }
         }
 
         // Load earnings
