@@ -819,11 +819,7 @@
 
         // Links Tab - Linktree-style Manager
         function LinksTab() {
-            const [links, setLinks] = useState([
-                { id: 1, title: 'My Fitness Program', url: 'https://clockwork.fit/program', clicks: 234, active: true },
-                { id: 2, title: 'Free Workout Guide', url: 'https://clockwork.fit/guide', clicks: 567, active: true },
-                { id: 3, title: 'Instagram', url: 'https://instagram.com/creator', clicks: 123, active: true }
-            ]);
+            const [links, setLinks] = useState([]);
             const [editingLink, setEditingLink] = useState(null);
             const [newLink, setNewLink] = useState({ title: '', url: '', thumbnail: null });
             const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
@@ -832,17 +828,32 @@
             const [copyMessage, setCopyMessage] = useState('');
 
             useEffect(() => {
-                const loadReferralCode = async () => {
+                const loadData = async () => {
                     try {
-                        const res = await api.fetch('/earnings/referral-code');
-                        if (res.success && res.data) {
-                            setReferralCode(res.data.referralCode);
+                        // Load referral code
+                        const referralRes = await api.fetch('/earnings/referral-code');
+                        if (referralRes.success && referralRes.data) {
+                            setReferralCode(referralRes.data.referralCode);
+                        }
+
+                        // Load existing links from profile
+                        const profileRes = await api.fetch('/coach/profile');
+                        if (profileRes.success && profileRes.profile?.coachProfile?.links) {
+                            const existingLinks = profileRes.profile.coachProfile.links.map((link, index) => ({
+                                id: link.id || Date.now() + index,
+                                title: link.title,
+                                url: link.url,
+                                thumbnail: link.thumbnail || null,
+                                clicks: link.clicks || 0,
+                                active: link.active !== false
+                            }));
+                            setLinks(existingLinks);
                         }
                     } catch (err) {
-                        console.error('Failed to load referral code:', err);
+                        console.error('Failed to load links data:', err);
                     }
                 };
-                loadReferralCode();
+                loadData();
             }, []);
 
             const copyToClipboard = (text, label) => {
