@@ -1584,7 +1584,9 @@
             const [saving, setSaving] = useState(false);
             const [message, setMessage] = useState(null);
             const [profilePic, setProfilePic] = useState(profile?.coachProfile?.profilePicture || null);
+            const [coverImage, setCoverImage] = useState(profile?.coachProfile?.coverImage || null);
             const [uploading, setUploading] = useState(false);
+            const [uploadingCover, setUploadingCover] = useState(false);
 
             useEffect(() => {
                 const checkUsername = async () => {
@@ -1653,6 +1655,51 @@
                 input.click();
             };
 
+            const handleCoverImageUpload = async () => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'image/*';
+
+                input.onchange = async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    setUploadingCover(true);
+                    try {
+                        const formData = new FormData();
+                        formData.append('file', file);
+
+                        const uploadRes = await fetch(`${API_BASE}/upload/image`, {
+                            method: 'POST',
+                            credentials: 'include',
+                            body: formData
+                        });
+                        const uploadData = await uploadRes.json();
+
+                        if (!uploadData.success) throw new Error('Upload failed');
+
+                        const newCoverImageUrl = uploadData.data.url;
+                        setCoverImage(newCoverImageUrl);
+
+                        // Save to database immediately
+                        await api.fetch('/coach/creator-profile', {
+                            method: 'PUT',
+                            body: JSON.stringify({
+                                coverImage: newCoverImageUrl
+                            })
+                        });
+
+                        setMessage({ type: 'success', text: 'Cover image uploaded!' });
+                        onUpdate?.(); // Refresh profile data
+                    } catch (err) {
+                        setMessage({ type: 'error', text: 'Failed to upload cover image' });
+                    }
+                    setUploadingCover(false);
+                };
+
+                input.click();
+            };
+
             const handleSaveUsername = async () => {
                 if (!username || !usernameAvailable) return;
                 setSaving(true);
@@ -1709,6 +1756,44 @@
                                 <p className="text-gray-400 text-sm">Upload a profile picture to personalize your page</p>
                                 <p className="text-gray-500 text-xs mt-1">Recommended: Square image, at least 400x400px</p>
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Cover Image */}
+                    <div className="glass rounded-xl p-6">
+                        <h2 className="text-lg font-bold mb-4"><i className="fas fa-image gradient-text mr-2"></i>Cover Image</h2>
+                        <div className="space-y-4">
+                            <div className="relative w-full h-32 rounded-xl overflow-hidden">
+                                {coverImage ? (
+                                    <img src={coverImage} className="w-full h-full object-cover" alt="Cover" />
+                                ) : (
+                                    <div className="w-full h-full bg-gradient-to-r from-orange-500/20 to-pink-500/20 flex items-center justify-center">
+                                        <div className="text-center">
+                                            <i className="fas fa-image text-4xl text-gray-500 mb-2"></i>
+                                            <p className="text-gray-400 text-sm">No cover image</p>
+                                        </div>
+                                    </div>
+                                )}
+                                <button
+                                    onClick={handleCoverImageUpload}
+                                    disabled={uploadingCover}
+                                    className="absolute bottom-3 right-3 px-4 py-2 gradient-bg text-white rounded-lg flex items-center gap-2 hover:opacity-90 disabled:opacity-50"
+                                >
+                                    {uploadingCover ? (
+                                        <>
+                                            <i className="fas fa-spinner fa-spin"></i>
+                                            <span>Uploading...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <i className="fas fa-upload"></i>
+                                            <span>Upload Cover</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                            <p className="text-gray-400 text-sm">Upload a cover image for your public profile</p>
+                            <p className="text-gray-500 text-xs">Recommended: 1200x400px, JPG or PNG</p>
                         </div>
                     </div>
 
