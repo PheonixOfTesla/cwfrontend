@@ -649,7 +649,7 @@
 
             const handleEditPost = (post) => {
                 setEditingPost(post);
-                setEditCaption(post.caption || '');
+                setEditCaption(post.content || post.caption || '');
                 setEditVisibility(post.visibility || 'public');
             };
 
@@ -658,13 +658,13 @@
                     const res = await api.fetch(`/coach/posts/${editingPost._id}`, {
                         method: 'PUT',
                         body: JSON.stringify({
-                            caption: editCaption,
+                            content: editCaption,
                             visibility: editVisibility
                         })
                     });
                     if (res.success) {
                         // Update local state
-                        setPosts(posts.map(p => p._id === editingPost._id ? { ...p, caption: editCaption, visibility: editVisibility } : p));
+                        setPosts(posts.map(p => p._id === editingPost._id ? { ...p, content: editCaption, caption: editCaption, visibility: editVisibility } : p));
                         setEditingPost(null);
                     }
                 } catch (err) {
