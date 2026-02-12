@@ -63,15 +63,15 @@
         </div>
     </div>
 
-    <!-- Error State (Visual Test V2) -->
-    <div id="error" class="fixed inset-0 bg-yellow-400 text-black flex items-center justify-center z-50 hidden">
+    <!-- Error State -->
+    <div id="error" class="fixed inset-0 bg-dark-900 flex items-center justify-center z-50 hidden">
         <div class="text-center px-6">
-            <div class="w-20 h-20 rounded-full bg-black/10 flex items-center justify-center mx-auto mb-4">
-                <i class="fas fa-user-slash text-3xl text-black/50"></i>
+            <div class="w-20 h-20 rounded-full bg-dark-800 flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-user-slash text-3xl text-gray-500"></i>
             </div>
-            <h2 class="text-2xl font-bold mb-2">Creator Not Found (Test Version 2)</h2>
-            <p class="text-gray-800 mb-6">This profile doesn't exist or has been removed.</p>
-            <a href="/" class="inline-flex items-center gap-2 px-6 py-3 bg-gray-800 text-white rounded-xl font-semibold">
+            <h2 class="text-2xl font-bold mb-2">Creator Not Found</h2>
+            <p class="text-gray-400 mb-6">This profile doesn't exist or has been removed.</p>
+            <a href="/" class="inline-flex items-center gap-2 px-6 py-3 bg-dark-700 text-white rounded-xl font-semibold hover:bg-dark-600 transition">
                 <i class="fas fa-home"></i> Go Home
             </a>
         </div>
@@ -115,7 +115,7 @@
 
             <!-- Subscribe Button -->
             <div id="subscribeSection" class="mb-6">
-                <button id="subscribeBtn" onclick="handleSubscribe()" class="w-full py-4 px-6 bg-gradient-to-r from-accent-orange to-accent-pink rounded-xl font-bold text-lg shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all">
+                <button id="subscribeBtn" class="w-full py-4 px-6 bg-gradient-to-r from-accent-orange to-accent-pink rounded-xl font-bold text-lg shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all">
                     <i class="fas fa-star mr-2"></i>
                     Subscribe for <span id="subscribePrice">$9.99</span>/mo
                 </button>
@@ -169,349 +169,217 @@
     <!-- Auth Modal Component -->
     <script src="/auth-modal.js"></script>
 
+    <!-- FINAL, CORRECTED SCRIPT -->
     <script>
-        /**
-         * ULTRA-ROBUST RENDERING SCRIPT V3
-         * This script is designed to handle eventual consistency by retrying the API fetch.
-         */
-
-        // --- CONFIGURATION ---
-        const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:5000' : '';
-        const DEFAULT_COVER_IMAGE = 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1200&h=400&fit=crop';
-        const DEFAULT_AVATAR_API = 'https://ui-avatars.com/api/?background=ff6b35&color=fff&size=256&name=';
-
-        // --- DOM ELEMENTS ---
-        const loadingEl = document.getElementById('loading');
-        const errorEl = document.getElementById('error');
-        const contentEl = document.getElementById('content');
-
-        // --- HELPER FUNCTIONS ---
-
-        /**
-         * Safely gets a DOM element by its ID.
-         */
-        function getElement(id) {
-            return document.getElementById(id);
-        }
-
-        /**
-         * Safely sets a property on a DOM element.
-         */
-        function safeSet(id, property, value) {
-            const element = getElement(id);
-            if (element && value !== undefined && value !== null) {
-                element[property] = value;
-            } else if (!element) {
-                console.warn(`safeSet: Element with ID '${id}' not found.`);
-            }
-        }
-        
-        /**
-         * Gets the creator handle from the URL.
-         */
-        function getHandle() {
-            let match = window.location.pathname.match(/^\/@(.+?)\/?$/);
-            if (match) return decodeURIComponent(match[1]);
-            match = window.location.pathname.match(/\/creator\/(.+?)\/?$/);
-            if (match) return decodeURIComponent(match[1]);
-            const params = new URLSearchParams(window.location.search);
-            return params.get('handle');
-        }
-
-        /**
-         * Fetches a URL with a retry mechanism for eventual consistency issues.
-         */
-        async function fetchWithRetry(url, options, retries = 3, delay = 500, backoff = 2) {
-            for (let i = 0; i < retries; i++) {
-                try {
-                    const response = await fetch(url, options);
-                    // Only retry on 404, which indicates a potential DB replication lag.
-                    if (response.status === 404 && i < retries - 1) {
-                        console.warn(`[Retry] Attempt ${i + 1} failed with 404. Retrying in ${delay}ms...`);
-                        await new Promise(resolve => setTimeout(resolve, delay));
-                        delay *= backoff;
-                        continue;
-                    }
-                    return response;
-                } catch (error) {
-                    if (i < retries - 1) {
-                        console.warn(`[Retry] Attempt ${i + 1} failed with network error. Retrying in ${delay}ms...`);
-                        await new Promise(resolve => setTimeout(resolve, delay));
-                        delay *= backoff;
-                    } else {
-                        throw error;
-                    }
-                }
-            }
-        }
-        
-        /**
-         * Renders the main profile details onto the page.
-         */
-        // Store creator info for subscribe
-        let currentCreator = null;
-
-        function renderProfileDetails(profile, handle) {
-            document.title = `${profile.name || '@' + handle} | ClockWork`;
-            safeSet('coverImage', 'src', profile.coverImage || DEFAULT_COVER_IMAGE);
-            safeSet('profilePicture', 'src', profile.profilePicture || `${DEFAULT_AVATAR_API}${encodeURIComponent(profile.name || handle)}`);
-            safeSet('creatorName', 'textContent', profile.name || handle);
-            safeSet('creatorHandle', 'textContent', `@${handle}`);
-            safeSet('creatorBio', 'textContent', profile.bio || '');
-
-            if (profile.verified) {
-                getElement('verifiedBadge')?.classList.remove('hidden');
-            }
-
-            // Set subscription price
-            const price = profile.pricing?.subscriptionPrice || 999;
-            const priceFormatted = `$${(price / 100).toFixed(2)}`;
-            safeSet('subscribePrice', 'textContent', priceFormatted);
-
-            // Store creator info
-            currentCreator = { id: profile._id, handle, name: profile.name, price };
-        }
-
-        // Handle subscribe button click
-        function handleSubscribe() {
-            if (!currentCreator) return;
-
-            // Check if already logged in
-            if (AuthModal.isLoggedIn()) {
-                // Proceed directly to subscription checkout
-                proceedToSubscribe();
-                return;
-            }
-
-            // Open auth modal for subscribe flow
-            const profilePicture = document.getElementById('profilePicture')?.src;
-            AuthModal.openForSubscribe({
-                id: currentCreator.id,
-                handle: currentCreator.handle,
-                name: currentCreator.name,
-                profilePicture: profilePicture,
-                price: currentCreator.price
-            }, (token, user) => {
-                // On successful auth, proceed to subscribe
-                proceedToSubscribe();
-            });
-        }
-
-        // Proceed to Stripe checkout for subscription
-        async function proceedToSubscribe() {
-            if (!currentCreator) return;
-
-            const subscribeBtn = document.getElementById('subscribeBtn');
-
-            // Show loading state
-            subscribeBtn.disabled = true;
-            subscribeBtn.innerHTML = `
-                <svg class="animate-spin h-5 w-5 inline mr-2" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Processing...
-            `;
-
-            try {
-                const response = await fetch(`${API_BASE}/api/coach/${currentCreator.id}/subscribe`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include', // Use cookie-based auth
-                    body: JSON.stringify({ tier: 'content' }) // Subscribe to content tier
-                });
-
-                const data = await response.json();
-
-                if (data.success && data.checkoutUrl) {
-                    // Redirect to Stripe checkout
-                    window.location.href = data.checkoutUrl;
-                } else {
-                    throw new Error(data.message || 'Failed to start subscription');
-                }
-            } catch (error) {
-                console.error('Subscribe error:', error);
-                alert(error.message || 'Failed to process subscription. Please try again.');
-
-                // Reset button
-                subscribeBtn.disabled = false;
-                subscribeBtn.innerHTML = `
-                    <i class="fas fa-star mr-2"></i>
-                    Subscribe for <span id="subscribePrice">$${(currentCreator.price / 100).toFixed(2)}</span>/mo
-                `;
-            }
-        }
-
-        /**
-         * Renders social media icons.
-         */
-        function renderSocialIcons(socialLinks = {}) {
-            const container = getElement('socialIcons');
-            if (!container) return;
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- CONFIGURATION ---
+            const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:5000' : '';
+            const DEFAULT_COVER_IMAGE = 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1200&h=400&fit=crop';
+            const DEFAULT_AVATAR_API = 'https://ui-avatars.com/api/?background=ff6b35&color=fff&size=256&name=';
             
-            container.innerHTML = '';
-            const platforms = [
-                { key: 'instagram', icon: 'fa-instagram' },
-                { key: 'tiktok', icon: 'fa-tiktok' },
-                { key: 'youtube', icon: 'fa-youtube' },
-                { key: 'twitter', icon: 'fa-x-twitter' }
-            ];
+            // --- STATE ---
+            let currentCreator = null;
+            let currentUserSubscription = null;
 
-            platforms.forEach(platform => {
-                const handle = socialLinks[platform.key];
-                if (handle) {
-                    const link = document.createElement('a');
-                    link.href = handle.startsWith('http') ? handle : `https://${platform.key}.com/${handle.replace('@','')}`;
-                    link.target = '_blank';
-                    link.rel = 'noopener noreferrer';
-                    link.className = 'social-icon w-11 h-11 rounded-full glass-card flex items-center justify-center hover:bg-white/10';
-                    link.innerHTML = `<i class="fab ${platform.icon} text-lg"></i>`;
-                    container.appendChild(link);
+            // --- DOM ELEMENTS ---
+            const DOMElements = {
+                loading: document.getElementById('loading'),
+                error: document.getElementById('error'),
+                content: document.getElementById('content'),
+                subscribeSection: document.getElementById('subscribeSection'),
+                subscribeBtn: document.getElementById('subscribeBtn'),
+                postArea: document.getElementById('post-area'),
+            };
+
+            // --- HELPER FUNCTIONS ---
+            const getHandle = () => {
+                let match = window.location.pathname.match(/^\/@(.+?)\/?$/) || window.location.pathname.match(/\/creator\/(.+?)\/?$/);
+                if (match) return decodeURIComponent(match[1]);
+                return new URLSearchParams(window.location.search).get('handle');
+            };
+
+            const safeSet = (elementId, property, value) => {
+                const element = document.getElementById(elementId);
+                if (element && value !== undefined && value !== null) {
+                    element[property] = value;
                 }
-            });
-        }
-        
-        /**
-         * Renders the creator's public links.
-         */
-        function renderLinks(links = []) {
-            const container = getElement('linksSection');
-            if (!container) return;
+            };
+            
+            // --- SUBSCRIPTION MANAGER ---
+            const SubscriptionManager = {
+                handleSubscribeClick: function() {
+                    if (!currentCreator) return;
 
-            container.innerHTML = '';
-            links.forEach(link => {
-                const btn = document.createElement('a');
-                btn.href = link.url;
-                btn.target = '_blank';
-                btn.rel = 'noopener noreferrer';
-                btn.className = 'link-btn block w-full glass-card rounded-xl p-4 hover:bg-white/10';
+                    if (AuthModal.isLoggedIn()) {
+                        this.createCheckoutSession();
+                    } else {
+                        AuthModal.openForSubscribe({
+                            name: currentCreator.name,
+                            profilePicture: document.getElementById('profilePicture')?.src,
+                            price: currentCreator.price,
+                        }, () => {
+                            this.createCheckoutSession();
+                        });
+                    }
+                },
 
-                if (link.thumbnail) {
-                    // Link with thumbnail - show image on left
-                    btn.innerHTML = `
-                        <div class="flex items-center gap-4">
-                            <img src="${link.thumbnail}" alt="" class="w-12 h-12 rounded-lg object-cover flex-shrink-0">
-                            <div class="flex-1 text-left">
-                                <div class="font-medium">${link.title}</div>
-                                ${link.description ? `<div class="text-gray-400 text-sm">${link.description}</div>` : ''}
-                            </div>
-                            <i class="fas fa-arrow-right text-gray-500"></i>
-                        </div>
-                    `;
-                } else {
-                    // Link without thumbnail - centered text
-                    btn.innerHTML = `
-                        <div class="flex items-center justify-center gap-3">
-                            ${link.icon ? `<i class="${link.icon} text-accent-orange"></i>` : ''}
-                            <span class="font-medium">${link.title}</span>
-                        </div>
-                    `;
+                createCheckoutSession: async function() {
+                    const btn = DOMElements.subscribeBtn;
+                    if (!currentCreator || btn.disabled) return;
+
+                    btn.disabled = true;
+                    btn.innerHTML = `<svg class="animate-spin h-5 w-5 inline mr-2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Processing...`;
+
+                    try {
+                        // TODO: The `priceKey` should come from the creator's public profile data.
+                        // The backend API at `/api/coach/:handle/public` needs to be updated to include the Stripe Price ID.
+                        const priceKey = 'pro_monthly'; 
+
+                        const response = await fetch(`${API_BASE}/api/subscriptions/create-checkout`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AuthModal.getToken()}` },
+                            body: JSON.stringify({ 
+                                priceKey: priceKey,
+                                creatorId: currentCreator.id, // Pass the creator's ID
+                                successUrl: window.location.pathname + window.location.search, // Redirect back to this exact page
+                                cancelUrl: window.location.href,
+                             })
+                        });
+
+                        const data = await response.json();
+                        if (data.success && data.data.url) {
+                            window.location.href = data.data.url;
+                        } else {
+                            throw new Error(data.message || 'Failed to create checkout session.');
+                        }
+                    } catch (error) {
+                        console.error('Checkout Error:', error);
+                        alert('Could not initiate subscription. Please try again.');
+                        btn.disabled = false;
+                        const priceFormatted = `$${(currentCreator.price / 100).toFixed(2)}`;
+                        btn.innerHTML = `<i class="fas fa-star mr-2"></i> Subscribe for <span id="subscribePrice">${priceFormatted}</span>/mo`;
+                    }
+                },
+
+                fetchUserSubscription: async function() {
+                    if (!AuthModal.isLoggedIn() || !currentCreator) return null;
+                    try {
+                        const response = await fetch(`${API_BASE}/api/subscriptions/status?creatorId=${currentCreator.id}`, {
+                            headers: { 'Authorization': `Bearer ${AuthModal.getToken()}` }
+                        });
+                        if (!response.ok) return null;
+                        const data = await response.json();
+                        return data.success ? data.data : null;
+                    } catch (error) {
+                        console.error('Error fetching subscription status:', error);
+                        return null;
+                    }
+                },
+                
+                updateUIForSubscription: function() {
+                    const isSubscribed = currentUserSubscription && currentUserSubscription.status === 'active';
+                    
+                    if (isSubscribed) {
+                        DOMElements.subscribeSection?.classList.add('hidden');
+                        document.querySelectorAll('.post-card.locked').forEach(el => {
+                            el.classList.remove('locked');
+                            el.querySelector('.lock-overlay')?.remove();
+                        });
+                    } else {
+                        DOMElements.subscribeSection?.classList.remove('hidden');
+                    }
+
+                    if (new URLSearchParams(window.location.search).get('subscribed') === 'true') {
+                        alert("Welcome! You've successfully subscribed.");
+                        const cleanUrl = window.location.pathname + window.location.search.replace(/&?subscribed=true/, '');
+                        window.history.replaceState({}, document.title, cleanUrl);
+                    }
                 }
-                container.appendChild(btn);
-            });
-        }
-        
-        /**
-         * Renders the content feed area.
-         */
-        async function renderPostArea(container, handle, name) {
-            try {
-                const feedRes = await fetch(`${API_BASE}/api/coach/${encodeURIComponent(handle)}/feed`);
-                if (!feedRes.ok) throw new Error('Feed not available');
+            };
+            
+            // --- UI RENDERING ---
+            const UIRenderer = {
+                renderProfileDetails: function(profile, handle) {
+                    document.title = `${profile.name || '@' + handle} | ClockWork`;
+                    safeSet('coverImage', 'src', profile.coverImage || DEFAULT_COVER_IMAGE);
+                    safeSet('profilePicture', 'src', profile.profilePicture || `${DEFAULT_AVATAR_API}${encodeURIComponent(profile.name || handle)}`);
+                    safeSet('creatorName', 'textContent', profile.name || handle);
+                    safeSet('creatorHandle', 'textContent', `@${handle}`);
+                    safeSet('creatorBio', 'textContent', profile.bio || '');
 
-                const feed = await feedRes.json();
-                const posts = feed.posts || [];
+                    if (profile.verified) document.getElementById('verifiedBadge')?.classList.remove('hidden');
+                    
+                    const price = profile.pricing?.subscriptionPrice || 999;
+                    safeSet('subscribePrice', 'textContent', `$${(price / 100).toFixed(2)}`);
+                    
+                    currentCreator = { id: profile._id, handle, name: profile.name, price };
+                },
 
-                if (posts.length > 0) {
-                     container.innerHTML = `
-                        <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                            <i class="fas fa-fire text-accent-orange"></i> Recent Content
-                        </h3>
-                        <div class="grid grid-cols-2 gap-3">
-                            ${posts.slice(0, 4).map(post => {
-                                const thumbnail = post.thumbnail || post.mediaUrl || post.image;
-                                const isLocked = post.isLocked;
-                                const lockedClass = isLocked ? 'locked' : '';
-                                const lockOverlay = isLocked ? `
-                                    <div class="lock-overlay">
-                                        <div class="lock-icon"><i class="fas fa-lock text-white text-sm"></i></div>
-                                        <span class="lock-text">Subscribe</span>
-                                    </div>
-                                ` : '';
+                renderPostArea: function(posts = []) {
+                     if (!DOMElements.postArea) return;
+                     const isSubscribed = currentUserSubscription && currentUserSubscription.status === 'active';
 
-                                if (thumbnail) {
-                                    return `<div class="post-card ${lockedClass} aspect-square rounded-xl overflow-hidden">
-                                        <img src="${thumbnail}" alt="Post" class="w-full h-full object-cover">
-                                        ${lockOverlay}
-                                    </div>`;
-                                } else if (isLocked) {
-                                    // Locked post without media - show placeholder
-                                    return `<div class="post-card locked aspect-square rounded-xl overflow-hidden bg-dark-700">
-                                        <div class="lock-overlay">
-                                            <div class="lock-icon"><i class="fas fa-lock text-white text-sm"></i></div>
-                                            <span class="lock-text">Subscribe</span>
-                                        </div>
-                                    </div>`;
-                                }
-                                return '';
+                     if (posts.length === 0) {
+                         DOMElements.postArea.innerHTML = `<div class="text-center py-10 px-6 glass-card rounded-xl"><h3 class="text-xl font-bold">Content Coming Soon</h3><p class="text-gray-400">Check back later for exclusive posts from ${currentCreator.name}.</p></div>`;
+                         return;
+                     }
+                     DOMElements.postArea.innerHTML = `
+                        <h3 class="text-lg font-semibold mb-4 flex items-center gap-2"><i class="fas fa-fire text-accent-orange"></i> Recent Content</h3>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            ${posts.slice(0, 6).map(post => {
+                                const shouldBeLocked = post.access === 'subscribers' && !isSubscribed;
+                                return `
+                                <div class="post-card ${shouldBeLocked ? 'locked' : ''} aspect-square rounded-xl overflow-hidden bg-dark-800">
+                                    <img src="${post.thumbnail || post.mediaUrl || ''}" alt="Post" class="w-full h-full object-cover">
+                                    ${shouldBeLocked ? `<div class="lock-overlay"><div class="lock-icon"><i class="fas fa-lock text-white text-sm"></i></div><span class="lock-text">Subscribe</span></div>` : ''}
+                                </div>`;
                             }).join('')}
                         </div>`;
                 }
-            } catch (err) {
-                 console.warn(err.message);
-                 container.innerHTML = `<div class="text-center py-10 px-6 glass-card rounded-xl"><h3 class="text-xl font-bold">Content Coming Soon</h3><p class="text-gray-400">Check back later for exclusive posts from ${name}.</p></div>`;
-            }
-        }
-
-        /**
-         * Main initialization function.
-         */
-        async function init() {
-            const handle = getHandle();
-            if (!handle) {
-                loadingEl?.classList.add('hidden');
-                errorEl?.classList.remove('hidden');
-                return;
-            }
-
-            try {
-                // 1. Fetch profile data with retry logic for eventual consistency
-                console.log(`Fetching profile for handle: ${handle}`);
-                const profileRes = await fetchWithRetry(`${API_BASE}/api/coach/${encodeURIComponent(handle)}/public`);
-
-                if (!profileRes.ok) {
-                    throw new Error(`Profile not found. Final status: ${profileRes.status}`);
-                }
-                const responseData = await profileRes.json();
-                const profile = responseData.coach;
-
-                if (!profile) {
-                    throw new Error("API response did not contain a 'coach' object.");
+            };
+            
+            // --- INITIALIZATION ---
+            const init = async () => {
+                const handle = getHandle();
+                if (!handle) {
+                    DOMElements.loading.classList.add('hidden');
+                    DOMElements.error.classList.remove('hidden');
+                    return;
                 }
 
-                // 2. Render the page content safely
-                renderProfileDetails(profile, handle);
-                renderSocialIcons(profile.socialLinks);
-                renderLinks(profile.links);
+                try {
+                    const profileResponse = await fetch(`${API_BASE}/api/coach/${encodeURIComponent(handle)}/public`);
+                    if (!profileResponse.ok) throw new Error('Profile not found.');
+                    
+                    const profileData = await profileResponse.json();
+                    if (!profileData.coach) throw new Error("API response did not contain a 'coach' object.");
+                    
+                    UIRenderer.renderProfileDetails(profileData.coach, handle);
+                    
+                    // Now that we have a creator, we can fetch the subscription status
+                    currentUserSubscription = await SubscriptionManager.fetchUserSubscription();
+                    
+                    // Render posts and update UI based on subscription
+                    UIRenderer.renderPostArea(profileData.posts);
+                    SubscriptionManager.updateUIForSubscription();
+                    
+                    // Attach event listener now that we know if we need it
+                    if (!currentUserSubscription || currentUserSubscription.status !== 'active') {
+                        DOMElements.subscribeBtn.addEventListener('click', () => SubscriptionManager.handleSubscribeClick());
+                    }
 
-                const postArea = getElement('post-area');
-                if (postArea) {
-                    await renderPostArea(postArea, handle, profile.name);
+                    DOMElements.loading.classList.add('hidden');
+                    DOMElements.content.classList.remove('hidden');
+
+                } catch (err) {
+                    console.error('Failed to load and render profile:', err);
+                    DOMElements.loading.classList.add('hidden');
+                    DOMElements.error.classList.remove('hidden');
                 }
-                
-                // 3. Show the fully rendered content
-                loadingEl?.classList.add('hidden');
-                contentEl?.classList.remove('hidden');
+            };
 
-            } catch (err) {
-                console.error('Failed to load and render profile:', err);
-                loadingEl?.classList.add('hidden');
-                errorEl?.classList.remove('hidden');
-            }
-        }
-
-        // --- INITIALIZATION ---
-        document.addEventListener('DOMContentLoaded', init);
+            init();
+        });
     </script>
 </body>
 </html>
