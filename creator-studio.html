@@ -85,7 +85,79 @@
             }
         };
 
-        // ... (Other components like AudioManager, Confetti, etc. remain unchanged) ...
+        // Audio Manager for chimes
+        const AudioManager = {
+            earningsChime: null,
+            milestoneChime: null,
+            init() {
+                // Create audio context on user interaction
+                if (!this.earningsChime) {
+                    this.earningsChime = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleUw9kd3hsFMAADqP4');
+                    this.milestoneChime = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleUw9kd3hsFMAADqP4');
+                }
+            },
+            playEarnings() {
+                this.init();
+                try { this.earningsChime.currentTime = 0; this.earningsChime.play().catch(() => {}); } catch(e) {}
+            },
+            playMilestone() {
+                this.init();
+                try { this.milestoneChime.currentTime = 0; this.milestoneChime.play().catch(() => {}); } catch(e) {}
+            }
+        };
+
+        // Confetti Component
+        function Confetti({ active }) {
+            if (!active) return null;
+            const colors = ['#f97316', '#ec4899', '#fbbf24', '#22c55e', '#3b82f6', '#8b5cf6'];
+            const pieces = Array.from({ length: 50 }, (_, i) => ({
+                id: i,
+                left: Math.random() * 100,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                delay: Math.random() * 0.5,
+                size: Math.random() * 8 + 5
+            }));
+            return (
+                <div className="confetti">
+                    {pieces.map(p => (
+                        <div
+                            key={p.id}
+                            className="confetti-piece"
+                            style={{
+                                left: `${p.left}%`,
+                                backgroundColor: p.color,
+                                width: p.size,
+                                height: p.size,
+                                animationDelay: `${p.delay}s`,
+                                borderRadius: Math.random() > 0.5 ? '50%' : '0'
+                            }}
+                        />
+                    ))}
+                </div>
+            );
+        }
+
+        // Earnings Notification Popup
+        function EarningsPopup({ earnings, onDismiss }) {
+            useEffect(() => {
+                const timer = setTimeout(onDismiss, 3000);
+                return () => clearTimeout(timer);
+            }, [onDismiss]);
+
+            return (
+                <div className="earnings-popup fixed top-20 right-4 z-50 glass rounded-xl p-4 border border-green-500/50 max-w-xs">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full gradient-bg flex items-center justify-center">
+                            <i className="fas fa-dollar-sign text-white"></i>
+                        </div>
+                        <div>
+                            <div className="text-green-400 font-bold">+${earnings.amount.toFixed(2)}</div>
+                            <div className="text-gray-400 text-sm">{earnings.source}</div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
 
         // Login Form
         function LoginForm({ onLogin }) {
@@ -103,6 +175,7 @@
                         method: 'POST',
                         body: JSON.stringify({ email, password })
                     });
+                    // Auth cookie set by backend
                     onLogin(res.user);
                 } catch (err) {
                     setError(err.message);
@@ -137,32 +210,672 @@
             );
         }
 
-        // ... (Other components like StatCard, DashboardTab, CreateTab, etc. remain unchanged) ...
-        
-        // Links Tab - Linktree-style Manager - CORRECTED VERSION
-        function LinksTab({ profile, onUpdate }) {
-            const [links, setLinks] = useState([]);
+        // Stat Card Component
+        function StatCard({ icon, label, value, subValue, color = 'orange', pulse = false }) {
+            const colors = {
+                orange: 'text-orange-500',
+                green: 'text-green-500',
+                blue: 'text-blue-500',
+                purple: 'text-purple-500',
+                pink: 'text-pink-500',
+                yellow: 'text-yellow-500'
+            };
+            return (
+                <div className={`stat-card rounded-xl p-4 border border-white/10 ${pulse ? 'pulse-glow' : ''}`}>
+                    <div className="flex items-center gap-3">
+                        <div className={`text-2xl ${colors[color]}`}><i className={`fas fa-${icon}`}></i></div>
+                        <div>
+                            <div className="text-gray-400 text-sm">{label}</div>
+                            <div className="text-2xl font-bold">{value}</div>
+                            {subValue && <div className="text-xs text-gray-500">{subValue}</div>}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Tier Progress Bar
+        function TierProgress({ current, max, tier, nextTier }) {
+            const progress = Math.min((current / max) * 100, 100);
+            const remaining = max - current;
+            const nearMiss = remaining <= 3 && remaining > 0;
+
+            return (
+                <div className="glass rounded-xl p-4">
+                    <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm text-gray-400">Tier Progress</span>
+                        <span className={`text-sm font-bold ${nearMiss ? 'text-yellow-400' : 'text-orange-400'}`}>
+                            {tier} {nextTier && `-> ${nextTier}`}
+                        </span>
+                    </div>
+                    <div className="h-3 bg-white/10 rounded-full overflow-hidden">
+                        <div className="tier-progress h-full rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
+                    </div>
+                    <div className="mt-2 text-right">
+                        {nearMiss ? (
+                            <span className="text-yellow-400 text-sm font-bold animate-pulse">
+                                Only {remaining} more to unlock {nextTier}!
+                            </span>
+                        ) : (
+                            <span className="text-gray-500 text-sm">{current} / {max} referrals</span>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        // Streak Counter
+        function StreakCounter({ streak, lastPostDate }) {
+            const isActive = streak > 0;
+            return (
+                <div className="glass rounded-xl p-4">
+                    <div className="flex items-center gap-3">
+                        <div className={`text-3xl ${isActive ? 'streak-fire' : ''}`}>
+                            {isActive ? <span className="text-orange-500">&#128293;</span> : <span className="text-gray-500">&#128293;</span>}
+                        </div>
+                        <div>
+                            <div className="text-gray-400 text-sm">Posting Streak</div>
+                            <div className="text-2xl font-bold">{streak} days</div>
+                            {lastPostDate && (
+                                <div className="text-xs text-gray-500">
+                                    Last post: {new Date(lastPostDate).toLocaleDateString()}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    {streak >= 7 && <div className="mt-2 text-xs text-yellow-400">Streak bonus active! +10% earnings</div>}
+                </div>
+            );
+        }
+
+        // Live Earnings Feed
+        function LiveEarningsFeed({ earnings }) {
+            return (
+                <div className="glass rounded-xl p-4 max-h-64 overflow-y-auto scrollbar-hide">
+                    <h3 className="text-sm font-bold text-gray-400 mb-3">LIVE EARNINGS</h3>
+                    {earnings.length === 0 ? (
+                        <p className="text-gray-500 text-sm text-center py-4">No earnings yet</p>
+                    ) : (
+                        <div className="space-y-2">
+                            {earnings.map((e, i) => (
+                                <div key={i} className="flex items-center justify-between p-2 bg-white/5 rounded-lg">
+                                    <div className="flex items-center gap-2">
+                                        <i className={`fas fa-${e.type === 'signup' ? 'user-plus' : e.type === 'sale' ? 'shopping-cart' : 'dollar-sign'} text-green-400 text-sm`}></i>
+                                        <span className="text-sm text-gray-300">{e.description}</span>
+                                    </div>
+                                    <span className="text-green-400 font-bold">+${e.amount.toFixed(2)}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // Dashboard Tab
+        function DashboardTab({ profile, earnings, onEarningsUpdate }) {
+            const [showConfetti, setShowConfetti] = useState(false);
+            const [earningsPopup, setEarningsPopup] = useState(null);
+            const stats = earnings?.summary || { totalEarnings: 0, clicks: 0, signups: 0, conversionRate: 0 };
+            const tier = profile?.tier || 'BRONZE';
+            const tierProgress = { BRONZE: { max: 10, next: 'SILVER' }, SILVER: { max: 25, next: 'GOLD' }, GOLD: { max: 50, next: 'PLATINUM' }, PLATINUM: { max: 100, next: 'DIAMOND' }, DIAMOND: { max: 999, next: null } };
+            const currentTier = tierProgress[tier] || tierProgress.BRONZE;
+
+            useEffect(() => {
+                if (earningsPopup) {
+                    setShowConfetti(true);
+                    const timer = setTimeout(() => setShowConfetti(false), 3000);
+                    return () => clearTimeout(timer);
+                }
+            }, [earningsPopup]);
+
+            return (
+                <div className="space-y-6">
+                    <Confetti active={showConfetti} />
+                    {earningsPopup && <EarningsPopup earnings={earningsPopup} onDismiss={() => setEarningsPopup(null)} />}
+
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <StatCard icon="dollar-sign" label="Total Earnings" value={`$${(stats.totalEarnings || 0).toFixed(2)}`} color="green" pulse />
+                        <StatCard icon="mouse-pointer" label="Link Clicks" value={(stats.clicks || 0).toLocaleString()} color="blue" />
+                        <StatCard icon="user-plus" label="Signups" value={(stats.signups || 0).toLocaleString()} color="purple" />
+                        <StatCard icon="percentage" label="Conv. Rate" value={`${(stats.conversionRate || 0).toFixed(1)}%`} color="orange" />
+                    </div>
+
+                    {/* Tier & Streak Row */}
+                    <div className="grid md:grid-cols-2 gap-4">
+                        <TierProgress
+                            current={stats.signups || 0}
+                            max={currentTier.max}
+                            tier={tier}
+                            nextTier={currentTier.next}
+                        />
+                        <StreakCounter streak={profile?.streak || 0} lastPostDate={profile?.lastPostDate} />
+                    </div>
+
+                    {/* Live Feed */}
+                    <LiveEarningsFeed earnings={earnings?.liveEarnings || []} />
+
+                    {/* Quick Actions */}
+                    <div className="glass rounded-xl p-4">
+                        <h3 className="text-sm font-bold text-gray-400 mb-3">QUICK ACTIONS</h3>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <button className="bg-white/5 hover:bg-white/10 rounded-lg p-3 text-center transition-colors">
+                                <i className="fas fa-share text-orange-400 mb-1"></i>
+                                <div className="text-sm">Share Link</div>
+                            </button>
+                            <button className="bg-white/5 hover:bg-white/10 rounded-lg p-3 text-center transition-colors">
+                                <i className="fas fa-plus text-pink-400 mb-1"></i>
+                                <div className="text-sm">New Post</div>
+                            </button>
+                            <button className="bg-white/5 hover:bg-white/10 rounded-lg p-3 text-center transition-colors">
+                                <i className="fas fa-chart-line text-blue-400 mb-1"></i>
+                                <div className="text-sm">Analytics</div>
+                            </button>
+                            <button className="bg-white/5 hover:bg-white/10 rounded-lg p-3 text-center transition-colors">
+                                <i className="fas fa-wallet text-green-400 mb-1"></i>
+                                <div className="text-sm">Withdraw</div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Create Tab - Post Composer
+        function CreateTab({ onPostCreate }) {
+            const [caption, setCaption] = useState('');
+            const [visibility, setVisibility] = useState('public');
+            const [mediaType, setMediaType] = useState(null);
+            const [mediaFiles, setMediaFiles] = useState([]);
+            const [mediaPreview, setMediaPreview] = useState([]);
+            const [posting, setPosting] = useState(false);
+            const [message, setMessage] = useState(null);
+
+            const captionTemplates = [
+                { label: 'Workout Tip', text: 'Quick tip that changed my fitness game...' },
+                { label: 'Transformation', text: 'The journey from day 1 to now...' },
+                { label: 'Motivation', text: 'Remember why you started...' },
+                { label: 'Product Review', text: 'Been using this for 30 days and here\'s what I found...' },
+                { label: 'Q&A', text: 'You asked, I\'m answering! Today\'s question:' }
+            ];
+
+            const handleFileSelect = async (type) => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.multiple = type === 'carousel';
+                input.accept = type === 'video' ? 'video/*' : 'image/*';
+
+                input.onchange = async (e) => {
+                    const files = Array.from(e.target.files);
+                    if (!files.length) return;
+
+                    setMediaType(type);
+                    const previews = files.map(file => URL.createObjectURL(file));
+                    setMediaPreview(previews);
+                    setMediaFiles(files);
+                };
+
+                input.click();
+            };
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                if (!caption.trim()) return;
+                setPosting(true);
+                setMessage(null);
+
+                try {
+                    let mediaUrl = null;
+                    let mediaPublicId = null;
+                    let carousel = null;
+
+                    // Upload media if present
+                    if (mediaFiles.length > 0) {
+                        if (mediaType === 'carousel') {
+                            // Upload multiple images
+                            const formData = new FormData();
+                            mediaFiles.forEach(file => formData.append('files', file));
+
+                            const uploadRes = await fetch(`${API_BASE}/upload/carousel`, {
+                                method: 'POST',
+                                credentials: 'include',
+                                body: formData
+                            });
+                            const uploadData = await uploadRes.json();
+                            if (!uploadData.success) throw new Error('Upload failed');
+
+                            carousel = uploadData.data.images;
+                        } else {
+                            // Upload single image or video
+                            const formData = new FormData();
+                            formData.append('file', mediaFiles[0]);
+
+                            const uploadRes = await fetch(`${API_BASE}/upload/media`, {
+                                method: 'POST',
+                                credentials: 'include',
+                                body: formData
+                            });
+                            const uploadData = await uploadRes.json();
+                            if (!uploadData.success) throw new Error('Upload failed');
+
+                            mediaUrl = uploadData.data.url;
+                            mediaPublicId = uploadData.data.publicId;
+                        }
+                    }
+
+                    // Create post
+                    await api.fetch('/coach/posts', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            content: caption,
+                            visibility,
+                            mediaType: mediaType || 'none',
+                            mediaUrl,
+                            mediaPublicId,
+                            carousel
+                        })
+                    });
+
+                    setMessage({ type: 'success', text: 'Post created successfully!' });
+                    setCaption('');
+                    setMediaType(null);
+                    setMediaFiles([]);
+                    setMediaPreview([]);
+                    onPostCreate?.();
+                } catch (err) {
+                    setMessage({ type: 'error', text: err.message || 'Failed to create post' });
+                }
+                setPosting(false);
+            };
+
+            return (
+                <div className="space-y-6">
+                    {message && (
+                        <div className={`p-4 rounded-lg ${message.type === 'error' ? 'bg-red-500/20 text-red-300' : 'bg-green-500/20 text-green-300'}`}>
+                            {message.text}
+                        </div>
+                    )}
+
+                    <div className="glass rounded-xl p-6">
+                        <h2 className="text-lg font-bold mb-4"><i className="fas fa-pen gradient-text mr-2"></i>Create Post</h2>
+
+                        {/* Caption Templates */}
+                        <div className="mb-4">
+                            <label className="block text-gray-400 text-sm mb-2">Quick Templates</label>
+                            <div className="flex flex-wrap gap-2">
+                                {captionTemplates.map((t, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={() => setCaption(t.text)}
+                                        className="bg-white/5 hover:bg-white/10 px-3 py-1 rounded-full text-sm text-gray-300 transition-colors"
+                                    >
+                                        {t.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            {/* Caption */}
+                            <div>
+                                <label className="block text-gray-400 text-sm mb-2">Caption</label>
+                                <textarea
+                                    value={caption}
+                                    onChange={e => setCaption(e.target.value)}
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-orange-500 min-h-32 resize-none"
+                                    placeholder="Write your caption..."
+                                    maxLength={2200}
+                                />
+                                <div className="text-right text-gray-500 text-xs mt-1">{caption.length}/2200</div>
+                            </div>
+
+                            {/* Visibility */}
+                            <div>
+                                <label className="block text-gray-400 text-sm mb-2">Visibility</label>
+                                <div className="flex gap-3">
+                                    {['public', 'followers', 'subscribers'].map(v => (
+                                        <button
+                                            key={v}
+                                            type="button"
+                                            onClick={() => setVisibility(v)}
+                                            className={`px-4 py-2 rounded-lg text-sm capitalize transition-colors ${
+                                                visibility === v ? 'gradient-bg text-white' : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                                            }`}
+                                        >
+                                            <i className={`fas fa-${v === 'public' ? 'globe' : v === 'followers' ? 'users' : 'lock'} mr-2`}></i>
+                                            {v}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Media Upload */}
+                            <div>
+                                <label className="block text-gray-400 text-sm mb-2">Add Media</label>
+
+                                {/* Media Preview */}
+                                {mediaPreview.length > 0 && (
+                                    <div className="mb-3 p-3 bg-white/5 rounded-lg">
+                                        <div className="flex gap-2 overflow-x-auto">
+                                            {mediaPreview.map((url, i) => (
+                                                <div key={i} className="relative flex-shrink-0">
+                                                    {mediaType === 'video' ? (
+                                                        <video src={url} className="h-24 rounded" />
+                                                    ) : (
+                                                        <img src={url} className="h-24 rounded object-cover" />
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => { setMediaFiles([]); setMediaPreview([]); setMediaType(null); }}
+                                            className="text-red-400 text-sm mt-2"
+                                        >
+                                            <i className="fas fa-times mr-1"></i>Remove
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* Upload Buttons */}
+                                <div className="flex gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => handleFileSelect('image')}
+                                        className={`flex-1 p-4 rounded-lg border-2 border-dashed transition-colors ${
+                                            mediaType === 'image' ? 'border-orange-500 bg-orange-500/10' : 'border-white/10 hover:border-white/30'
+                                        }`}
+                                    >
+                                        <i className="fas fa-image text-2xl mb-2 text-orange-400"></i>
+                                        <div className="text-sm text-gray-400">Image</div>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleFileSelect('video')}
+                                        className={`flex-1 p-4 rounded-lg border-2 border-dashed transition-colors ${
+                                            mediaType === 'video' ? 'border-pink-500 bg-pink-500/10' : 'border-white/10 hover:border-white/30'
+                                        }`}
+                                    >
+                                        <i className="fas fa-video text-2xl mb-2 text-pink-400"></i>
+                                        <div className="text-sm text-gray-400">Video</div>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleFileSelect('carousel')}
+                                        className={`flex-1 p-4 rounded-lg border-2 border-dashed transition-colors ${
+                                            mediaType === 'carousel' ? 'border-purple-500 bg-purple-500/10' : 'border-white/10 hover:border-white/30'
+                                        }`}
+                                    >
+                                        <i className="fas fa-images text-2xl mb-2 text-purple-400"></i>
+                                        <div className="text-sm text-gray-400">Carousel</div>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={posting || !caption.trim()}
+                                className="w-full gradient-bg hover:opacity-90 text-white font-bold py-3 rounded-lg transition-opacity disabled:opacity-50"
+                            >
+                                {posting ? 'Posting...' : 'Create Post'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+
+        // Content Tab - Posts List
+        function ContentTab() {
+            const [posts, setPosts] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [editingPost, setEditingPost] = useState(null);
+            const [editCaption, setEditCaption] = useState('');
+            const [editVisibility, setEditVisibility] = useState('public');
+
+            useEffect(() => {
+                const loadPosts = async () => {
+                    try {
+                        const res = await api.fetch('/coach/posts');
+                        setPosts(res.posts || []);
+                    } catch (err) {
+                        console.error('Failed to load posts:', err);
+                    }
+                    setLoading(false);
+                };
+                loadPosts();
+            }, []);
+
+            const handleEditPost = (post) => {
+                setEditingPost(post);
+                setEditCaption(post.content || post.caption || '');
+                setEditVisibility(post.visibility || 'public');
+            };
+
+            const handleSaveEdit = async () => {
+                try {
+                    const res = await api.fetch(`/coach/posts/${editingPost._id}`, {
+                        method: 'PUT',
+                        body: JSON.stringify({
+                            content: editCaption,
+                            visibility: editVisibility
+                        })
+                    });
+                    if (res.success) {
+                        // Update local state
+                        setPosts(posts.map(p => p._id === editingPost._id ? { ...p, content: editCaption, caption: editCaption, visibility: editVisibility } : p));
+                        setEditingPost(null);
+                    }
+                } catch (err) {
+                    console.error('Failed to update post:', err);
+                    alert('Failed to update post');
+                }
+            };
+
+            const handleDeletePost = async (postId) => {
+                if (!confirm('Are you sure you want to delete this post? This cannot be undone.')) {
+                    return;
+                }
+                try {
+                    const res = await api.fetch(`/coach/posts/${postId}`, {
+                        method: 'DELETE'
+                    });
+                    if (res.success) {
+                        setPosts(posts.filter(p => p._id !== postId));
+                    }
+                } catch (err) {
+                    console.error('Failed to delete post:', err);
+                    alert('Failed to delete post');
+                }
+            };
+
+            if (loading) {
+                return <div className="flex justify-center py-12"><i className="fas fa-spinner fa-spin text-3xl text-orange-500"></i></div>;
+            }
+
+            return (
+                <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                        <h2 className="text-lg font-bold">Your Content</h2>
+                        <span className="text-gray-400 text-sm">{posts.length} posts</span>
+                    </div>
+
+                    {posts.length === 0 ? (
+                        <div className="glass rounded-xl p-8 text-center">
+                            <i className="fas fa-photo-film text-4xl text-gray-500 mb-4"></i>
+                            <p className="text-gray-400">No posts yet. Create your first post!</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {posts.map((post, i) => (
+                                <div key={post._id || i} className="glass rounded-xl p-4">
+                                    <div className="flex gap-4">
+                                        <div className="w-20 h-20 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                                            <i className={`fas fa-${post.mediaType === 'video' ? 'video' : 'image'} text-gray-500 text-2xl`}></i>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm text-gray-300 line-clamp-2 mb-2">{post.caption}</p>
+                                            <div className="flex gap-4 text-xs text-gray-500">
+                                                <span><i className="fas fa-eye mr-1"></i>{(post.views || 0).toLocaleString()}</span>
+                                                <span><i className="fas fa-heart mr-1"></i>{(post.likes || 0).toLocaleString()}</span>
+                                                <span><i className="fas fa-comment mr-1"></i>{(post.comments || 0).toLocaleString()}</span>
+                                                <span className="text-green-400"><i className="fas fa-dollar-sign mr-1"></i>${(post.earnings || 0).toFixed(2)}</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col items-end justify-between">
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => handleEditPost(post)}
+                                                    className="text-blue-400 hover:text-blue-300 transition-colors"
+                                                    title="Edit post"
+                                                >
+                                                    <i className="fas fa-edit"></i>
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeletePost(post._id)}
+                                                    className="text-red-400 hover:text-red-300 transition-colors"
+                                                    title="Delete post"
+                                                >
+                                                    <i className="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className={`text-xs px-2 py-1 rounded-full ${
+                                                    post.visibility === 'public' ? 'bg-green-500/20 text-green-400' :
+                                                    post.visibility === 'followers' ? 'bg-blue-500/20 text-blue-400' :
+                                                    'bg-yellow-500/20 text-yellow-400'
+                                                }`}>
+                                                    {post.visibility}
+                                                </span>
+                                                <div className="text-xs text-gray-500 mt-2">
+                                                    {post.createdAt ? new Date(post.createdAt).toLocaleDateString() : 'Draft'}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Edit Post Modal */}
+                    {editingPost && (
+                        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setEditingPost(null)}>
+                            <div className="glass rounded-xl p-6 max-w-lg w-full" onClick={(e) => e.stopPropagation()}>
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-xl font-bold">Edit Post</h3>
+                                    <button onClick={() => setEditingPost(null)} className="text-gray-400 hover:text-white">
+                                        <i className="fas fa-times"></i>
+                                    </button>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Caption</label>
+                                        <textarea
+                                            value={editCaption}
+                                            onChange={(e) => setEditCaption(e.target.value)}
+                                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 focus:outline-none focus:border-orange-500 resize-none"
+                                            rows="4"
+                                            placeholder="Write a caption..."
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Visibility</label>
+                                        <select
+                                            value={editVisibility}
+                                            onChange={(e) => setEditVisibility(e.target.value)}
+                                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 focus:outline-none focus:border-orange-500"
+                                        >
+                                            <option value="public">Public - Everyone can see</option>
+                                            <option value="subscribers">Subscribers - Only paid subscribers</option>
+                                            <option value="private">Private - Only you</option>
+                                        </select>
+                                    </div>
+
+                                    <div className="flex gap-3 pt-4">
+                                        <button
+                                            onClick={handleSaveEdit}
+                                            className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity"
+                                        >
+                                            Save Changes
+                                        </button>
+                                        <button
+                                            onClick={() => setEditingPost(null)}
+                                            className="flex-1 bg-white/5 border border-white/10 text-white py-3 rounded-lg font-semibold hover:bg-white/10 transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // Links Tab - Linktree-style Manager
+        function LinksTab() {
+            const [links, setLinks] = useState([
+                { id: 1, title: 'My Fitness Program', url: 'https://clockwork.fit/program', clicks: 234, active: true },
+                { id: 2, title: 'Free Workout Guide', url: 'https://clockwork.fit/guide', clicks: 567, active: true },
+                { id: 3, title: 'Instagram', url: 'https://instagram.com/creator', clicks: 123, active: true }
+            ]);
             const [editingLink, setEditingLink] = useState(null);
             const [newLink, setNewLink] = useState({ title: '', url: '', thumbnail: null });
             const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
             const [draggedItem, setDraggedItem] = useState(null);
+            const [referralCode, setReferralCode] = useState(null);
+            const [copyMessage, setCopyMessage] = useState('');
 
             useEffect(() => {
-                // Load initial links from the profile prop
-                setLinks(profile?.coachProfile?.links || []);
-            }, [profile]);
-            
-            const saveLinks = async (updatedLinks) => {
-                try {
-                    await api.fetch('/coach/profile', {
-                        method: 'PUT',
-                        body: JSON.stringify({ coachProfile: { links: updatedLinks } })
-                    });
-                    if (onUpdate) onUpdate(); // Trigger a refresh of all profile data
-                } catch (error) {
-                    console.error("Failed to save links:", error);
-                    alert("Could not save link changes. Please try again.");
-                }
+                const loadReferralCode = async () => {
+                    try {
+                        const res = await api.fetch('/earnings/referral-code');
+                        if (res.success && res.data) {
+                            setReferralCode(res.data.referralCode);
+                        }
+                    } catch (err) {
+                        console.error('Failed to load referral code:', err);
+                    }
+                };
+                loadReferralCode();
+            }, []);
+
+            const copyToClipboard = (text, label) => {
+                navigator.clipboard.writeText(text).then(() => {
+                    setCopyMessage(`${label} copied!`);
+                    setTimeout(() => setCopyMessage(''), 2000);
+                }).catch(console.error);
+            };
+
+            const handleDragStart = (e, index) => {
+                setDraggedItem(index);
+                e.dataTransfer.effectAllowed = 'move';
+            };
+
+            const handleDragOver = (e, index) => {
+                e.preventDefault();
+                if (draggedItem === null || draggedItem === index) return;
+
+                const newLinks = [...links];
+                const item = newLinks[draggedItem];
+                newLinks.splice(draggedItem, 1);
+                newLinks.splice(index, 0, item);
+                setLinks(newLinks);
+                setDraggedItem(index);
+            };
+
+            const handleDragEnd = () => {
+                setDraggedItem(null);
+                // Save new order to API
+                api.fetch('/coach/links', {
+                    method: 'PUT',
+                    body: JSON.stringify({ links })
+                }).catch(console.error);
             };
 
             const uploadThumbnail = async (file, forEditing = false) => {
@@ -170,7 +883,11 @@
                 try {
                     const formData = new FormData();
                     formData.append('image', file);
-                    const res = await fetch(`${API_BASE}/upload/image`, { method: 'POST', credentials: 'include', body: formData });
+                    const res = await fetch(`${API_BASE}/upload/image`, {
+                        method: 'POST',
+                        credentials: 'include',
+                        body: formData
+                    });
                     const data = await res.json();
                     if (data.success && data.url) {
                         if (forEditing && editingLink) {
@@ -178,12 +895,9 @@
                         } else {
                             setNewLink({ ...newLink, thumbnail: data.url });
                         }
-                    } else {
-                        throw new Error(data.message || 'Image upload failed');
                     }
                 } catch (err) {
                     console.error('Failed to upload thumbnail:', err);
-                    alert('Thumbnail upload failed. Please try again.');
                 } finally {
                     setUploadingThumbnail(false);
                 }
@@ -191,50 +905,1178 @@
 
             const addLink = () => {
                 if (!newLink.title || !newLink.url) return;
-                const link = { ...newLink, id: `temp-${Date.now()}`, clicks: 0, active: true };
+                const link = { id: Date.now(), ...newLink, clicks: 0, active: true };
                 const updatedLinks = [...links, link];
                 setLinks(updatedLinks);
                 setNewLink({ title: '', url: '', thumbnail: null });
-                saveLinks(updatedLinks);
+                // Save to API
+                api.fetch('/coach/links', {
+                    method: 'PUT',
+                    body: JSON.stringify({ links: updatedLinks })
+                }).catch(console.error);
             };
 
             const deleteLink = (id) => {
-                const updatedLinks = links.filter(l => (l.id || l._id) !== id);
+                const updatedLinks = links.filter(l => l.id !== id);
                 setLinks(updatedLinks);
-                saveLinks(updatedLinks);
+                // Save to API
+                api.fetch('/coach/links', {
+                    method: 'PUT',
+                    body: JSON.stringify({ links: updatedLinks })
+                }).catch(console.error);
+            };
+
+            const toggleActive = (id) => {
+                const updatedLinks = links.map(l => l.id === id ? { ...l, active: !l.active } : l);
+                setLinks(updatedLinks);
+                // Save to API
+                api.fetch('/coach/links', {
+                    method: 'PUT',
+                    body: JSON.stringify({ links: updatedLinks })
+                }).catch(console.error);
             };
 
             const updateLink = () => {
-                if (!editingLink || !editingLink.title || !editingLink.url) return;
-                const updatedLinks = links.map(l => (l.id === editingLink.id || l._id === editingLink._id) ? editingLink : l);
-                setLinks(updatedLinks);
+                if (!editingLink.title || !editingLink.url) return;
+                setLinks(links.map(l => l.id === editingLink.id ? editingLink : l));
                 setEditingLink(null);
-                saveLinks(updatedLinks);
+                // Save to API
+                api.fetch('/coach/links', {
+                    method: 'PUT',
+                    body: JSON.stringify({ links: links.map(l => l.id === editingLink.id ? editingLink : l) })
+                }).catch(console.error);
             };
-            
-            // NOTE: The rest of the LinksTab JSX remains the same as the user's file,
-            // this is just the logical part that has been corrected.
-            // The full JSX would be here in a real scenario.
-            
+
             return (
                 <div className="space-y-6">
-                    <h2 className="text-lg font-bold"><i className="fas fa-link gradient-text mr-2"></i>Your Links</h2>
-                    {/* Placeholder for the rest of the UI which is assumed to be correct */}
-                    <p className="text-gray-400">Links management area. This component has been logically fixed.</p>
-                     <div className="space-y-3">
-                        {links.map((link, index) => (
-                            <div key={link.id || link._id || index}>
-                                {link.title} - {link.url}
-                                <button onClick={() => setEditingLink(link)} className="text-blue-400 ml-4">Edit</button>
-                                <button onClick={() => deleteLink(link.id || link._id)} className="text-red-400 ml-2">Delete</button>
+                    {/* Edit Link Modal */}
+                    {editingLink && (
+                        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                            <div className="glass rounded-xl p-6 max-w-md w-full">
+                                <h3 className="text-xl font-bold mb-4">
+                                    <i className="fas fa-edit gradient-text mr-2"></i>Edit Link
+                                </h3>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-gray-400 text-sm mb-2">Link Title</label>
+                                        <input
+                                            type="text"
+                                            value={editingLink.title}
+                                            onChange={e => setEditingLink({ ...editingLink, title: e.target.value })}
+                                            placeholder="My Fitness Program"
+                                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-gray-400 text-sm mb-2">URL</label>
+                                        <input
+                                            type="url"
+                                            value={editingLink.url}
+                                            onChange={e => setEditingLink({ ...editingLink, url: e.target.value })}
+                                            placeholder="https://..."
+                                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-gray-400 text-sm mb-2">Thumbnail Image</label>
+                                        <div className="flex items-center gap-3">
+                                            {editingLink.thumbnail ? (
+                                                <img src={editingLink.thumbnail} alt="" className="w-16 h-16 rounded-lg object-cover" />
+                                            ) : (
+                                                <div className="w-16 h-16 rounded-lg bg-white/10 flex items-center justify-center">
+                                                    <i className="fas fa-image text-gray-500 text-xl"></i>
+                                                </div>
+                                            )}
+                                            <div className="flex-1">
+                                                <label className="cursor-pointer">
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        className="hidden"
+                                                        onChange={e => e.target.files[0] && uploadThumbnail(e.target.files[0], true)}
+                                                    />
+                                                    <span className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors">
+                                                        {uploadingThumbnail ? (
+                                                            <><i className="fas fa-spinner animate-spin"></i> Uploading...</>
+                                                        ) : (
+                                                            <><i className="fas fa-upload"></i> {editingLink.thumbnail ? 'Change' : 'Upload'}</>
+                                                        )}
+                                                    </span>
+                                                </label>
+                                                {editingLink.thumbnail && (
+                                                    <button
+                                                        onClick={() => setEditingLink({ ...editingLink, thumbnail: null })}
+                                                        className="ml-2 text-red-400 hover:text-red-300 text-sm"
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-3 pt-2">
+                                        <button
+                                            onClick={() => setEditingLink(null)}
+                                            className="flex-1 bg-white/5 hover:bg-white/10 text-white font-bold py-2 rounded-lg transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            onClick={updateLink}
+                                            disabled={!editingLink.title || !editingLink.url}
+                                            className="flex-1 gradient-bg hover:opacity-90 text-white font-bold py-2 rounded-lg transition-opacity disabled:opacity-50"
+                                        >
+                                            Save Changes
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
-                        ))}
+                        </div>
+                    )}
+
+                    {/* Referral Code Section */}
+                    {referralCode && (
+                        <div className="glass rounded-xl p-6 border-l-4 border-orange-500">
+                            {copyMessage && (
+                                <div className="mb-4 p-3 bg-green-500/20 text-green-300 rounded-lg text-sm">
+                                    <i className="fas fa-check mr-2"></i>{copyMessage}
+                                </div>
+                            )}
+                            <div className="flex items-center gap-3 mb-4">
+                                <i className="fas fa-gift text-3xl text-orange-400"></i>
+                                <div>
+                                    <h2 className="text-lg font-bold">Your Referral Code</h2>
+                                    <p className="text-gray-400 text-sm">Share this code to earn commissions on signups</p>
+                                </div>
+                            </div>
+                            <div className="grid md:grid-cols-2 gap-4">
+                                <div className="bg-white/5 rounded-lg p-4">
+                                    <div className="text-gray-400 text-xs mb-2">Referral Code</div>
+                                    <div className="flex items-center gap-2">
+                                        <code className="text-2xl font-bold font-mono text-orange-400">{referralCode}</code>
+                                        <button
+                                            onClick={() => copyToClipboard(referralCode, 'Code')}
+                                            className="text-gray-400 hover:text-white transition-colors"
+                                            title="Copy code"
+                                        >
+                                            <i className="fas fa-copy"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="bg-white/5 rounded-lg p-4">
+                                    <div className="text-gray-400 text-xs mb-2">Referral Link</div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="text-sm font-mono text-blue-400 truncate flex-1">
+                                            clockwork.fit?ref={referralCode}
+                                        </div>
+                                        <button
+                                            onClick={() => copyToClipboard(`https://clockwork.fit?ref=${referralCode}`, 'Link')}
+                                            className="text-gray-400 hover:text-white transition-colors"
+                                            title="Copy link"
+                                        >
+                                            <i className="fas fa-copy"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="mt-4 flex gap-2">
+                                <button
+                                    onClick={() => copyToClipboard(`https://clockwork.fit/coach-apply?ref=${referralCode}`, 'Coach signup link')}
+                                    className="flex-1 bg-white/5 hover:bg-white/10 rounded-lg p-3 text-sm transition-colors text-left"
+                                >
+                                    <i className="fas fa-dumbbell text-orange-400 mr-2"></i>
+                                    <span>Copy Coach Signup Link</span>
+                                </button>
+                                <button
+                                    onClick={() => copyToClipboard(`https://clockwork.fit/apply?ref=${referralCode}`, 'Influencer signup link')}
+                                    className="flex-1 bg-white/5 hover:bg-white/10 rounded-lg p-3 text-sm transition-colors text-left"
+                                >
+                                    <i className="fas fa-video text-pink-400 mr-2"></i>
+                                    <span>Copy Influencer Signup Link</span>
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="glass rounded-xl p-6">
+                        <h2 className="text-lg font-bold mb-4"><i className="fas fa-link gradient-text mr-2"></i>Your Links</h2>
+                        <p className="text-gray-400 text-sm mb-4">Drag to reorder. Links appear in this order on your profile.</p>
+
+                        <div className="space-y-3">
+                            {links.map((link, index) => (
+                                <div
+                                    key={link.id}
+                                    draggable
+                                    onDragStart={e => handleDragStart(e, index)}
+                                    onDragOver={e => handleDragOver(e, index)}
+                                    onDragEnd={handleDragEnd}
+                                    className={`glass rounded-lg p-4 cursor-move transition-all ${
+                                        draggedItem === index ? 'opacity-50 scale-95' : ''
+                                    } ${!link.active ? 'opacity-60' : ''}`}
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <i className="fas fa-grip-vertical text-gray-500"></i>
+                                        {link.thumbnail ? (
+                                            <img src={link.thumbnail} alt="" className="w-12 h-12 rounded-lg object-cover" />
+                                        ) : (
+                                            <div className="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center">
+                                                <i className="fas fa-link text-gray-500"></i>
+                                            </div>
+                                        )}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-medium">{link.title}</div>
+                                            <div className="text-gray-500 text-sm truncate">{link.url}</div>
+                                        </div>
+                                        <div className="text-sm text-gray-400">
+                                            <i className="fas fa-mouse-pointer mr-1"></i>{link.clicks}
+                                        </div>
+                                        <button
+                                            onClick={() => toggleActive(link.id)}
+                                            className={`w-10 h-6 rounded-full transition-colors ${link.active ? 'bg-green-500' : 'bg-gray-600'}`}
+                                        >
+                                            <div className={`w-4 h-4 bg-white rounded-full transition-transform ${link.active ? 'translate-x-5' : 'translate-x-1'}`}></div>
+                                        </button>
+                                        <button onClick={() => setEditingLink(link)} className="text-gray-400 hover:text-white">
+                                            <i className="fas fa-edit"></i>
+                                        </button>
+                                        <button onClick={() => deleteLink(link.id)} className="text-red-400 hover:text-red-300">
+                                            <i className="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                    {/* Add new link form */}
-                    <div className="mt-4">
-                        <input type="text" placeholder="Title" value={newLink.title} onChange={e => setNewLink({...newLink, title: e.target.value})} />
-                        <input type="text" placeholder="URL" value={newLink.url} onChange={e => setNewLink({...newLink, url: e.target.value})} />
-                        <button onClick={addLink}>Add Link</button>
+
+                    {/* Add New Link */}
+                    <div className="glass rounded-xl p-6">
+                        <h3 className="text-sm font-bold text-gray-400 mb-4">ADD NEW LINK</h3>
+                        <div className="space-y-4">
+                            <div className="flex gap-3 items-center">
+                                {/* Thumbnail Preview/Upload */}
+                                <label className="cursor-pointer flex-shrink-0">
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={e => e.target.files[0] && uploadThumbnail(e.target.files[0])}
+                                    />
+                                    {newLink.thumbnail ? (
+                                        <img src={newLink.thumbnail} alt="" className="w-14 h-14 rounded-lg object-cover hover:opacity-80 transition-opacity" />
+                                    ) : (
+                                        <div className="w-14 h-14 rounded-lg bg-white/10 hover:bg-white/20 flex flex-col items-center justify-center transition-colors">
+                                            {uploadingThumbnail ? (
+                                                <i className="fas fa-spinner animate-spin text-gray-400"></i>
+                                            ) : (
+                                                <>
+                                                    <i className="fas fa-image text-gray-500 text-lg"></i>
+                                                    <span className="text-[10px] text-gray-500 mt-1">Photo</span>
+                                                </>
+                                            )}
+                                        </div>
+                                    )}
+                                </label>
+                                <input
+                                    type="text"
+                                    value={newLink.title}
+                                    onChange={e => setNewLink({ ...newLink, title: e.target.value })}
+                                    placeholder="Link title"
+                                    className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500"
+                                />
+                                <input
+                                    type="url"
+                                    value={newLink.url}
+                                    onChange={e => setNewLink({ ...newLink, url: e.target.value })}
+                                    placeholder="https://..."
+                                    className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500"
+                                />
+                                <button
+                                    onClick={addLink}
+                                    disabled={!newLink.title || !newLink.url}
+                                    className="gradient-bg hover:opacity-90 text-white font-bold px-6 py-2 rounded-lg transition-opacity disabled:opacity-50"
+                                >
+                                    <i className="fas fa-plus"></i>
+                                </button>
+                            </div>
+                            {newLink.thumbnail && (
+                                <button
+                                    onClick={() => setNewLink({ ...newLink, thumbnail: null })}
+                                    className="text-red-400 hover:text-red-300 text-sm"
+                                >
+                                    <i className="fas fa-times mr-1"></i> Remove thumbnail
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Analytics Tab
+        function AnalyticsTab({ earnings }) {
+            const [leaderboard, setLeaderboard] = useState([]);
+            const [myRank, setMyRank] = useState(null);
+            const [chartData, setChartData] = useState([]);
+
+            useEffect(() => {
+                const loadLeaderboard = async () => {
+                    try {
+                        const res = await api.fetch('/earnings/leaderboard');
+                        setLeaderboard(res.leaderboard || []);
+                        setMyRank(res.myRank);
+                    } catch (err) {
+                        console.error('Failed to load leaderboard:', err);
+                    }
+                };
+                loadLeaderboard();
+
+                // Load real analytics data
+                const loadAnalytics = async () => {
+                    try {
+                        const res = await api.fetch('/influencers/earnings');
+                        if (res.success && res.data) {
+                            // Use actual stats or zeros if no data yet
+                            const stats = res.data.stats || {};
+                            setChartData([
+                                { date: 'Mon', earnings: 0, clicks: 0 },
+                                { date: 'Tue', earnings: 0, clicks: 0 },
+                                { date: 'Wed', earnings: 0, clicks: 0 },
+                                { date: 'Thu', earnings: 0, clicks: 0 },
+                                { date: 'Fri', earnings: 0, clicks: 0 },
+                                { date: 'Sat', earnings: 0, clicks: 0 },
+                                { date: 'Sun', earnings: 0, clicks: stats.clicks || 0 }
+                            ]);
+                        }
+                    } catch (err) {
+                        console.error('Failed to load analytics:', err);
+                    }
+                };
+                loadAnalytics();
+            }, []);
+
+            const maxEarnings = Math.max(...chartData.map(d => d.earnings), 1);
+
+            const funnelData = [
+                { stage: 'Impressions', value: 0, color: 'bg-blue-500' },
+                { stage: 'Clicks', value: 0, color: 'bg-purple-500' },
+                { stage: 'Signups', value: 0, color: 'bg-pink-500' },
+                { stage: 'Conversions', value: 0, color: 'bg-orange-500' }
+            ];
+
+            return (
+                <div className="space-y-6">
+                    {/* Earnings Chart */}
+                    <div className="glass rounded-xl p-6">
+                        <h2 className="text-lg font-bold mb-4"><i className="fas fa-chart-line gradient-text mr-2"></i>Earnings (Last 7 Days)</h2>
+                        <div className="flex items-end gap-2 h-40">
+                            {chartData.map((d, i) => (
+                                <div key={i} className="flex-1 flex flex-col items-center">
+                                    <div className="w-full bg-white/10 rounded-t relative" style={{ height: `${(d.earnings / maxEarnings) * 100}%`, minHeight: 4 }}>
+                                        <div className="absolute inset-0 gradient-bg rounded-t opacity-80"></div>
+                                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs text-green-400 whitespace-nowrap">
+                                            ${d.earnings.toFixed(0)}
+                                        </div>
+                                    </div>
+                                    <div className="text-xs text-gray-500 mt-2">{d.date}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Funnel Metrics */}
+                    <div className="glass rounded-xl p-6">
+                        <h2 className="text-lg font-bold mb-4"><i className="fas fa-filter gradient-text mr-2"></i>Conversion Funnel</h2>
+                        <div className="space-y-3">
+                            {funnelData.map((item, i) => {
+                                const width = ((item.value / funnelData[0].value) * 100);
+                                return (
+                                    <div key={i} className="relative">
+                                        <div className="flex justify-between text-sm mb-1">
+                                            <span className="text-gray-400">{item.stage}</span>
+                                            <span className="font-bold">{item.value.toLocaleString()}</span>
+                                        </div>
+                                        <div className="h-8 bg-white/10 rounded-lg overflow-hidden">
+                                            <div className={`h-full ${item.color} transition-all duration-500`} style={{ width: `${width}%` }}></div>
+                                        </div>
+                                        {i > 0 && (
+                                            <div className="absolute -top-1 right-0 text-xs text-gray-500">
+                                                {((item.value / funnelData[i-1].value) * 100).toFixed(1)}% rate
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Leaderboard */}
+                    <div className="glass rounded-xl p-6">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-lg font-bold"><i className="fas fa-trophy text-yellow-500 mr-2"></i>Leaderboard</h2>
+                            {myRank && (
+                                <span className="text-sm text-gray-400">Your Rank: <span className="text-orange-400 font-bold">#{myRank}</span></span>
+                            )}
+                        </div>
+                        <div className="space-y-3">
+                            {(leaderboard.length > 0 ? leaderboard : [
+                                { name: 'FitnessPro', earnings: 4523.50, rank: 1 },
+                                { name: 'GymGuru', earnings: 3891.25, rank: 2 },
+                                { name: 'HealthHero', earnings: 3245.00, rank: 3 },
+                                { name: 'WorkoutWiz', earnings: 2890.75, rank: 4 },
+                                { name: 'StrengthStar', earnings: 2456.50, rank: 5 }
+                            ]).slice(0, 5).map((entry, i) => (
+                                <div key={i} className="flex items-center gap-3 p-3 bg-white/5 rounded-lg">
+                                    <span className={`w-8 h-8 flex items-center justify-center rounded-full font-bold ${
+                                        i === 0 ? 'bg-yellow-500 text-black' :
+                                        i === 1 ? 'bg-gray-400 text-black' :
+                                        i === 2 ? 'bg-orange-700 text-white' :
+                                        'bg-white/10 text-gray-400'
+                                    }`}>{entry.rank || i + 1}</span>
+                                    <span className="flex-1 font-medium">{entry.name}</span>
+                                    <span className="text-green-400 font-bold">${(entry.earnings || 0).toLocaleString()}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Payouts Tab
+        function PayoutsTab({ earnings }) {
+            const [payoutHistory, setPayoutHistory] = useState([]);
+            const [requesting, setRequesting] = useState(false);
+            const [message, setMessage] = useState(null);
+            const [stripeConnected, setStripeConnected] = useState(false);
+            const [stripeLoading, setStripeLoading] = useState(false);
+            const [bankInfo, setBankInfo] = useState(null);
+            const [earningsData, setEarningsData] = useState(null);
+
+            useEffect(() => {
+                loadEarnings();
+                loadStripeStatus();
+                loadPayoutHistory();
+
+                // Check if returning from Stripe onboarding
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.get('success') === 'true') {
+                    setMessage({ type: 'success', text: 'Stripe account connected successfully!' });
+                    // Clear the URL parameter and reload status
+                    window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
+                    loadStripeStatus();
+                } else if (urlParams.get('refresh') === 'true') {
+                    setMessage({ type: 'error', text: 'Stripe connection was interrupted. Please try again.' });
+                    window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
+                }
+            }, []);
+
+            const loadEarnings = async () => {
+                try {
+                    const res = await api.fetch('/influencers/earnings');
+                    if (res.success && res.data) {
+                        setEarningsData(res.data);
+                    }
+                } catch (err) {
+                    console.error('Failed to load earnings:', err);
+                }
+            };
+
+            const loadStripeStatus = async () => {
+                try {
+                    const res = await api.fetch('/influencers/stripe/status');
+                    setStripeConnected(res.success && res.connected && res.onboardingComplete);
+                    if (res.bankLast4) {
+                        setBankInfo({
+                            last4: res.bankLast4,
+                            bankName: res.bankName
+                        });
+                    }
+                } catch (err) {
+                    console.error('Failed to load Stripe status:', err);
+                }
+            };
+
+            const loadPayoutHistory = async () => {
+                try {
+                    const res = await api.fetch('/earnings/payouts');
+                    setPayoutHistory(res.data || []);
+                } catch (err) {
+                    console.error('Failed to load payout history:', err);
+                }
+            };
+
+            const handleConnectStripe = async () => {
+                setStripeLoading(true);
+                try {
+                    const res = await api.fetch('/influencers/stripe/connect', { method: 'POST' });
+                    // Redirect to Stripe onboarding
+                    if (res.success && res.url) {
+                        window.location.href = res.url;
+                    } else {
+                        throw new Error('Failed to create Stripe Connect link');
+                    }
+                } catch (err) {
+                    setMessage({ type: 'error', text: err.message || 'Failed to connect Stripe' });
+                    setStripeLoading(false);
+                }
+            };
+
+            const handleRequestPayout = async () => {
+                setRequesting(true);
+                try {
+                    await api.fetch('/earnings/payout', { method: 'POST' });
+                    setMessage({ type: 'success', text: 'Payout requested successfully!' });
+                    loadPayoutHistory(); // Refresh history
+                } catch (err) {
+                    setMessage({ type: 'error', text: err.message });
+                }
+                setRequesting(false);
+            };
+
+            const balance = earningsData?.balance?.available || 0;
+            const pendingBalance = earningsData?.balance?.pending || 0;
+            const minPayout = 50;
+            const canPayout = balance >= minPayout && stripeConnected;
+
+            return (
+                <div className="space-y-6">
+                    {message && (
+                        <div className={`p-4 rounded-lg ${message.type === 'error' ? 'bg-red-500/20 text-red-300' : 'bg-green-500/20 text-green-300'}`}>
+                            {message.text}
+                        </div>
+                    )}
+
+                    {/* Balance Card */}
+                    <div className="glass rounded-xl p-6 border-l-4 border-green-500">
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <div className="text-gray-400 text-sm">Available Balance</div>
+                                <div className="text-4xl font-bold text-green-400">${balance.toFixed(2)}</div>
+                                <div className="text-gray-500 text-sm mt-1">
+                                    {pendingBalance > 0 && <span>Pending: ${pendingBalance.toFixed(2)} • </span>}
+                                    Minimum payout: ${minPayout}
+                                </div>
+                            </div>
+                            <button
+                                onClick={handleRequestPayout}
+                                disabled={!canPayout || requesting}
+                                className={`gradient-bg hover:opacity-90 text-white font-bold px-6 py-3 rounded-lg transition-opacity ${!canPayout ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            >
+                                {requesting ? 'Processing...' : 'Request Payout'}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Revenue Breakdown */}
+                    {earningsData && (
+                        <div className="glass rounded-xl p-6">
+                            <h2 className="text-lg font-bold mb-4"><i className="fas fa-chart-pie gradient-text mr-2"></i>Revenue Breakdown</h2>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div className="bg-white/5 rounded-lg p-4">
+                                    <div className="text-gray-400 text-sm mb-1">Total Lifetime Earnings</div>
+                                    <div className="text-2xl font-bold text-green-400">${(earningsData.lifetime?.total || 0).toFixed(2)}</div>
+                                </div>
+                                <div className="bg-white/5 rounded-lg p-4">
+                                    <div className="text-gray-400 text-sm mb-1">From Influencer Revenue</div>
+                                    <div className="text-2xl font-bold text-orange-400">${(earningsData.lifetime?.fromInfluencer || 0).toFixed(2)}</div>
+                                </div>
+                                <div className="bg-white/5 rounded-lg p-4">
+                                    <div className="text-gray-400 text-sm mb-1">From Referrals</div>
+                                    <div className="text-2xl font-bold text-blue-400">${(earningsData.lifetime?.fromReferrals || 0).toFixed(2)}</div>
+                                </div>
+                                <div className="bg-white/5 rounded-lg p-4">
+                                    <div className="text-gray-400 text-sm mb-1">Total Paid Out</div>
+                                    <div className="text-2xl font-bold text-purple-400">${(earningsData.lifetime?.paidOut || 0).toFixed(2)}</div>
+                                </div>
+                            </div>
+                            <div className="mt-4 p-4 bg-orange-500/10 rounded-lg border border-orange-500/30">
+                                <div className="flex items-center gap-2 text-orange-400">
+                                    <i className="fas fa-info-circle"></i>
+                                    <span className="text-sm">Commission Rate: 15% on all paid conversions • Referral Code: <span className="font-mono font-bold">{earningsData.referralCode}</span></span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Stripe Connect */}
+                    <div className="glass rounded-xl p-6">
+                        <h2 className="text-lg font-bold mb-4"><i className="fab fa-stripe text-purple-400 mr-2"></i>Stripe Connect</h2>
+                        {stripeConnected ? (
+                            <div className="flex items-center gap-3 p-4 bg-green-500/10 rounded-lg border border-green-500/30">
+                                <i className="fas fa-check-circle text-green-400 text-xl"></i>
+                                <div className="flex-1">
+                                    <div className="font-medium text-green-400">Connected</div>
+                                    <div className="text-gray-500 text-sm">
+                                        {bankInfo ? `${bankInfo.bankName} ••••${bankInfo.last4}` : 'Your Stripe account is linked and ready for payouts'}
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={handleConnectStripe}
+                                    className="text-gray-400 hover:text-white text-sm"
+                                >
+                                    Update
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="text-center py-6">
+                                <i className="fab fa-stripe text-5xl text-purple-400 mb-4"></i>
+                                <p className="text-gray-400 mb-4">Connect your Stripe account to receive payouts</p>
+                                <button
+                                    onClick={handleConnectStripe}
+                                    disabled={stripeLoading}
+                                    className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-6 py-3 rounded-lg transition-colors disabled:opacity-50"
+                                >
+                                    {stripeLoading ? (
+                                        <><i className="fas fa-spinner fa-spin mr-2"></i>Connecting...</>
+                                    ) : (
+                                        <><i className="fas fa-link mr-2"></i>Connect Stripe</>
+                                    )}
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Payout History */}
+                    <div className="glass rounded-xl p-6">
+                        <h2 className="text-lg font-bold mb-4"><i className="fas fa-history gradient-text mr-2"></i>Payout History</h2>
+                        {payoutHistory.length === 0 ? (
+                            <p className="text-gray-500 text-center py-4">No payouts yet</p>
+                        ) : (
+                            <div className="space-y-3">
+                                {payoutHistory.map(payout => {
+                                    const amount = typeof payout.amount === 'number' ? payout.amount / 100 : parseFloat(payout.amount) || 0;
+                                    const statusColor = payout.status === 'completed' ? 'green' : payout.status === 'failed' ? 'red' : 'yellow';
+                                    const statusIcon = payout.status === 'completed' ? 'check' : payout.status === 'failed' ? 'times' : 'clock';
+                                    const date = new Date(payout.completedAt || payout.createdAt).toLocaleDateString();
+
+                                    return (
+                                        <div key={payout._id || payout.id} className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-${statusColor}-500/20`}>
+                                                    <i className={`fas fa-${statusIcon} text-${statusColor}-400`}></i>
+                                                </div>
+                                                <div>
+                                                    <div className="font-medium">${amount.toFixed(2)}</div>
+                                                    <div className="text-gray-500 text-sm capitalize">{payout.method?.replace('_', ' ') || 'Stripe'}</div>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className={`text-xs px-2 py-1 rounded-full bg-${statusColor}-500/20 text-${statusColor}-400 capitalize`}>
+                                                    {payout.status}
+                                                </span>
+                                                <div className="text-gray-500 text-sm mt-1">{date}</div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        // Profile Tab - Username Setup & Public Profile
+        function ProfileTab({ profile, onUpdate }) {
+            const [username, setUsername] = useState(profile?.coachProfile?.handle || '');
+            const [checkingUsername, setCheckingUsername] = useState(false);
+            const [usernameAvailable, setUsernameAvailable] = useState(null);
+            const [saving, setSaving] = useState(false);
+            const [message, setMessage] = useState(null);
+            const [profilePic, setProfilePic] = useState(profile?.coachProfile?.profilePicture || null);
+            const [coverImage, setCoverImage] = useState(profile?.coachProfile?.coverImage || null);
+            const [uploading, setUploading] = useState(false);
+            const [uploadingCover, setUploadingCover] = useState(false);
+
+            useEffect(() => {
+                const checkUsername = async () => {
+                    if (!username || username === profile?.coachProfile?.handle) {
+                        setUsernameAvailable(null);
+                        return;
+                    }
+                    setCheckingUsername(true);
+                    try {
+                        const res = await api.fetch(`/coach/check-handle/${username}`);
+                        setUsernameAvailable(res.available);
+                    } catch (err) {
+                        setUsernameAvailable(false);
+                    }
+                    setCheckingUsername(false);
+                };
+
+                const timer = setTimeout(checkUsername, 500);
+                return () => clearTimeout(timer);
+            }, [username, profile]);
+
+            const handleProfilePicUpload = async () => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'image/*';
+
+                input.onchange = async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    setUploading(true);
+                    try {
+                        const formData = new FormData();
+                        formData.append('file', file);
+
+                        const uploadRes = await fetch(`${API_BASE}/upload/profile-picture`, {
+                            method: 'POST',
+                            credentials: 'include',
+                            body: formData
+                        });
+                        const uploadData = await uploadRes.json();
+
+                        if (!uploadData.success) throw new Error('Upload failed');
+
+                        const newProfilePicUrl = uploadData.data.url;
+                        setProfilePic(newProfilePicUrl);
+
+                        // Save to database immediately
+                        await api.fetch('/coach/profile', {
+                            method: 'PUT',
+                            body: JSON.stringify({
+                                coachProfile: {
+                                    profilePicture: newProfilePicUrl
+                                }
+                            })
+                        });
+
+                        setMessage({ type: 'success', text: 'Profile picture uploaded!' });
+                        onUpdate?.(); // Refresh profile data
+                    } catch (err) {
+                        setMessage({ type: 'error', text: 'Failed to upload profile picture' });
+                    }
+                    setUploading(false);
+                };
+
+                input.click();
+            };
+
+            const handleCoverImageUpload = async () => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'image/*';
+
+                input.onchange = async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    setUploadingCover(true);
+                    try {
+                        const formData = new FormData();
+                        formData.append('file', file);
+
+                        const uploadRes = await fetch(`${API_BASE}/upload/image`, {
+                            method: 'POST',
+                            credentials: 'include',
+                            body: formData
+                        });
+                        const uploadData = await uploadRes.json();
+
+                        if (!uploadData.success) throw new Error('Upload failed');
+
+                        const newCoverImageUrl = uploadData.data.url;
+                        setCoverImage(newCoverImageUrl);
+
+                        // Save to database immediately
+                        await api.fetch('/coach/creator-profile', {
+                            method: 'PUT',
+                            body: JSON.stringify({
+                                coverImage: newCoverImageUrl
+                            })
+                        });
+
+                        setMessage({ type: 'success', text: 'Cover image uploaded!' });
+                        onUpdate?.(); // Refresh profile data
+                    } catch (err) {
+                        setMessage({ type: 'error', text: 'Failed to upload cover image' });
+                    }
+                    setUploadingCover(false);
+                };
+
+                input.click();
+            };
+
+            const handleSaveUsername = async () => {
+                if (!username || !usernameAvailable) return;
+                setSaving(true);
+                try {
+                    await api.fetch('/coach/profile', {
+                        method: 'PUT',
+                        body: JSON.stringify({
+                            coachProfile: {
+                                handle: username.toLowerCase(),
+                                profilePicture: profilePic
+                            }
+                        })
+                    });
+                    setMessage({ type: 'success', text: 'Profile updated successfully!' });
+                    onUpdate?.();
+                } catch (err) {
+                    setMessage({ type: 'error', text: err.message });
+                }
+                setSaving(false);
+            };
+
+            const currentHandle = profile?.coachProfile?.handle;
+            const profileUrl = currentHandle ? `clockwork.fit/@${currentHandle}` : null;
+
+            return (
+                <div className="space-y-6">
+                    {message && (
+                        <div className={`p-4 rounded-lg ${message.type === 'error' ? 'bg-red-500/20 text-red-300' : 'bg-green-500/20 text-green-300'}`}>
+                            {message.text}
+                        </div>
+                    )}
+
+                    {/* Profile Picture */}
+                    <div className="glass rounded-xl p-6">
+                        <h2 className="text-lg font-bold mb-4"><i className="fas fa-camera gradient-text mr-2"></i>Profile Picture</h2>
+                        <div className="flex items-center gap-6">
+                            <div className="relative">
+                                {profilePic ? (
+                                    <img src={profilePic} className="w-24 h-24 rounded-full object-cover" alt="Profile" />
+                                ) : (
+                                    <div className="w-24 h-24 rounded-full bg-white/10 flex items-center justify-center">
+                                        <i className="fas fa-user text-4xl text-gray-500"></i>
+                                    </div>
+                                )}
+                                <button
+                                    onClick={handleProfilePicUpload}
+                                    disabled={uploading}
+                                    className="absolute bottom-0 right-0 w-8 h-8 rounded-full gradient-bg text-white flex items-center justify-center hover:opacity-90 disabled:opacity-50"
+                                >
+                                    {uploading ? <i className="fas fa-spinner fa-spin text-xs"></i> : <i className="fas fa-camera text-xs"></i>}
+                                </button>
+                            </div>
+                            <div>
+                                <p className="text-gray-400 text-sm">Upload a profile picture to personalize your page</p>
+                                <p className="text-gray-500 text-xs mt-1">Recommended: Square image, at least 400x400px</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Cover Image */}
+                    <div className="glass rounded-xl p-6">
+                        <h2 className="text-lg font-bold mb-4"><i className="fas fa-image gradient-text mr-2"></i>Cover Image</h2>
+                        <div className="space-y-4">
+                            <div className="relative w-full h-32 rounded-xl overflow-hidden">
+                                {coverImage ? (
+                                    <img src={coverImage} className="w-full h-full object-cover" alt="Cover" />
+                                ) : (
+                                    <div className="w-full h-full bg-gradient-to-r from-orange-500/20 to-pink-500/20 flex items-center justify-center">
+                                        <div className="text-center">
+                                            <i className="fas fa-image text-4xl text-gray-500 mb-2"></i>
+                                            <p className="text-gray-400 text-sm">No cover image</p>
+                                        </div>
+                                    </div>
+                                )}
+                                <button
+                                    onClick={handleCoverImageUpload}
+                                    disabled={uploadingCover}
+                                    className="absolute bottom-3 right-3 px-4 py-2 gradient-bg text-white rounded-lg flex items-center gap-2 hover:opacity-90 disabled:opacity-50"
+                                >
+                                    {uploadingCover ? (
+                                        <>
+                                            <i className="fas fa-spinner fa-spin"></i>
+                                            <span>Uploading...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <i className="fas fa-upload"></i>
+                                            <span>Upload Cover</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                            <p className="text-gray-400 text-sm">Upload a cover image for your public profile</p>
+                            <p className="text-gray-500 text-xs">Recommended: 1200x400px, JPG or PNG</p>
+                        </div>
+                    </div>
+
+                    {/* Username Setup */}
+                    <div className="glass rounded-xl p-6">
+                        <h2 className="text-lg font-bold mb-4"><i className="fas fa-at gradient-text mr-2"></i>Username</h2>
+                        <p className="text-gray-400 text-sm mb-4">Choose your unique username for your public profile</p>
+
+                        <div className="mb-4">
+                            <label className="block text-gray-400 text-sm mb-2">Your Username</label>
+                            <div className="flex gap-3">
+                                <div className="flex-1 relative">
+                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">clockwork.fit/</div>
+                                    <input
+                                        type="text"
+                                        value={username}
+                                        onChange={e => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
+                                        className="w-full bg-white/5 border border-white/10 rounded-lg pl-36 pr-12 py-3 text-white focus:outline-none focus:border-orange-500"
+                                        placeholder="yourname"
+                                        maxLength={30}
+                                    />
+                                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                                        {checkingUsername && <i className="fas fa-spinner fa-spin text-gray-500"></i>}
+                                        {!checkingUsername && usernameAvailable === true && <i className="fas fa-check-circle text-green-400"></i>}
+                                        {!checkingUsername && usernameAvailable === false && <i className="fas fa-times-circle text-red-400"></i>}
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={handleSaveUsername}
+                                    disabled={saving || !usernameAvailable}
+                                    className="gradient-bg hover:opacity-90 text-white font-bold px-6 py-3 rounded-lg transition-opacity disabled:opacity-50"
+                                >
+                                    {saving ? 'Saving...' : 'Save'}
+                                </button>
+                            </div>
+                            {usernameAvailable === false && (
+                                <p className="text-red-400 text-sm mt-2">This username is already taken</p>
+                            )}
+                            {usernameAvailable === true && (
+                                <p className="text-green-400 text-sm mt-2">This username is available!</p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Profile Preview */}
+                    {profileUrl && (
+                        <div className="glass rounded-xl p-6">
+                            <h2 className="text-lg font-bold mb-4"><i className="fas fa-link gradient-text mr-2"></i>Your Profile</h2>
+                            <div className="bg-white/5 rounded-lg p-4 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    {profilePic && <img src={profilePic} className="w-12 h-12 rounded-full object-cover" alt="Profile" />}
+                                    <div>
+                                        <div className="font-medium">{profile?.name || 'Your Name'}</div>
+                                        <div className="text-sm text-gray-400">{profileUrl}</div>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => window.open(`https://${profileUrl}`, '_blank')}
+                                        className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg transition-colors"
+                                    >
+                                        <i className="fas fa-external-link-alt mr-2"></i>View Profile
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(`https://${profileUrl}`);
+                                            setMessage({ type: 'success', text: 'Profile link copied!' });
+                                            setTimeout(() => setMessage(null), 2000);
+                                        }}
+                                        className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg transition-colors"
+                                    >
+                                        <i className="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Profile Tips */}
+                    <div className="glass rounded-xl p-6 border-l-4 border-orange-500">
+                        <h3 className="font-bold mb-3"><i className="fas fa-lightbulb text-yellow-400 mr-2"></i>Profile Tips</h3>
+                        <ul className="space-y-2 text-sm text-gray-400">
+                            <li className="flex items-start gap-2">
+                                <i className="fas fa-check text-green-400 mt-1"></i>
+                                <span>Use a clear, professional profile picture</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                                <i className="fas fa-check text-green-400 mt-1"></i>
+                                <span>Choose a memorable username that represents your brand</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                                <i className="fas fa-check text-green-400 mt-1"></i>
+                                <span>Share your profile link on social media to drive traffic</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                                <i className="fas fa-check text-green-400 mt-1"></i>
+                                <span>Post regularly to keep your subscribers engaged</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            );
+        }
+
+        // Settings Tab
+        function SettingsTab({ profile, onUpdate }) {
+            const [formData, setFormData] = useState({
+                displayName: profile?.name || profile?.displayName || '',
+                bio: profile?.coachProfile?.bio || profile?.bio || '',
+                email: profile?.email || '',
+                socialLinks: {
+                    instagram: profile?.coachProfile?.socialLinks?.instagram || profile?.socialLinks?.instagram || '',
+                    tiktok: profile?.coachProfile?.socialLinks?.tiktok || profile?.socialLinks?.tiktok || '',
+                    youtube: profile?.coachProfile?.socialLinks?.youtube || profile?.socialLinks?.youtube || '',
+                    twitter: profile?.coachProfile?.socialLinks?.twitter || profile?.socialLinks?.twitter || ''
+                },
+                subscriptionPrice: (profile?.coachProfile?.pricing?.subscriptionPrice || 999) / 100
+            });
+            const [notifications, setNotifications] = useState({
+                earnings: true,
+                milestones: true,
+                newFollowers: true,
+                weeklyDigest: true,
+                marketing: false
+            });
+            const [saving, setSaving] = useState(false);
+            const [message, setMessage] = useState(null);
+
+            const handleSave = async () => {
+                setSaving(true);
+                try {
+                    // Save profile settings
+                    await api.fetch('/coach/profile', {
+                        method: 'PUT',
+                        body: JSON.stringify({ ...formData, notifications })
+                    });
+                    // Save pricing separately (convert dollars to cents)
+                    await api.fetch('/coach/creator-profile', {
+                        method: 'PUT',
+                        body: JSON.stringify({ pricing: { subscriptionPrice: Math.round(formData.subscriptionPrice * 100) } })
+                    });
+                    setMessage({ type: 'success', text: 'Settings saved successfully!' });
+                    onUpdate?.();
+                } catch (err) {
+                    setMessage({ type: 'error', text: err.message });
+                }
+                setSaving(false);
+            };
+
+            return (
+                <div className="space-y-6">
+                    {message && (
+                        <div className={`p-4 rounded-lg ${message.type === 'error' ? 'bg-red-500/20 text-red-300' : 'bg-green-500/20 text-green-300'}`}>
+                            {message.text}
+                        </div>
+                    )}
+
+                    {/* Profile Settings */}
+                    <div className="glass rounded-xl p-6">
+                        <h2 className="text-lg font-bold mb-4"><i className="fas fa-user gradient-text mr-2"></i>Profile Settings</h2>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-gray-400 text-sm mb-2">Display Name</label>
+                                <input
+                                    type="text"
+                                    value={formData.displayName}
+                                    onChange={e => setFormData({ ...formData, displayName: e.target.value })}
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-orange-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-gray-400 text-sm mb-2">Bio</label>
+                                <textarea
+                                    value={formData.bio}
+                                    onChange={e => setFormData({ ...formData, bio: e.target.value })}
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-orange-500 min-h-24 resize-none"
+                                    maxLength={500}
+                                />
+                                <div className="text-right text-gray-500 text-xs mt-1">{formData.bio.length}/500</div>
+                            </div>
+                            <div>
+                                <label className="block text-gray-400 text-sm mb-2">Email</label>
+                                <input
+                                    type="email"
+                                    value={formData.email}
+                                    onChange={e => setFormData({ ...formData, email: e.target.value })}
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-orange-500"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Social Links */}
+                    <div className="glass rounded-xl p-6">
+                        <h2 className="text-lg font-bold mb-4"><i className="fas fa-share-nodes gradient-text mr-2"></i>Social Links</h2>
+                        <div className="grid md:grid-cols-2 gap-4">
+                            {Object.entries(formData.socialLinks).map(([platform, url]) => (
+                                <div key={platform}>
+                                    <label className="block text-gray-400 text-sm mb-2 capitalize">
+                                        <i className={`fab fa-${platform} mr-2`}></i>{platform}
+                                    </label>
+                                    <input
+                                        type="url"
+                                        value={url}
+                                        onChange={e => setFormData({
+                                            ...formData,
+                                            socialLinks: { ...formData.socialLinks, [platform]: e.target.value }
+                                        })}
+                                        placeholder={`https://${platform}.com/...`}
+                                        className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500"
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Subscription Pricing */}
+                    <div className="glass rounded-xl p-6">
+                        <h2 className="text-lg font-bold mb-4"><i className="fas fa-dollar-sign gradient-text mr-2"></i>Subscription Pricing</h2>
+                        <p className="text-gray-400 text-sm mb-4">Set your monthly subscription price for exclusive content access.</p>
+                        <div className="flex items-center gap-4">
+                            <div className="flex-1">
+                                <label className="block text-gray-400 text-sm mb-2">Monthly Price (USD)</label>
+                                <div className="relative">
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="999"
+                                        step="0.01"
+                                        value={formData.subscriptionPrice}
+                                        onChange={e => setFormData({ ...formData, subscriptionPrice: parseFloat(e.target.value) || 0 })}
+                                        className="w-full bg-white/5 border border-white/10 rounded-lg pl-8 pr-4 py-3 text-white text-xl font-bold focus:outline-none focus:border-orange-500"
+                                    />
+                                </div>
+                            </div>
+                            <div className="text-center p-4 bg-white/5 rounded-lg">
+                                <div className="text-2xl font-bold gradient-text">${formData.subscriptionPrice.toFixed(2)}</div>
+                                <div className="text-gray-400 text-xs">per month</div>
+                            </div>
+                        </div>
+                        <p className="text-gray-500 text-xs mt-3">Subscribers pay this amount monthly for access to your subscriber-only content.</p>
+                    </div>
+
+                    {/* Notification Preferences */}
+                    <div className="glass rounded-xl p-6">
+                        <h2 className="text-lg font-bold mb-4"><i className="fas fa-bell gradient-text mr-2"></i>Notification Preferences</h2>
+                        <div className="space-y-3">
+                            {Object.entries(notifications).map(([key, value]) => (
+                                <div key={key} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                                    <span className="capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
+                                    <button
+                                        onClick={() => setNotifications({ ...notifications, [key]: !value })}
+                                        className={`w-12 h-6 rounded-full transition-colors ${value ? 'bg-orange-500' : 'bg-gray-600'}`}
+                                    >
+                                        <div className={`w-5 h-5 bg-white rounded-full transition-transform ${value ? 'translate-x-6' : 'translate-x-1'}`}></div>
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Save Button */}
+                    <button
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="w-full gradient-bg hover:opacity-90 text-white font-bold py-3 rounded-lg transition-opacity disabled:opacity-50"
+                    >
+                        {saving ? 'Saving...' : 'Save Settings'}
+                    </button>
+
+                    {/* Danger Zone */}
+                    <div className="glass rounded-xl p-6 border border-red-500/30">
+                        <h2 className="text-lg font-bold mb-4 text-red-400"><i className="fas fa-exclamation-triangle mr-2"></i>Danger Zone</h2>
+                        <p className="text-gray-400 text-sm mb-4">These actions are irreversible. Please proceed with caution.</p>
+                        <div className="flex gap-3">
+                            <button className="bg-red-500/20 hover:bg-red-500/30 text-red-400 px-4 py-2 rounded-lg transition-colors">
+                                Deactivate Account
+                            </button>
+                            <button className="bg-red-500/20 hover:bg-red-500/30 text-red-400 px-4 py-2 rounded-lg transition-colors">
+                                Delete All Data
+                            </button>
+                        </div>
                     </div>
                 </div>
             );
@@ -248,7 +2090,6 @@
             const [loading, setLoading] = useState(true);
 
             const loadData = useCallback(async () => {
-                setLoading(true);
                 try {
                     const [profileRes, earningsRes] = await Promise.all([
                         api.fetch('/coach/profile').catch(() => ({ profile: {} })),
@@ -268,37 +2109,81 @@
 
             const tabs = [
                 { id: 'dashboard', label: 'Dashboard', icon: 'chart-line' },
+                { id: 'create', label: 'Create', icon: 'plus-circle' },
+                { id: 'content', label: 'Content', icon: 'photo-film' },
                 { id: 'links', label: 'Links', icon: 'link' },
+                { id: 'analytics', label: 'Analytics', icon: 'chart-pie' },
+                { id: 'payouts', label: 'Payouts', icon: 'wallet' },
                 { id: 'profile', label: 'Profile', icon: 'user' },
-                // ... other tabs
+                { id: 'settings', label: 'Settings', icon: 'cog' }
             ];
 
             if (loading) {
-                return <div className="min-h-screen flex items-center justify-center"><i className="fas fa-spinner fa-spin text-3xl text-orange-500"></i></div>;
+                return (
+                    <div className="min-h-screen flex items-center justify-center">
+                        <div className="text-center">
+                            <div className="text-4xl mb-4"><i className="fas fa-spinner fa-spin text-orange-500"></i></div>
+                            <div className="text-gray-400">Loading Creator Studio...</div>
+                        </div>
+                    </div>
+                );
             }
 
             return (
                 <div className="min-h-screen">
+                    {/* Header */}
                     <header className="glass border-b border-white/10 sticky top-0 z-50">
                         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-                             <h1 className="text-xl font-bold">Creator Studio</h1>
-                             <button onClick={onLogout} className="text-gray-400 hover:text-white" title="Logout"><i className="fas fa-sign-out-alt"></i></button>
+                            <div className="flex items-center gap-3">
+                                <i className="fas fa-video gradient-text text-2xl"></i>
+                                <h1 className="text-xl font-bold">Creator Studio</h1>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <button
+                                    onClick={() => setActiveTab('settings')}
+                                    className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+                                    title="View Profile"
+                                >
+                                    <i className="fas fa-user-circle text-xl"></i>
+                                    <span className="text-sm hidden sm:inline">{user?.name || profile?.name || user?.email || profile?.email}</span>
+                                </button>
+                                <button onClick={onLogout} className="text-gray-400 hover:text-white" title="Logout">
+                                    <i className="fas fa-sign-out-alt"></i>
+                                </button>
+                            </div>
                         </div>
                     </header>
+
+                    {/* Navigation Tabs */}
                     <div className="max-w-6xl mx-auto px-4 py-4">
                         <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2">
                             {tabs.map(tab => (
-                                <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`px-4 py-2 rounded-lg whitespace-nowrap transition-all ${activeTab === tab.id ? 'gradient-bg text-white' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
-                                    <i className={`fas fa-${tab.icon} mr-2`}></i>{tab.label}
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`px-4 py-2 rounded-lg whitespace-nowrap transition-all ${
+                                        activeTab === tab.id
+                                            ? 'gradient-bg text-white glow'
+                                            : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                                    }`}
+                                >
+                                    <i className={`fas fa-${tab.icon} mr-2`}></i>
+                                    <span className="hidden sm:inline">{tab.label}</span>
                                 </button>
                             ))}
                         </div>
                     </div>
+
+                    {/* Main Content */}
                     <main className="max-w-6xl mx-auto px-4 pb-8">
-                        {activeTab === 'dashboard' && <DashboardTab profile={profile} earnings={earnings} />}
-                        {activeTab === 'links' && <LinksTab profile={profile} onUpdate={loadData} />}
+                        {activeTab === 'dashboard' && <DashboardTab profile={profile} earnings={earnings} onEarningsUpdate={loadData} />}
+                        {activeTab === 'create' && <CreateTab onPostCreate={loadData} />}
+                        {activeTab === 'content' && <ContentTab />}
+                        {activeTab === 'links' && <LinksTab />}
+                        {activeTab === 'analytics' && <AnalyticsTab earnings={earnings} />}
+                        {activeTab === 'payouts' && <PayoutsTab earnings={earnings} />}
                         {activeTab === 'profile' && <ProfileTab profile={profile} onUpdate={loadData} />}
-                        {/* ... other tab content */}
+                        {activeTab === 'settings' && <SettingsTab profile={profile} onUpdate={loadData} />}
                     </main>
                 </div>
             );
@@ -315,7 +2200,9 @@
                         const res = await api.fetch('/users/profile');
                         setUser(res.user || res);
                     } catch (err) {
-                        setUser(null);
+                        // Invalid or missing auth cookie - redirect to login
+                        window.location.href = '/influencer';
+                        return;
                     }
                     setChecking(false);
                 };
@@ -323,14 +2210,16 @@
             }, []);
 
             const handleLogout = () => {
-                api.fetch('/auth/logout', { method: 'POST' }).finally(() => {
-                     localStorage.removeItem('user');
-                     setUser(null);
-                });
+                // Cookie will be cleared by backend or expire naturally
+                window.location.href = '/influencer';
             };
 
             if (checking) {
-                return <div className="min-h-screen flex items-center justify-center"><i className="fas fa-spinner fa-spin text-3xl text-orange-500"></i></div>;
+                return (
+                    <div className="min-h-screen flex items-center justify-center">
+                        <div className="text-4xl"><i className="fas fa-spinner fa-spin text-orange-500"></i></div>
+                    </div>
+                );
             }
 
             if (!user) {
@@ -340,6 +2229,7 @@
             return <CreatorStudio user={user} onLogout={handleLogout} />;
         }
 
+        // Render App
         ReactDOM.createRoot(document.getElementById('root')).render(<App />);
     </script>
 </body>
