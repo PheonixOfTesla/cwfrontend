@@ -232,7 +232,7 @@
 
                     try {
                         // Use coach subscription endpoint - uses creator's custom pricing
-                        const response = await fetch(`${API_BASE}/api/coach-subscription/subscribe/${currentCreator.id}`, {
+                        const response = await fetch(`${API_BASE}/api/coach/${currentCreator.id}/subscribe`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             credentials: 'include',
