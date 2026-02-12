@@ -351,22 +351,22 @@ const AuthModal = {
             const response = await fetch(`${this.API_BASE}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include', // Important for cookies
                 body: JSON.stringify({ email, password })
             });
 
             const data = await response.json();
 
-            if (!response.ok) {
+            if (!data.success) {
                 throw new Error(data.message || 'Login failed');
             }
 
-            // Store token
-            localStorage.setItem('authToken', data.token);
+            // Store user info (token is in HTTP-only cookie)
             localStorage.setItem('user', JSON.stringify(data.user));
 
             // Call success callback
             if (this.onSuccess) {
-                this.onSuccess(data.token, data.user);
+                this.onSuccess(null, data.user);
             }
 
             this.close();
@@ -394,9 +394,9 @@ const AuthModal = {
             const response = await fetch(`${this.API_BASE}/api/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include', // Important for cookies
                 body: JSON.stringify({
-                    firstName,
-                    lastName,
+                    name: `${firstName} ${lastName}`.trim(),
                     email,
                     password,
                     userType: 'individual' // Register as member tier
@@ -405,17 +405,16 @@ const AuthModal = {
 
             const data = await response.json();
 
-            if (!response.ok) {
+            if (!data.success) {
                 throw new Error(data.message || 'Signup failed');
             }
 
-            // Store token
-            localStorage.setItem('authToken', data.token);
+            // Store user info (token is in HTTP-only cookie)
             localStorage.setItem('user', JSON.stringify(data.user));
 
             // Call success callback
             if (this.onSuccess) {
-                this.onSuccess(data.token, data.user);
+                this.onSuccess(null, data.user);
             }
 
             this.close();
@@ -431,14 +430,14 @@ const AuthModal = {
      * Check if user is logged in
      */
     isLoggedIn() {
-        return !!localStorage.getItem('authToken');
+        return !!localStorage.getItem('user');
     },
 
     /**
-     * Get current auth token
+     * Get current auth token (token is in HTTP-only cookie, so this returns null)
      */
     getToken() {
-        return localStorage.getItem('authToken');
+        return null; // Token is stored in HTTP-only cookie
     },
 
     /**
@@ -452,8 +451,15 @@ const AuthModal = {
     /**
      * Logout user
      */
-    logout() {
-        localStorage.removeItem('authToken');
+    async logout() {
+        // Call backend to clear cookie
+        try {
+            await fetch(`${this.API_BASE}/api/auth/logout`, {
+                method: 'POST',
+                credentials: 'include'
+            });
+        } catch (e) {}
+
         localStorage.removeItem('user');
     }
 };

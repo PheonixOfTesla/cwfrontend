@@ -236,10 +236,9 @@
 
         // Check auth on page load
         async function init() {
-            const token = localStorage.getItem('authToken');
             const user = localStorage.getItem('user');
 
-            if (!token || !user) {
+            if (!user) {
                 // Not logged in, redirect to home
                 window.location.href = '/';
                 return;
@@ -249,7 +248,7 @@
 
             // Update UI with user info
             document.getElementById('userName').textContent = userData.email;
-            document.getElementById('welcomeName').textContent = userData.firstName || userData.email.split('@')[0];
+            document.getElementById('welcomeName').textContent = userData.name?.split(' ')[0] || userData.email.split('@')[0];
 
             // Hide loading, show content
             document.getElementById('loading').classList.add('hidden');
@@ -266,11 +265,9 @@
 
         // Load referral code
         async function loadReferralCode() {
-            const token = localStorage.getItem('authToken');
-
             try {
                 const response = await fetch(`${API_BASE}/api/earnings/referral-code`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    credentials: 'include'
                 });
 
                 if (response.ok) {
@@ -316,15 +313,11 @@
         }
 
         async function generateReferralCode() {
-            const token = localStorage.getItem('authToken');
-
             try {
                 const response = await fetch(`${API_BASE}/api/earnings/referral-code`, {
                     method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include'
                 });
 
                 if (response.ok) {
@@ -356,11 +349,9 @@
 
         // Load subscriptions
         async function loadSubscriptions() {
-            const token = localStorage.getItem('authToken');
-
             try {
                 const response = await fetch(`${API_BASE}/api/user/subscriptions`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    credentials: 'include'
                 });
 
                 document.getElementById('subscriptionsLoading').classList.add('hidden');
@@ -408,11 +399,9 @@
 
         // Load earnings
         async function loadEarnings() {
-            const token = localStorage.getItem('authToken');
-
             try {
                 const response = await fetch(`${API_BASE}/api/earnings/summary`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    credentials: 'include'
                 });
 
                 if (response.ok) {
@@ -428,11 +417,9 @@
 
         // Load activity
         async function loadActivity() {
-            const token = localStorage.getItem('authToken');
-
             try {
                 const response = await fetch(`${API_BASE}/api/earnings/activity`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    credentials: 'include'
                 });
 
                 document.getElementById('activityLoading').classList.add('hidden');
@@ -484,8 +471,15 @@
         }
 
         // Logout
-        function logout() {
-            localStorage.removeItem('authToken');
+        async function logout() {
+            // Call backend to clear cookie
+            try {
+                await fetch(`${API_BASE}/api/auth/logout`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+            } catch (e) {}
+
             localStorage.removeItem('user');
             window.location.href = '/';
         }

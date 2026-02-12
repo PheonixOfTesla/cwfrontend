@@ -301,7 +301,6 @@
         async function proceedToSubscribe() {
             if (!currentCreator) return;
 
-            const token = AuthModal.getToken();
             const subscribeBtn = document.getElementById('subscribeBtn');
 
             // Show loading state
@@ -317,15 +316,13 @@
             try {
                 const response = await fetch(`${API_BASE}/api/coach/${currentCreator.id}/subscribe`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    }
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include' // Use cookie-based auth
                 });
 
                 const data = await response.json();
 
-                if (response.ok && data.checkoutUrl) {
+                if (data.success && data.checkoutUrl) {
                     // Redirect to Stripe checkout
                     window.location.href = data.checkoutUrl;
                 } else {

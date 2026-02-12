@@ -276,7 +276,7 @@
             try {
                 // Try to get existing referral code
                 let response = await fetch(`${API_BASE}/api/earnings/referral-code`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    credentials: 'include' // Use cookie-based auth
                 });
 
                 let data;
@@ -288,10 +288,8 @@
                 if (!data?.referralCode) {
                     response = await fetch(`${API_BASE}/api/earnings/referral-code`, {
                         method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json'
-                        }
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include' // Use cookie-based auth
                     });
 
                     if (response.ok) {
@@ -313,7 +311,7 @@
             } catch (error) {
                 console.error('Error getting referral code:', error);
                 // Fallback: Generate code locally based on user name
-                const firstName = user?.firstName || document.getElementById('firstName').value.trim();
+                const firstName = user?.name?.split(' ')[0] || document.getElementById('firstName').value.trim();
                 const localCode = generateLocalCode(firstName);
                 const localUrl = `${window.location.origin}/?ref=${localCode}`;
                 showSuccess(localCode, localUrl);
