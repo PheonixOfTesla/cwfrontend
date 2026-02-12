@@ -231,24 +231,30 @@
                     btn.innerHTML = `<svg class="animate-spin h-5 w-5 inline mr-2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Processing...`;
 
                     try {
-                        // TODO: The `priceKey` should come from the creator's public profile data.
-                        // The backend API at `/api/coach/:handle/public` needs to be updated to include the Stripe Price ID.
-                        const priceKey = 'pro_monthly'; 
-
-                        const response = await fetch(`${API_BASE}/api/subscriptions/create-checkout`, {
+                        // Use coach subscription endpoint - uses creator's custom pricing
+                        const response = await fetch(`${API_BASE}/api/coach-subscription/subscribe/${currentCreator.id}`, {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AuthModal.getToken()}` },
-                            body: JSON.stringify({ 
-                                priceKey: priceKey,
-                                creatorId: currentCreator.id, // Pass the creator's ID
-                                successUrl: window.location.pathname + window.location.search, // Redirect back to this exact page
-                                cancelUrl: window.location.href,
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({
+                                tier: 'content' // Content subscription tier
                              })
                         });
 
                         const data = await response.json();
-                        if (data.success && data.data.url) {
-                            window.location.href = data.data.url;
+
+                        // Handle 401 - show auth modal
+                        if (response.status === 401) {
+                            localStorage.removeItem('user');
+                            btn.disabled = false;
+                            const priceFormatted = `$${(currentCreator.price / 100).toFixed(2)}`;
+                            btn.innerHTML = `<i class="fas fa-star mr-2"></i> Subscribe for <span id="subscribePrice">${priceFormatted}</span>/mo`;
+                            handleSubscribe(); // Re-trigger which shows auth modal
+                            return;
+                        }
+
+                        if (data.success && data.checkoutUrl) {
+                            window.location.href = data.checkoutUrl;
                         } else {
                             throw new Error(data.message || 'Failed to create checkout session.');
                         }
