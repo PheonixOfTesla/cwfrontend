@@ -211,12 +211,14 @@
         <p>&copy; 2026 ClockWork. People Are The Future.</p>
     </footer>
 
+    <!-- Auth Modal Component -->
+    <script src="auth-modal.js"></script>
+
     <script>
         // ═══════════════════════════════════════════════════════════
-        // PATF API CONFIGURATION
+        // API CONFIGURATION
         // ═══════════════════════════════════════════════════════════
-        const PATF_API_URL = 'https://patf-api.up.railway.app/api/v1/referrals/create';
-        const PATF_API_KEY = 'CLOCKWORK_API_KEY';
+        const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:5000' : '';
 
         // ═══════════════════════════════════════════════════════════
         // DOM ELEMENTS
@@ -233,7 +235,7 @@
         const successChime = document.getElementById('successChime');
 
         // ═══════════════════════════════════════════════════════════
-        // FORM SUBMISSION
+        // FORM SUBMISSION - Opens Auth Modal
         // ═══════════════════════════════════════════════════════════
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -244,50 +246,78 @@
 
             if (!firstName || !lastName || !email) return;
 
+            // Check if already logged in
+            if (AuthModal.isLoggedIn()) {
+                // Proceed directly to get referral code
+                await handleAuthSuccess(AuthModal.getToken(), AuthModal.getUser());
+                return;
+            }
+
+            // Open auth modal for referral flow with pre-filled data
+            AuthModal.openForReferral({
+                firstName,
+                lastName,
+                email
+            }, async (token, user) => {
+                // On successful auth, get referral code from backend
+                await handleAuthSuccess(token, user);
+            });
+        });
+
+        // ═══════════════════════════════════════════════════════════
+        // HANDLE AUTH SUCCESS - Get/Create Referral Code
+        // ═══════════════════════════════════════════════════════════
+        async function handleAuthSuccess(token, user) {
             // Show loading
             btnText.classList.add('hidden');
             btnSpinner.classList.remove('hidden');
             submitBtn.disabled = true;
 
             try {
-                const result = await createReferralCode(firstName, lastName, email);
+                // Try to get existing referral code
+                let response = await fetch(`${API_BASE}/api/earnings/referral-code`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
 
-                if (result.success) {
-                    showSuccess(result.code, result.trackingUrl);
+                let data;
+                if (response.ok) {
+                    data = await response.json();
+                }
+
+                // If no code exists, create one
+                if (!data?.referralCode) {
+                    response = await fetch(`${API_BASE}/api/earnings/referral-code`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (response.ok) {
+                        data = await response.json();
+                    }
+                }
+
+                if (data?.referralCode) {
+                    const trackingUrl = `${window.location.origin}/?ref=${data.referralCode}`;
+                    showSuccess(data.referralCode, trackingUrl);
+
+                    // Redirect to member dashboard after a short delay
+                    setTimeout(() => {
+                        window.location.href = '/member.html';
+                    }, 5000);
                 } else {
-                    throw new Error(result.error || 'Failed to create code');
+                    throw new Error('Failed to get referral code');
                 }
             } catch (error) {
-                console.error('API Error:', error);
-                // Fallback: Generate code locally
+                console.error('Error getting referral code:', error);
+                // Fallback: Generate code locally based on user name
+                const firstName = user?.firstName || document.getElementById('firstName').value.trim();
                 const localCode = generateLocalCode(firstName);
-                const localUrl = `https://clockwork.fit?ref=${localCode}`;
+                const localUrl = `${window.location.origin}/?ref=${localCode}`;
                 showSuccess(localCode, localUrl);
             }
-        });
-
-        // ═══════════════════════════════════════════════════════════
-        // PATF API CALL
-        // ═══════════════════════════════════════════════════════════
-        async function createReferralCode(firstName, lastName, email) {
-            const response = await fetch(PATF_API_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-api-key': PATF_API_KEY
-                },
-                body: JSON.stringify({
-                    userId: `cw_${Date.now()}`,
-                    email: email,
-                    name: `${firstName} ${lastName}`
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error(`API responded with ${response.status}`);
-            }
-
-            return response.json();
         }
 
         // ═══════════════════════════════════════════════════════════

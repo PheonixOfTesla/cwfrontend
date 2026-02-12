@@ -166,6 +166,9 @@
         </footer>
     </div>
 
+    <!-- Auth Modal Component -->
+    <script src="auth-modal.js"></script>
+
     <script>
         /**
          * ULTRA-ROBUST RENDERING SCRIPT V3
@@ -272,9 +275,73 @@
         // Handle subscribe button click
         function handleSubscribe() {
             if (!currentCreator) return;
-            // Redirect to login/signup with return URL, or show modal
-            const returnUrl = encodeURIComponent(window.location.href);
-            window.location.href = `/influencer?subscribe=${currentCreator.id}&return=${returnUrl}`;
+
+            // Check if already logged in
+            if (AuthModal.isLoggedIn()) {
+                // Proceed directly to subscription checkout
+                proceedToSubscribe();
+                return;
+            }
+
+            // Open auth modal for subscribe flow
+            const profilePicture = document.getElementById('profilePicture')?.src;
+            AuthModal.openForSubscribe({
+                id: currentCreator.id,
+                handle: currentCreator.handle,
+                name: currentCreator.name,
+                profilePicture: profilePicture,
+                price: currentCreator.price
+            }, (token, user) => {
+                // On successful auth, proceed to subscribe
+                proceedToSubscribe();
+            });
+        }
+
+        // Proceed to Stripe checkout for subscription
+        async function proceedToSubscribe() {
+            if (!currentCreator) return;
+
+            const token = AuthModal.getToken();
+            const subscribeBtn = document.getElementById('subscribeBtn');
+
+            // Show loading state
+            subscribeBtn.disabled = true;
+            subscribeBtn.innerHTML = `
+                <svg class="animate-spin h-5 w-5 inline mr-2" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Processing...
+            `;
+
+            try {
+                const response = await fetch(`${API_BASE}/api/coach/${currentCreator.id}/subscribe`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.checkoutUrl) {
+                    // Redirect to Stripe checkout
+                    window.location.href = data.checkoutUrl;
+                } else {
+                    throw new Error(data.message || 'Failed to start subscription');
+                }
+            } catch (error) {
+                console.error('Subscribe error:', error);
+                alert(error.message || 'Failed to process subscription. Please try again.');
+
+                // Reset button
+                subscribeBtn.disabled = false;
+                subscribeBtn.innerHTML = `
+                    <i class="fas fa-star mr-2"></i>
+                    Subscribe for <span id="subscribePrice">$${(currentCreator.price / 100).toFixed(2)}</span>/mo
+                `;
+            }
         }
 
         /**
@@ -319,13 +386,29 @@
                 btn.href = link.url;
                 btn.target = '_blank';
                 btn.rel = 'noopener noreferrer';
-                btn.className = 'link-btn block w-full glass-card rounded-xl p-4 text-center hover:bg-white/10';
-                btn.innerHTML = `
-                    <div class="flex items-center justify-center gap-3">
-                        ${link.icon ? `<i class="${link.icon} text-accent-orange"></i>` : ''}
-                        <span class="font-medium">${link.title}</span>
-                    </div>
-                `;
+                btn.className = 'link-btn block w-full glass-card rounded-xl p-4 hover:bg-white/10';
+
+                if (link.thumbnail) {
+                    // Link with thumbnail - show image on left
+                    btn.innerHTML = `
+                        <div class="flex items-center gap-4">
+                            <img src="${link.thumbnail}" alt="" class="w-12 h-12 rounded-lg object-cover flex-shrink-0">
+                            <div class="flex-1 text-left">
+                                <div class="font-medium">${link.title}</div>
+                                ${link.description ? `<div class="text-gray-400 text-sm">${link.description}</div>` : ''}
+                            </div>
+                            <i class="fas fa-arrow-right text-gray-500"></i>
+                        </div>
+                    `;
+                } else {
+                    // Link without thumbnail - centered text
+                    btn.innerHTML = `
+                        <div class="flex items-center justify-center gap-3">
+                            ${link.icon ? `<i class="${link.icon} text-accent-orange"></i>` : ''}
+                            <span class="font-medium">${link.title}</span>
+                        </div>
+                    `;
+                }
                 container.appendChild(btn);
             });
         }

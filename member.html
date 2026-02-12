@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Dashboard | ClockWork</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        dark: { 900: '#0a0a0f', 800: '#12121a', 700: '#1a1a24', 600: '#22222e' },
+                        accent: { orange: '#ff6b35', pink: '#ff2d7a', purple: '#a855f7' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        body { background: linear-gradient(135deg, #0a0a0f 0%, #12121a 50%, #0a0a0f 100%); min-height: 100vh; }
+        .glass { background: rgba(26, 26, 36, 0.6); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .glass-card { background: rgba(34, 34, 46, 0.5); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.06); }
+        .gradient-text { background: linear-gradient(135deg, #ff6b35, #ff2d7a); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .gradient-border { position: relative; }
+        .gradient-border::before { content: ''; position: absolute; inset: 0; padding: 2px; background: linear-gradient(135deg, #ff6b35, #ff2d7a); border-radius: inherit; -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+        .stat-card { transition: transform 0.2s; }
+        .stat-card:hover { transform: translateY(-2px); }
+    </style>
+</head>
+<body class="text-white">
+    <!-- Navigation -->
+    <nav class="fixed top-0 left-0 right-0 z-50 glass">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+            <a href="/" class="flex items-center gap-2">
+                <i class="fas fa-bolt text-orange-500 text-2xl"></i>
+                <span class="text-xl font-bold">clockwork</span>
+            </a>
+            <div class="flex items-center gap-4">
+                <span id="userName" class="text-gray-400 text-sm hidden sm:block"></span>
+                <button onclick="logout()" class="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors text-sm">
+                    <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Loading State -->
+    <div id="loading" class="fixed inset-0 bg-dark-900 flex items-center justify-center z-40">
+        <div class="text-center">
+            <div class="w-16 h-16 border-4 border-accent-orange/30 border-t-accent-orange rounded-full animate-spin mx-auto mb-4"></div>
+            <p class="text-gray-400">Loading dashboard...</p>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main id="mainContent" class="hidden pt-24 pb-12 px-4">
+        <div class="max-w-6xl mx-auto">
+            <!-- Welcome Header -->
+            <div class="mb-8">
+                <h1 class="text-3xl font-bold mb-2">Welcome back, <span id="welcomeName" class="gradient-text"></span></h1>
+                <p class="text-gray-400">Manage your subscriptions and referrals</p>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div class="stat-card glass-card rounded-2xl p-5">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-r from-orange-500 to-pink-500 flex items-center justify-center">
+                            <i class="fas fa-star text-white"></i>
+                        </div>
+                    </div>
+                    <p id="subscriptionCount" class="text-2xl font-bold">0</p>
+                    <p class="text-gray-400 text-sm">Subscriptions</p>
+                </div>
+                <div class="stat-card glass-card rounded-2xl p-5">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-r from-green-500 to-emerald-400 flex items-center justify-center">
+                            <i class="fas fa-users text-white"></i>
+                        </div>
+                    </div>
+                    <p id="referralCount" class="text-2xl font-bold">0</p>
+                    <p class="text-gray-400 text-sm">Referrals</p>
+                </div>
+                <div class="stat-card glass-card rounded-2xl p-5">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-r from-purple-500 to-violet-400 flex items-center justify-center">
+                            <i class="fas fa-dollar-sign text-white"></i>
+                        </div>
+                    </div>
+                    <p id="totalEarnings" class="text-2xl font-bold">$0.00</p>
+                    <p class="text-gray-400 text-sm">Total Earnings</p>
+                </div>
+                <div class="stat-card glass-card rounded-2xl p-5">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 flex items-center justify-center">
+                            <i class="fas fa-wallet text-white"></i>
+                        </div>
+                    </div>
+                    <p id="pendingPayout" class="text-2xl font-bold">$0.00</p>
+                    <p class="text-gray-400 text-sm">Pending Payout</p>
+                </div>
+            </div>
+
+            <!-- Two Column Layout -->
+            <div class="grid md:grid-cols-2 gap-6">
+                <!-- My Referral Code -->
+                <div class="glass-card rounded-2xl p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-xl font-bold">My Referral Code</h2>
+                        <span class="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-xs font-semibold">Active</span>
+                    </div>
+
+                    <div id="referralCodeSection">
+                        <!-- Loading state -->
+                        <div id="referralLoading" class="text-center py-8">
+                            <div class="w-8 h-8 border-2 border-orange-500/30 border-t-orange-500 rounded-full animate-spin mx-auto mb-2"></div>
+                            <p class="text-gray-500 text-sm">Loading your code...</p>
+                        </div>
+
+                        <!-- Code display (hidden initially) -->
+                        <div id="referralCodeDisplay" class="hidden">
+                            <div class="bg-dark-900/50 rounded-xl p-4 mb-4">
+                                <p class="text-gray-400 text-xs uppercase tracking-wider mb-2">Your Code</p>
+                                <p id="myReferralCode" class="text-3xl font-black gradient-text tracking-wider">-</p>
+                            </div>
+
+                            <div class="bg-dark-900/30 rounded-xl p-3 mb-4 flex items-center gap-2">
+                                <input type="text" id="referralLink" readonly class="flex-1 bg-transparent text-gray-400 text-sm outline-none truncate">
+                                <button onclick="copyReferralLink()" id="copyLinkBtn" class="px-4 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap">
+                                    <i class="fas fa-copy mr-1"></i> Copy
+                                </button>
+                            </div>
+
+                            <!-- Share buttons -->
+                            <div class="flex gap-3">
+                                <a href="#" id="shareTwitter" target="_blank" class="flex-1 py-3 bg-[#1da1f2] rounded-xl text-center hover:opacity-90 transition-opacity">
+                                    <i class="fab fa-twitter mr-2"></i>Tweet
+                                </a>
+                                <a href="#" id="shareWhatsApp" target="_blank" class="flex-1 py-3 bg-[#25d366] rounded-xl text-center hover:opacity-90 transition-opacity">
+                                    <i class="fab fa-whatsapp mr-2"></i>Share
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- No code yet -->
+                        <div id="noReferralCode" class="hidden text-center py-8">
+                            <div class="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-link text-gray-600 text-2xl"></i>
+                            </div>
+                            <p class="text-gray-400 mb-4">You don't have a referral code yet</p>
+                            <button onclick="generateReferralCode()" class="px-6 py-3 bg-gradient-to-r from-orange-500 to-pink-500 rounded-xl font-semibold hover:opacity-90 transition-opacity">
+                                <i class="fas fa-magic mr-2"></i>Generate Code
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- My Subscriptions -->
+                <div class="glass-card rounded-2xl p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-xl font-bold">My Subscriptions</h2>
+                        <a href="/" class="text-orange-400 hover:text-orange-300 text-sm">
+                            <i class="fas fa-plus mr-1"></i>Browse
+                        </a>
+                    </div>
+
+                    <div id="subscriptionsList">
+                        <!-- Loading state -->
+                        <div id="subscriptionsLoading" class="text-center py-8">
+                            <div class="w-8 h-8 border-2 border-orange-500/30 border-t-orange-500 rounded-full animate-spin mx-auto mb-2"></div>
+                            <p class="text-gray-500 text-sm">Loading subscriptions...</p>
+                        </div>
+
+                        <!-- Subscriptions list (hidden initially) -->
+                        <div id="subscriptionsContent" class="hidden space-y-3">
+                            <!-- Will be populated by JS -->
+                        </div>
+
+                        <!-- No subscriptions -->
+                        <div id="noSubscriptions" class="hidden text-center py-8">
+                            <div class="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-user-plus text-gray-600 text-2xl"></i>
+                            </div>
+                            <p class="text-gray-400 mb-4">No active subscriptions</p>
+                            <a href="/" class="inline-block px-6 py-3 bg-gradient-to-r from-orange-500 to-pink-500 rounded-xl font-semibold hover:opacity-90 transition-opacity">
+                                <i class="fas fa-compass mr-2"></i>Discover Creators
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Referral Activity -->
+            <div class="glass-card rounded-2xl p-6 mt-6">
+                <h2 class="text-xl font-bold mb-6">Recent Activity</h2>
+                <div id="activityList">
+                    <!-- Loading state -->
+                    <div id="activityLoading" class="text-center py-8">
+                        <div class="w-8 h-8 border-2 border-orange-500/30 border-t-orange-500 rounded-full animate-spin mx-auto mb-2"></div>
+                        <p class="text-gray-500 text-sm">Loading activity...</p>
+                    </div>
+
+                    <!-- Activity content -->
+                    <div id="activityContent" class="hidden space-y-3">
+                        <!-- Will be populated by JS -->
+                    </div>
+
+                    <!-- No activity -->
+                    <div id="noActivity" class="hidden text-center py-8">
+                        <div class="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-clock text-gray-600 text-2xl"></i>
+                        </div>
+                        <p class="text-gray-400">No recent activity</p>
+                        <p class="text-gray-500 text-sm mt-1">Share your referral code to start earning!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="py-8 text-center border-t border-white/5">
+        <a href="/" class="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
+            <i class="fas fa-bolt text-orange-500"></i>
+            <span class="font-medium">Powered by <span class="gradient-text font-bold">ClockWork</span></span>
+        </a>
+    </footer>
+
+    <script>
+        // Configuration
+        const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:5000' : '';
+
+        // Check auth on page load
+        async function init() {
+            const token = localStorage.getItem('authToken');
+            const user = localStorage.getItem('user');
+
+            if (!token || !user) {
+                // Not logged in, redirect to home
+                window.location.href = '/';
+                return;
+            }
+
+            const userData = JSON.parse(user);
+
+            // Update UI with user info
+            document.getElementById('userName').textContent = userData.email;
+            document.getElementById('welcomeName').textContent = userData.firstName || userData.email.split('@')[0];
+
+            // Hide loading, show content
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('mainContent').classList.remove('hidden');
+
+            // Load data in parallel
+            await Promise.all([
+                loadReferralCode(),
+                loadSubscriptions(),
+                loadEarnings(),
+                loadActivity()
+            ]);
+        }
+
+        // Load referral code
+        async function loadReferralCode() {
+            const token = localStorage.getItem('authToken');
+
+            try {
+                const response = await fetch(`${API_BASE}/api/earnings/referral-code`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.referralCode) {
+                        showReferralCode(data.referralCode);
+                    } else {
+                        showNoReferralCode();
+                    }
+                } else {
+                    showNoReferralCode();
+                }
+            } catch (error) {
+                console.error('Error loading referral code:', error);
+                showNoReferralCode();
+            }
+
+            document.getElementById('referralLoading').classList.add('hidden');
+        }
+
+        function showReferralCode(code) {
+            document.getElementById('referralCodeDisplay').classList.remove('hidden');
+            document.getElementById('noReferralCode').classList.add('hidden');
+            document.getElementById('myReferralCode').textContent = code;
+
+            const link = `${window.location.origin}/?ref=${code}`;
+            document.getElementById('referralLink').value = link;
+
+            // Update share links
+            const shareText = `Join ClockWork and get fit! Use my code ${code} for a special bonus.`;
+            const encodedUrl = encodeURIComponent(link);
+            const encodedText = encodeURIComponent(shareText);
+
+            document.getElementById('shareTwitter').href =
+                `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`;
+            document.getElementById('shareWhatsApp').href =
+                `https://wa.me/?text=${encodedText}%20${encodedUrl}`;
+        }
+
+        function showNoReferralCode() {
+            document.getElementById('referralCodeDisplay').classList.add('hidden');
+            document.getElementById('noReferralCode').classList.remove('hidden');
+        }
+
+        async function generateReferralCode() {
+            const token = localStorage.getItem('authToken');
+
+            try {
+                const response = await fetch(`${API_BASE}/api/earnings/referral-code`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    showReferralCode(data.referralCode);
+                } else {
+                    alert('Failed to generate referral code. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error generating referral code:', error);
+                alert('Failed to generate referral code. Please try again.');
+            }
+        }
+
+        function copyReferralLink() {
+            const link = document.getElementById('referralLink').value;
+            navigator.clipboard.writeText(link).then(() => {
+                const btn = document.getElementById('copyLinkBtn');
+                btn.innerHTML = '<i class="fas fa-check mr-1"></i> Copied!';
+                btn.classList.remove('bg-orange-500');
+                btn.classList.add('bg-green-500');
+                setTimeout(() => {
+                    btn.innerHTML = '<i class="fas fa-copy mr-1"></i> Copy';
+                    btn.classList.remove('bg-green-500');
+                    btn.classList.add('bg-orange-500');
+                }, 2000);
+            });
+        }
+
+        // Load subscriptions
+        async function loadSubscriptions() {
+            const token = localStorage.getItem('authToken');
+
+            try {
+                const response = await fetch(`${API_BASE}/api/user/subscriptions`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                document.getElementById('subscriptionsLoading').classList.add('hidden');
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const subscriptions = data.subscriptions || [];
+
+                    document.getElementById('subscriptionCount').textContent = subscriptions.length;
+
+                    if (subscriptions.length > 0) {
+                        renderSubscriptions(subscriptions);
+                    } else {
+                        document.getElementById('noSubscriptions').classList.remove('hidden');
+                    }
+                } else {
+                    document.getElementById('noSubscriptions').classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Error loading subscriptions:', error);
+                document.getElementById('subscriptionsLoading').classList.add('hidden');
+                document.getElementById('noSubscriptions').classList.remove('hidden');
+            }
+        }
+
+        function renderSubscriptions(subscriptions) {
+            const container = document.getElementById('subscriptionsContent');
+            container.classList.remove('hidden');
+
+            container.innerHTML = subscriptions.map(sub => `
+                <a href="/@${sub.coach?.handle || sub.coachId}" class="flex items-center gap-4 p-3 rounded-xl bg-dark-900/30 hover:bg-dark-900/50 transition-colors">
+                    <img src="${sub.coach?.profilePicture || 'https://ui-avatars.com/api/?background=ff6b35&color=fff&size=48&name=' + encodeURIComponent(sub.coach?.name || 'Creator')}"
+                        alt="${sub.coach?.name}" class="w-12 h-12 rounded-full object-cover">
+                    <div class="flex-1 min-w-0">
+                        <p class="font-semibold truncate">${sub.coach?.name || 'Creator'}</p>
+                        <p class="text-gray-400 text-sm">@${sub.coach?.handle || 'creator'}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-orange-400 font-semibold">$${(sub.amount / 100).toFixed(2)}/mo</p>
+                        <p class="text-gray-500 text-xs">${sub.status}</p>
+                    </div>
+                </a>
+            `).join('');
+        }
+
+        // Load earnings
+        async function loadEarnings() {
+            const token = localStorage.getItem('authToken');
+
+            try {
+                const response = await fetch(`${API_BASE}/api/earnings/summary`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('totalEarnings').textContent = `$${(data.totalEarnings / 100).toFixed(2)}`;
+                    document.getElementById('pendingPayout').textContent = `$${(data.pendingPayout / 100).toFixed(2)}`;
+                    document.getElementById('referralCount').textContent = data.referralCount || 0;
+                }
+            } catch (error) {
+                console.error('Error loading earnings:', error);
+            }
+        }
+
+        // Load activity
+        async function loadActivity() {
+            const token = localStorage.getItem('authToken');
+
+            try {
+                const response = await fetch(`${API_BASE}/api/earnings/activity`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                document.getElementById('activityLoading').classList.add('hidden');
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const activities = data.activities || [];
+
+                    if (activities.length > 0) {
+                        renderActivity(activities);
+                    } else {
+                        document.getElementById('noActivity').classList.remove('hidden');
+                    }
+                } else {
+                    document.getElementById('noActivity').classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Error loading activity:', error);
+                document.getElementById('activityLoading').classList.add('hidden');
+                document.getElementById('noActivity').classList.remove('hidden');
+            }
+        }
+
+        function renderActivity(activities) {
+            const container = document.getElementById('activityContent');
+            container.classList.remove('hidden');
+
+            container.innerHTML = activities.slice(0, 10).map(activity => {
+                const icon = activity.type === 'referral_signup' ? 'fa-user-plus' :
+                            activity.type === 'commission' ? 'fa-dollar-sign' :
+                            activity.type === 'payout' ? 'fa-wallet' : 'fa-bell';
+                const iconColor = activity.type === 'referral_signup' ? 'from-green-500 to-emerald-400' :
+                                 activity.type === 'commission' ? 'from-purple-500 to-violet-400' :
+                                 activity.type === 'payout' ? 'from-blue-500 to-cyan-400' : 'from-orange-500 to-pink-500';
+
+                return `
+                    <div class="flex items-center gap-4 p-3 rounded-xl bg-dark-900/30">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-r ${iconColor} flex items-center justify-center flex-shrink-0">
+                            <i class="fas ${icon} text-white text-sm"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="font-medium truncate">${activity.description || activity.type}</p>
+                            <p class="text-gray-500 text-xs">${new Date(activity.createdAt).toLocaleDateString()}</p>
+                        </div>
+                        ${activity.amount ? `<p class="text-green-400 font-semibold">+$${(activity.amount / 100).toFixed(2)}</p>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Logout
+        function logout() {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('user');
+            window.location.href = '/';
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
