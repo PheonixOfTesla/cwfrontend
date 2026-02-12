@@ -380,6 +380,9 @@
             const [earnerTypeFilter, setEarnerTypeFilter] = useState('');
             const [newVIPEmail, setNewVIPEmail] = useState('');
             const [message, setMessage] = useState(null);
+            const [showCreateUserModal, setShowCreateUserModal] = useState(false);
+            const [createUserForm, setCreateUserForm] = useState({ name: '', email: '', userType: 'member' });
+            const [creatingUser, setCreatingUser] = useState(false);
 
             const loadStats = useCallback(async () => {
                 try {
@@ -578,6 +581,25 @@
                     loadCoachApplications();
                 } catch (err) {
                     showMessage(err.message, 'error');
+                }
+            };
+
+            const handleCreateUser = async (e) => {
+                e.preventDefault();
+                setCreatingUser(true);
+                try {
+                    const res = await api.fetch('/admin/users/create', {
+                        method: 'POST',
+                        body: JSON.stringify(createUserForm)
+                    });
+                    showMessage(`User created successfully! Temporary password emailed to ${createUserForm.email}`);
+                    setShowCreateUserModal(false);
+                    setCreateUserForm({ name: '', email: '', userType: 'member' });
+                    loadUsers(); // Reload users list
+                } catch (err) {
+                    showMessage(err.message, 'error');
+                } finally {
+                    setCreatingUser(false);
                 }
             };
 
@@ -782,8 +804,18 @@
                         {/* Users Tab */}
                         {activeTab === 'users' && (
                             <div className="space-y-4">
-                                {/* Filters */}
+                                {/* Filters and Create Button */}
                                 <div className="glass rounded-xl p-4">
+                                    <div className="flex flex-wrap gap-4 items-center justify-between mb-4">
+                                        <h3 className="text-lg font-bold">User Management</h3>
+                                        <button
+                                            onClick={() => setShowCreateUserModal(true)}
+                                            className="bg-gradient-to-r from-orange-500 to-pink-500 hover:opacity-90 text-white px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-2"
+                                        >
+                                            <i className="fas fa-user-plus"></i>
+                                            Create User
+                                        </button>
+                                    </div>
                                     <div className="flex flex-wrap gap-4">
                                         <div className="flex-1 min-w-[200px]">
                                             <input
@@ -1236,6 +1268,89 @@
                             </div>
                         )}
                     </main>
+
+                    {/* Create User Modal */}
+                    {showCreateUserModal && (
+                        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setShowCreateUserModal(false)}>
+                            <div className="glass rounded-xl p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-xl font-bold">Create New User</h3>
+                                    <button onClick={() => setShowCreateUserModal(false)} className="text-gray-400 hover:text-white">
+                                        <i className="fas fa-times"></i>
+                                    </button>
+                                </div>
+
+                                <form onSubmit={handleCreateUser} className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Full Name</label>
+                                        <input
+                                            type="text"
+                                            value={createUserForm.name}
+                                            onChange={(e) => setCreateUserForm({...createUserForm, name: e.target.value})}
+                                            required
+                                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500"
+                                            placeholder="John Doe"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Email Address</label>
+                                        <input
+                                            type="email"
+                                            value={createUserForm.email}
+                                            onChange={(e) => setCreateUserForm({...createUserForm, email: e.target.value})}
+                                            required
+                                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500"
+                                            placeholder="john@example.com"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">User Tier</label>
+                                        <select
+                                            value={createUserForm.userType}
+                                            onChange={(e) => setCreateUserForm({...createUserForm, userType: e.target.value})}
+                                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500"
+                                        >
+                                            <option value="member">Member (Free - Browse Only)</option>
+                                            <option value="individual">Individual (Paid - AI Coach Access)</option>
+                                            <option value="coach">Coach (Creator + Coaching)</option>
+                                            <option value="influencer">Influencer (Creator + Referrals)</option>
+                                            <option value="client">Client (Assigned to Coach)</option>
+                                        </select>
+                                    </div>
+
+                                    <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+                                        <p className="text-blue-300 text-sm flex items-start gap-2">
+                                            <i className="fas fa-info-circle mt-0.5"></i>
+                                            <span>A temporary password will be generated and emailed to the user. They must reset it on first login.</span>
+                                        </p>
+                                    </div>
+
+                                    <div className="flex gap-3 pt-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowCreateUserModal(false)}
+                                            className="flex-1 bg-white/5 hover:bg-white/10 text-white font-semibold py-2 rounded-lg transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            disabled={creatingUser}
+                                            className="flex-1 bg-gradient-to-r from-orange-500 to-pink-500 hover:opacity-90 text-white font-semibold py-2 rounded-lg transition-all disabled:opacity-50"
+                                        >
+                                            {creatingUser ? (
+                                                <><i className="fas fa-spinner fa-spin mr-2"></i>Creating...</>
+                                            ) : (
+                                                <><i className="fas fa-user-plus mr-2"></i>Create User</>
+                                            )}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         }
