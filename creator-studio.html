@@ -818,18 +818,19 @@
         }
 
         // Links Tab - Linktree-style Manager
-        function LinksTab() {
-            const [links, setLinks] = useState([
-                { id: 1, title: 'My Fitness Program', url: 'https://clockwork.fit/program', clicks: 234, active: true },
-                { id: 2, title: 'Free Workout Guide', url: 'https://clockwork.fit/guide', clicks: 567, active: true },
-                { id: 3, title: 'Instagram', url: 'https://instagram.com/creator', clicks: 123, active: true }
-            ]);
+        function LinksTab({ profile, onUpdate }) {
+            const [links, setLinks] = useState([]);
             const [editingLink, setEditingLink] = useState(null);
             const [newLink, setNewLink] = useState({ title: '', url: '', thumbnail: null });
             const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
             const [draggedItem, setDraggedItem] = useState(null);
             const [referralCode, setReferralCode] = useState(null);
             const [copyMessage, setCopyMessage] = useState('');
+
+            useEffect(() => {
+                // Load initial links from the profile prop
+                setLinks(profile?.coachProfile?.links || []);
+            }, [profile]);
 
             useEffect(() => {
                 const loadReferralCode = async () => {
@@ -844,6 +845,23 @@
                 };
                 loadReferralCode();
             }, []);
+            
+            const saveLinks = async (updatedLinks) => {
+                try {
+                    await api.fetch('/coach/profile', {
+                        method: 'PUT',
+                        body: JSON.stringify({
+                            coachProfile: {
+                                links: updatedLinks
+                            }
+                        })
+                    });
+                    onUpdate(); // Trigger a refresh of all profile data
+                } catch (error) {
+                    console.error("Failed to save links:", error);
+                    alert("Could not save link changes. Please try again.");
+                }
+            };
 
             const copyToClipboard = (text, label) => {
                 navigator.clipboard.writeText(text).then(() => {
@@ -862,8 +880,7 @@
                 if (draggedItem === null || draggedItem === index) return;
 
                 const newLinks = [...links];
-                const item = newLinks[draggedItem];
-                newLinks.splice(draggedItem, 1);
+                const item = newLinks.splice(draggedItem, 1)[0];
                 newLinks.splice(index, 0, item);
                 setLinks(newLinks);
                 setDraggedItem(index);
@@ -871,11 +888,7 @@
 
             const handleDragEnd = () => {
                 setDraggedItem(null);
-                // Save new order to API
-                api.fetch('/coach/links', {
-                    method: 'PUT',
-                    body: JSON.stringify({ links })
-                }).catch(console.error);
+                saveLinks(links);
             };
 
             const uploadThumbnail = async (file, forEditing = false) => {
@@ -909,42 +922,27 @@
                 const updatedLinks = [...links, link];
                 setLinks(updatedLinks);
                 setNewLink({ title: '', url: '', thumbnail: null });
-                // Save to API
-                api.fetch('/coach/links', {
-                    method: 'PUT',
-                    body: JSON.stringify({ links: updatedLinks })
-                }).catch(console.error);
+                saveLinks(updatedLinks);
             };
 
             const deleteLink = (id) => {
                 const updatedLinks = links.filter(l => l.id !== id);
                 setLinks(updatedLinks);
-                // Save to API
-                api.fetch('/coach/links', {
-                    method: 'PUT',
-                    body: JSON.stringify({ links: updatedLinks })
-                }).catch(console.error);
+                saveLinks(updatedLinks);
             };
 
             const toggleActive = (id) => {
                 const updatedLinks = links.map(l => l.id === id ? { ...l, active: !l.active } : l);
                 setLinks(updatedLinks);
-                // Save to API
-                api.fetch('/coach/links', {
-                    method: 'PUT',
-                    body: JSON.stringify({ links: updatedLinks })
-                }).catch(console.error);
+                saveLinks(updatedLinks);
             };
 
             const updateLink = () => {
                 if (!editingLink.title || !editingLink.url) return;
-                setLinks(links.map(l => l.id === editingLink.id ? editingLink : l));
+                const updatedLinks = links.map(l => l.id === editingLink.id ? editingLink : l);
+                setLinks(updatedLinks);
                 setEditingLink(null);
-                // Save to API
-                api.fetch('/coach/links', {
-                    method: 'PUT',
-                    body: JSON.stringify({ links: links.map(l => l.id === editingLink.id ? editingLink : l) })
-                }).catch(console.error);
+                saveLinks(updatedLinks);
             };
 
             return (
@@ -1105,7 +1103,7 @@
                         <div className="space-y-3">
                             {links.map((link, index) => (
                                 <div
-                                    key={link.id}
+                                    key={link.id || index}
                                     draggable
                                     onDragStart={e => handleDragStart(e, index)}
                                     onDragOver={e => handleDragOver(e, index)}
@@ -1128,7 +1126,7 @@
                                             <div className="text-gray-500 text-sm truncate">{link.url}</div>
                                         </div>
                                         <div className="text-sm text-gray-400">
-                                            <i className="fas fa-mouse-pointer mr-1"></i>{link.clicks}
+                                            <i className="fas fa-mouse-pointer mr-1"></i>{link.clicks || 0}
                                         </div>
                                         <button
                                             onClick={() => toggleActive(link.id)}
@@ -2179,7 +2177,7 @@
                         {activeTab === 'dashboard' && <DashboardTab profile={profile} earnings={earnings} onEarningsUpdate={loadData} />}
                         {activeTab === 'create' && <CreateTab onPostCreate={loadData} />}
                         {activeTab === 'content' && <ContentTab />}
-                        {activeTab === 'links' && <LinksTab />}
+                        {activeTab === 'links' && <LinksTab profile={profile} onUpdate={loadData} />}
                         {activeTab === 'analytics' && <AnalyticsTab earnings={earnings} />}
                         {activeTab === 'payouts' && <PayoutsTab earnings={earnings} />}
                         {activeTab === 'profile' && <ProfileTab profile={profile} onUpdate={loadData} />}
