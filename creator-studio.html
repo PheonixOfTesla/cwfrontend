@@ -893,18 +893,18 @@
                 setUploadingThumbnail(true);
                 try {
                     const formData = new FormData();
-                    formData.append('image', file);
-                    const res = await fetch(`${API_BASE}/upload/image`, {
+                    formData.append('file', file);
+                    const res = await fetch(`${API_BASE}/upload/media`, {
                         method: 'POST',
                         credentials: 'include',
                         body: formData
                     });
                     const data = await res.json();
-                    if (data.success && data.url) {
+                    if (data.success && data.data.url) {
                         if (forEditing && editingLink) {
-                            setEditingLink({ ...editingLink, thumbnail: data.url });
+                            setEditingLink({ ...editingLink, thumbnail: data.data.url });
                         } else {
-                            setNewLink({ ...newLink, thumbnail: data.url });
+                            setNewLink({ ...newLink, thumbnail: data.data.url });
                         }
                     }
                 } catch (err) {
@@ -1680,7 +1680,7 @@
                         const formData = new FormData();
                         formData.append('file', file);
 
-                        const uploadRes = await fetch(`${API_BASE}/upload/image`, {
+                        const uploadRes = await fetch(`${API_BASE}/upload/media`, {
                             method: 'POST',
                             credentials: 'include',
                             body: formData

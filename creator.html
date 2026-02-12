@@ -256,7 +256,7 @@
                             btn.disabled = false;
                             const priceFormatted = `$${(currentCreator.price / 100).toFixed(2)}`;
                             btn.innerHTML = `<i class="fas fa-star mr-2"></i> Subscribe for <span id="subscribePrice">${priceFormatted}</span>/mo`;
-                            handleSubscribe(); // Re-trigger which shows auth modal
+                            SubscriptionManager.handleSubscribeClick(); // Re-trigger which shows auth modal
                             return;
                         }
 
