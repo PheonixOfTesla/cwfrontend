@@ -317,7 +317,8 @@
                 const response = await fetch(`${API_BASE}/api/coach/${currentCreator.id}/subscribe`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include' // Use cookie-based auth
+                    credentials: 'include', // Use cookie-based auth
+                    body: JSON.stringify({ tier: 'content' }) // Subscribe to content tier
                 });
 
                 const data = await response.json();
