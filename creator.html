@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -25,521 +26,276 @@
         .glass { background: rgba(26, 26, 36, 0.6); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.08); }
         .glass-card { background: rgba(34, 34, 46, 0.5); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.06); }
         .gradient-text { background: linear-gradient(135deg, #ff6b35, #ff2d7a); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        .gradient-border { position: relative; }
-        .gradient-border::before { content: ''; position: absolute; inset: 0; padding: 2px; background: linear-gradient(135deg, #ff6b35, #ff2d7a); border-radius: inherit; -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
-        .link-btn { transition: all 0.3s ease; }
-        .link-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(255, 107, 53, 0.3); }
-        .social-icon { transition: all 0.2s ease; }
-        .social-icon:hover { transform: scale(1.15); }
-        .copy-btn { transition: all 0.2s ease; }
-        .copy-btn:hover { background: rgba(255, 107, 53, 0.2); }
-        .post-card { transition: all 0.3s ease; position: relative; }
-        .post-card:hover { transform: scale(1.02); }
-        .post-card.locked img { filter: blur(20px); }
-        .post-card.locked .lock-overlay {
-            position: absolute; inset: 0;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            background: rgba(0,0,0,0.4); border-radius: inherit;
-        }
-        .post-card.locked .lock-icon {
-            width: 40px; height: 40px;
-            background: linear-gradient(135deg, #ff6b35, #ff2d7a);
-            border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            margin-bottom: 8px;
-        }
-        .post-card.locked .lock-text { font-size: 10px; color: white; font-weight: 600; text-transform: uppercase; }
-        .shimmer { background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0) 100%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
-        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-        .verified-badge { display: inline-flex; align-items: center; justify-content: center; }
-    </style>
-</head>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-        * { font-family: 'Inter', sans-serif; }
-        body { background: linear-gradient(135deg, #0a0a0f 0%, #12121a 50%, #0a0a0f 100%); min-height: 100vh; }
-        .glass { background: rgba(26, 26, 36, 0.6); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.08); }
-        .glass-card { background: rgba(34, 34, 46, 0.5); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.06); }
-        .gradient-text { background: linear-gradient(135deg, #ff6b35, #ff2d7a); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        .gradient-border { position: relative; }
-        .gradient-border::before { content: ''; position: absolute; inset: 0; padding: 2px; background: linear-gradient(135deg, #ff6b35, #ff2d7a); border-radius: inherit; -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
-        .link-btn { transition: all 0.3s ease; }
-        .link-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(255, 107, 53, 0.3); }
-        .social-icon { transition: all 0.2s ease; }
-        .social-icon:hover { transform: scale(1.15); }
-        .copy-btn { transition: all 0.2s ease; }
-        .copy-btn:hover { background: rgba(255, 107, 53, 0.2); }
-        .post-card { transition: all 0.3s ease; position: relative; }
-        .post-card:hover { transform: scale(1.02); }
-        .post-card.locked img { filter: blur(20px); }
-        .post-card.text-post.locked .post-text { filter: blur(5px); user-select: none; }
-        .post-card.locked .lock-overlay {
-            position: absolute; inset: 0;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            background: rgba(0,0,0,0.4); border-radius: inherit;
-        }
-        .post-card.locked .lock-icon {
-            width: 40px; height: 40px;
-            background: linear-gradient(135deg, #ff6b35, #ff2d7a);
-            border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            margin-bottom: 8px;
-        }
-        .post-card.locked .lock-text { font-size: 10px; color: white; font-weight: 600; text-transform: uppercase; }
-        .shimmer { background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0) 100%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
-        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-        .verified-badge { display: inline-flex; align-items: center; justify-content: center; }
+        .post-card.locked img, .post-card.text-post.locked .post-text { filter: blur(8px); }
+        .post-card.locked .lock-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.4); border-radius: inherit; }
+        .post-card.locked .lock-icon { width: 40px; height: 40px; background: linear-gradient(135deg, #ff6b35, #ff2d7a); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; }
+        #authModalV2 { transition: opacity 0.3s ease; }
+        #authModalV2 .modal-content { transition: transform 0.3s ease; }
     </style>
 </head>
 <body class="text-white">
-    <!-- Loading State -->
-    <div id="loading" class="fixed inset-0 bg-dark-900 flex items-center justify-center z-50">
-        <div class="text-center">
-            <div class="w-16 h-16 border-4 border-accent-orange/30 border-t-accent-orange rounded-full animate-spin mx-auto mb-4"></div>
-            <p class="text-gray-400">Loading profile...</p>
-        </div>
+    <!-- Main Content (visible by default) -->
+    <div id="pageContent">
+        <!-- Loading, Error, and Main Content sections go here -->
     </div>
 
-    <!-- Error State -->
-    <div id="error" class="fixed inset-0 bg-dark-900 flex items-center justify-center z-50 hidden">
-        <div class="text-center px-6">
-            <div class="w-20 h-20 rounded-full bg-dark-800 flex items-center justify-center mx-auto mb-4">
-                <i class="fas fa-user-slash text-3xl text-gray-500"></i>
-            </div>
-            <h2 class="text-2xl font-bold mb-2">Creator Not Found</h2>
-            <p class="text-gray-400 mb-6">This profile doesn't exist or has been removed.</p>
-            <a href="/" class="inline-flex items-center gap-2 px-6 py-3 bg-dark-700 text-white rounded-xl font-semibold hover:bg-dark-600 transition">
-                <i class="fas fa-home"></i> Go Home
-            </a>
-        </div>
-    </div>
-
-    <!-- Main Content -->
-    <div id="content" class="hidden">
-        <!-- Cover Banner -->
-        <div class="relative h-48 sm:h-56 md:h-64">
-            <img id="coverImage" src="" alt="Cover" class="w-full h-full object-cover">
-            <div class="absolute inset-0 bg-gradient-to-t from-dark-900 via-transparent to-transparent"></div>
-        </div>
-
-        <!-- Profile Section -->
-        <div class="max-w-lg mx-auto px-4 -mt-16 relative z-10">
-            <!-- Profile Picture -->
-            <div class="flex justify-center mb-4">
-                <div class="relative">
-                    <div class="w-32 h-32 rounded-full gradient-border p-1">
-                        <img id="profilePicture" src="" alt="Profile" class="w-full h-full rounded-full object-cover bg-dark-700">
-                    </div>
-                    <div id="verifiedBadge" class="absolute -bottom-1 -right-1 w-8 h-8 bg-gradient-to-r from-accent-orange to-accent-pink rounded-full flex items-center justify-center hidden">
-                        <i class="fas fa-check text-white text-sm"></i>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Name & Handle -->
-            <div class="text-center mb-4">
-                <h1 id="creatorName" class="text-2xl sm:text-3xl font-bold mb-1"></h1>
-                <p id="creatorHandle" class="text-gray-400"></p>
-            </div>
-
-            <!-- Bio -->
-            <p id="creatorBio" class="text-center text-gray-300 mb-6 px-4 leading-relaxed"></p>
-
-            <!-- Social Icons -->
-            <div id="socialIcons" class="flex justify-center gap-4 mb-6">
-                <!-- Populated by JS -->
-            </div>
-
-            <!-- Subscribe Button -->
-            <div id="subscribeSection" class="mb-6">
-                <button id="subscribeBtn" class="w-full py-4 px-6 bg-gradient-to-r from-accent-orange to-accent-pink rounded-xl font-bold text-lg shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all">
-                    <i class="fas fa-star mr-2"></i>
-                    Subscribe for <span id="subscribePrice">$9.99</span>/mo
+    <!-- NEW SELF-CONTAINED AUTH MODAL -->
+    <div id="authModalV2" class="fixed inset-0 z-[9999] hidden items-center justify-center bg-black/80 backdrop-blur-sm" onclick="AuthModal.close()">
+        <div class="modal-content w-full max-w-md scale-95 transform" onclick="event.stopPropagation()">
+            <div class="relative bg-[#12121a] rounded-2xl border border-white/10 shadow-2xl">
+                <button onclick="AuthModal.close()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors z-10">
+                    <i class="fas fa-times text-white"></i>
                 </button>
-                <p class="text-center text-gray-500 text-xs mt-2">Cancel anytime • Secure payment via Stripe</p>
-            </div>
-
-            <!-- Referral Code Card -->
-            <div id="referralCard" class="glass-card rounded-2xl p-5 mb-6 hidden">
-                <div class="text-center mb-3">
-                    <span class="text-xs uppercase tracking-wider text-gray-400 font-medium">Use my code for exclusive perks</span>
+                <div id="authModalV2_Header" class="p-6 text-center"></div>
+                <div class="flex border-b border-white/10 mx-6">
+                    <button id="authModalV2_loginTab" onclick="AuthModal.switchMode('login')" class="flex-1 py-3 text-center font-semibold transition-colors border-b-2">Log In</button>
+                    <button id="authModalV2_signupTab" onclick="AuthModal.switchMode('signup')" class="flex-1 py-3 text-center font-semibold transition-colors border-b-2">Sign Up</button>
                 </div>
-                <div class="flex items-center justify-between bg-dark-900/50 rounded-xl p-4">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-lg bg-gradient-to-r from-accent-orange to-accent-pink flex items-center justify-center">
-                            <i class="fas fa-gift text-white"></i>
-                        </div>
-                        <div>
-                            <p class="text-xs text-gray-400">Referral Code</p>
-                            <p id="referralCode" class="text-xl font-bold gradient-text"></p>
-                        </div>
-                    </div>
-                    <button id="copyCodeBtn" class="copy-btn px-4 py-2 rounded-lg bg-white/5 border border-white/10 hover:border-accent-orange/50 flex items-center gap-2">
-                        <i class="fas fa-copy text-accent-orange"></i>
-                        <span class="text-sm">Copy</span>
-                    </button>
+                <div class="p-6">
+                    <div id="authModalV2_Error" class="hidden mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-xl text-red-400 text-sm"></div>
+                    <form id="authModalV2_loginForm" class="space-y-4"></form>
+                    <form id="authModalV2_signupForm" class="space-y-4 hidden"></form>
                 </div>
             </div>
-
-            <!-- Links Section -->
-            <div id="linksSection" class="space-y-3 mb-8">
-                <!-- Populated by JS -->
-            </div>
-
-            <!-- This is the container for posts or a paywall -->
-            <div id="post-area" class="mb-8"></div>
         </div>
-
-        <!-- Footer -->
-        <footer class="py-8 text-center border-t border-white/5 mt-8">
-            <a href="/" class="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
-                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
-                    <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                </svg>
-                <span class="font-medium">Powered by <span class="gradient-text font-bold">ClockWork</span></span>
-            </a>
-            <p class="text-gray-500 text-xs mt-2">Create your own link-in-bio</p>
-        </footer>
     </div>
-
-    <!-- Auth Modal Component -->
-    <script src="/auth-modal.js"></script>
-
-    <!-- FINAL, CORRECTED SCRIPT -->
+    
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // --- CONFIGURATION ---
             const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:5000' : '';
-            const DEFAULT_COVER_IMAGE = 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1200&h=400&fit=crop';
-            const DEFAULT_AVATAR_API = 'https://ui-avatars.com/api/?background=ff6b35&color=fff&size=256&name=';
-            
-            // --- STATE ---
             let currentCreator = null;
-            let currentUserSubscription = null;
 
-            // --- DOM ELEMENTS ---
-            const DOMElements = {
-                loading: document.getElementById('loading'),
-                error: document.getElementById('error'),
-                content: document.getElementById('content'),
-                subscribeSection: document.getElementById('subscribeSection'),
-                subscribeBtn: document.getElementById('subscribeBtn'),
-                postArea: document.getElementById('post-area'),
-            };
+            // --- NEW SELF-CONTAINED AUTH MODAL LOGIC ---
+            const AuthModal = {
+                isOpen: false,
+                onSuccessCallback: null,
 
-            // --- HELPER FUNCTIONS ---
-            const getHandle = () => {
-                let match = window.location.pathname.match(/^\/@(.+?)\/?$/) || window.location.pathname.match(/\/creator\/(.+?)\/?$/);
-                if (match) return decodeURIComponent(match[1]);
-                return new URLSearchParams(window.location.search).get('handle');
-            };
+                init() {
+                    this.loginForm = document.getElementById('authModalV2_loginForm');
+                    this.signupForm = document.getElementById('authModalV2_signupForm');
+                    this.errorEl = document.getElementById('authModalV2_Error');
+                    this.loginForm.innerHTML = `
+                        <div>
+                            <input type="email" name="email" required placeholder="Email" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-orange-500">
+                        </div>
+                        <div>
+                            <input type="password" name="password" required placeholder="Password" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-orange-500">
+                        </div>
+                        <button type="submit" class="w-full py-3 bg-gradient-to-r from-orange-500 to-pink-500 rounded-xl font-bold text-white hover:opacity-90">Log In</button>`;
+                    this.signupForm.innerHTML = `
+                        <div>
+                            <input type="text" name="name" required placeholder="Your Name" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-orange-500">
+                        </div>
+                        <div>
+                            <input type="email" name="email" required placeholder="Email" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-orange-500">
+                        </div>
+                        <div>
+                            <input type="password" name="password" required placeholder="Create Password" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-orange-500">
+                        </div>
+                        <button type="submit" class="w-full py-3 bg-gradient-to-r from-orange-500 to-pink-500 rounded-xl font-bold text-white hover:opacity-90">Create Account</button>`;
+                    
+                    this.loginForm.addEventListener('submit', this.handleLogin.bind(this));
+                    this.signupForm.addEventListener('submit', this.handleSignup.bind(this));
+                },
 
-            const safeSet = (elementId, property, value) => {
-                const element = document.getElementById(elementId);
-                if (element && value !== undefined && value !== null) {
-                    element[property] = value;
-                }
-            };
-            
-            // --- SUBSCRIPTION MANAGER ---
-            const SubscriptionManager = {
-                handleSubscribeClick: function() {
-                    if (!currentCreator) return;
+                open(onSuccess) {
+                    this.onSuccessCallback = onSuccess;
+                    const modal = document.getElementById('authModalV2');
+                    const header = document.getElementById('authModalV2_Header');
+                    header.innerHTML = `<h2 class="text-xl font-bold">Log In or Sign Up</h2><p class="text-gray-400 text-sm">to subscribe to ${currentCreator.name}</p>`;
+                    
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+                    setTimeout(() => {
+                        modal.classList.remove('opacity-0');
+                        modal.querySelector('.modal-content').classList.remove('scale-95');
+                    }, 10);
+                    this.isOpen = true;
+                    this.switchMode('login');
+                },
 
-                    if (AuthModal.isLoggedIn()) {
-                        this.createCheckoutSession();
+                close() {
+                    const modal = document.getElementById('authModalV2');
+                    modal.classList.add('opacity-0');
+                    modal.querySelector('.modal-content').classList.add('scale-95');
+                    setTimeout(() => {
+                        modal.classList.add('hidden');
+                        modal.classList.remove('flex');
+                    }, 300);
+                    this.isOpen = false;
+                },
+
+                switchMode(mode) {
+                    this.errorEl.classList.add('hidden');
+                    const loginTab = document.getElementById('authModalV2_loginTab');
+                    const signupTab = document.getElementById('authModalV2_signupTab');
+                    if (mode === 'login') {
+                        this.loginForm.classList.remove('hidden');
+                        this.signupForm.classList.add('hidden');
+                        loginTab.classList.add('text-white', 'border-orange-500');
+                        signupTab.classList.remove('text-white', 'border-orange-500');
+                        signupTab.classList.add('text-gray-500');
                     } else {
-                        AuthModal.openForSubscribe({
-                            id: currentCreator.id,
-                            handle: currentCreator.handle,
-                            name: currentCreator.name,
-                            profilePicture: document.getElementById('profilePicture')?.src,
-                            price: currentCreator.price,
-                        }, () => {
-                            this.createCheckoutSession();
-                        });
+                        this.signupForm.classList.remove('hidden');
+                        this.loginForm.classList.add('hidden');
+                        signupTab.classList.add('text-white', 'border-orange-500');
+                        loginTab.classList.remove('text-white', 'border-orange-500');
+                        loginTab.classList.add('text-gray-500');
                     }
                 },
 
-                createCheckoutSession: async function() {
-                    const btn = DOMElements.subscribeBtn;
-                    if (!currentCreator || btn.disabled) return;
-
-                    btn.disabled = true;
-                    btn.innerHTML = `<svg class="animate-spin h-5 w-5 inline mr-2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Creating secure checkout...`;
-
-                    try {
-                        // Use coach subscription endpoint - uses creator's custom pricing
-                        const response = await fetch(`${API_BASE}/api/coach/${currentCreator.id}/subscribe`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            credentials: 'include',
-                            body: JSON.stringify({
-                                tier: 'content' // Content subscription tier
-                             })
-                        });
-
-                        const data = await response.json();
-
-                        // Handle 401 - show auth modal
-                        if (response.status === 401) {
-                            localStorage.removeItem('user');
-                            btn.disabled = false;
-                            const priceFormatted = `$${(currentCreator.price / 100).toFixed(2)}`;
-                            btn.innerHTML = `<i class="fas fa-star mr-2"></i> Subscribe for <span id="subscribePrice">${priceFormatted}</span>/mo`;
-                            handleSubscribe(); // Re-trigger which shows auth modal
-                            return;
-                        }
-
-                        if (data.success && data.checkoutUrl) {
-                            // Show redirect message
-                            btn.innerHTML = `<svg class="animate-spin h-5 w-5 inline mr-2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Redirecting to secure payment...`;
-                            // Short delay to show the message before redirect
-                            setTimeout(() => {
-                                window.location.href = data.checkoutUrl;
-                            }, 500);
-                        } else {
-                            throw new Error(data.message || 'Failed to create checkout session.');
-                        }
-                    } catch (error) {
-                        console.error('Checkout Error:', error);
-                        alert('Could not initiate subscription. Please try again.');
-                        btn.disabled = false;
-                        const priceFormatted = `$${(currentCreator.price / 100).toFixed(2)}`;
-                        btn.innerHTML = `<i class="fas fa-star mr-2"></i> Subscribe for <span id="subscribePrice">${priceFormatted}</span>/mo`;
-                    }
+                showError(message) {
+                    this.errorEl.textContent = message;
+                    this.errorEl.classList.remove('hidden');
                 },
 
-                fetchUserSubscription: async function() {
-                    if (!AuthModal.isLoggedIn() || !currentCreator) return null;
+                async handleLogin(e) {
+                    e.preventDefault();
+                    this.showError('');
+                    const email = this.loginForm.email.value;
+                    const password = this.loginForm.password.value;
                     try {
-                        const response = await fetch(`${API_BASE}/api/subscriptions/status?creatorId=${currentCreator.id}`, {
-                            headers: { 'Authorization': `Bearer ${AuthModal.getToken()}` }
+                        const res = await fetch(`${API_BASE}/api/auth/login`, {
+                            method: 'POST', body: JSON.stringify({ email, password }),
+                            headers: { 'Content-Type': 'application/json' }, credentials: 'include'
                         });
-                        if (!response.ok) return null;
-                        const data = await response.json();
-                        return data.success ? data.data : null;
-                    } catch (error) {
-                        console.error('Error fetching subscription status:', error);
-                        return null;
+                        const data = await res.json();
+                        if (!data.success) throw new Error(data.message);
+                        localStorage.setItem('user', JSON.stringify(data.user));
+                        if(this.onSuccessCallback) this.onSuccessCallback();
+                    } catch (err) { this.showError(err.message); }
+                },
+
+                async handleSignup(e) {
+                    e.preventDefault();
+                    this.showError('');
+                    const name = this.signupForm.name.value;
+                    const email = this.signupForm.email.value;
+                    const password = this.signupForm.password.value;
+                    try {
+                         const res = await fetch(`${API_BASE}/api/auth/register`, {
+                            method: 'POST', body: JSON.stringify({ name, email, password, userType: 'individual' }),
+                            headers: { 'Content-Type': 'application/json' }, credentials: 'include'
+                        });
+                        const data = await res.json();
+                        if (!data.success) throw new Error(data.message);
+                        localStorage.setItem('user', JSON.stringify(data.user));
+                        if(this.onSuccessCallback) this.onSuccessCallback();
+                    } catch (err) { this.showError(err.message); }
+                },
+
+                isLoggedIn: () => !!localStorage.getItem('user'),
+                getToken: () => null, // Using httpOnly cookies
+            };
+
+            const PageManager = {
+                init() {
+                    this.pageContent = document.getElementById('pageContent');
+                    AuthModal.init();
+                    this.loadCreatorProfile();
+                },
+
+                async loadCreatorProfile() {
+                    const handle = getHandle();
+                    if (!handle) { this.renderError(); return; }
+
+                    this.pageContent.innerHTML = `<div class="text-center py-20"><div class="w-16 h-16 border-4 border-accent-orange/30 border-t-accent-orange rounded-full animate-spin mx-auto"></div></div>`;
+
+                    try {
+                        const res = await fetch(`${API_BASE}/api/coach/${handle}/public`);
+                        if (!res.ok) throw new Error('Creator not found');
+                        const data = await res.json();
+                        currentCreator = data.coach;
+                        this.renderPage(data.coach, data.posts);
+
+                        if(AuthModal.isLoggedIn()) {
+                            const subRes = await fetch(`${API_BASE}/api/subscriptions/status?creatorId=${currentCreator._id}`, { headers: { 'Authorization': `Bearer ${AuthModal.getToken()}` }, credentials: 'include' });
+                            const subData = await subRes.json();
+                            this.renderPage(data.coach, data.posts, subData.data);
+                        }
+
+                    } catch (err) { this.renderError(); }
+                },
+                
+                renderPage(profile, posts, subscription = null) {
+                    const isSubscribed = subscription && subscription.status === 'active';
+                    const priceFormatted = `$${((profile.pricing?.subscriptionPrice || 999) / 100).toFixed(2)}`;
+                    this.pageContent.innerHTML = `
+                        <div class="relative h-48 sm:h-64"><img src="${profile.coverImage || DEFAULT_COVER_IMAGE}" class="w-full h-full object-cover"><div class="absolute inset-0 bg-gradient-to-t from-dark-900"></div></div>
+                        <div class="max-w-lg mx-auto px-4 -mt-16 relative z-10">
+                            <div class="flex justify-center mb-4"><img src="${profile.profilePicture || (DEFAULT_AVATAR_API + encodeURIComponent(profile.name))}" class="w-32 h-32 rounded-full object-cover border-4 border-dark-800"></div>
+                            <div class="text-center mb-6">
+                                <h1 class="text-3xl font-bold">${profile.name}</h1>
+                                <p class="text-gray-400">@${profile.coachProfile.handle}</p>
+                            </div>
+                            <div id="subscribeBtnContainer" class="${isSubscribed ? 'hidden' : ''} mb-6">
+                                <button id="subscribeBtn" class="w-full py-4 bg-gradient-to-r from-orange-500 to-pink-500 rounded-xl font-bold text-lg hover:opacity-90">Subscribe for ${priceFormatted}/mo</button>
+                            </div>
+                            <div id="postsContainer" class="grid grid-cols-2 sm:grid-cols-3 gap-2">${this.renderPostsHTML(posts, isSubscribed)}</div>
+                        </div>`;
+                    
+                    if (!isSubscribed) {
+                        document.getElementById('subscribeBtn').addEventListener('click', this.handleSubscribeClick.bind(this));
                     }
                 },
                 
-                updateUIForSubscription: function() {
-                    const isSubscribed = currentUserSubscription && currentUserSubscription.status === 'active';
-                    
-                    if (isSubscribed) {
-                        DOMElements.subscribeSection?.classList.add('hidden');
-                        document.querySelectorAll('.post-card.locked').forEach(el => {
-                            el.classList.remove('locked');
-                            el.querySelector('.lock-overlay')?.remove();
-                        });
+                renderPostsHTML(posts, isSubscribed) {
+                    if (!posts || posts.length === 0) return '<p class="col-span-full text-center text-gray-500 py-8">No posts yet.</p>';
+                    return posts.map(post => {
+                        const shouldBeLocked = post.access === 'subscribers' && !isSubscribed;
+                        if (post.thumbnail || post.mediaUrl) { // Media post
+                            return `<div class="post-card ${shouldBeLocked ? 'locked' : ''} aspect-square rounded-xl bg-dark-800 overflow-hidden"><img src="${post.thumbnail || post.mediaUrl}" class="w-full h-full object-cover">${shouldBeLocked ? this.renderLockOverlay() : ''}</div>`;
+                        } else if (post.content) { // Text post
+                            return `<div class="post-card text-post ${shouldBeLocked ? 'locked' : ''} aspect-square rounded-xl bg-dark-800 p-4 flex items-center justify-center"><p class="post-text text-gray-300 text-sm line-clamp-6">${post.content}</p>${shouldBeLocked ? this.renderLockOverlay() : ''}</div>`;
+                        }
+                        return '';
+                    }).join('');
+                },
+
+                renderLockOverlay: () => `<div class="lock-overlay"><div class="lock-icon"><i class="fas fa-lock text-white"></i></div><span class="lock-text">Subscribe</span></div>`,
+                
+                renderError() {
+                    this.pageContent.innerHTML = `<div class="text-center py-20"><h2 class="text-2xl font-bold">Creator Not Found</h2></div>`;
+                },
+
+                handleSubscribeClick() {
+                    if (AuthModal.isLoggedIn()) {
+                        this.createCheckoutSession();
                     } else {
-                        DOMElements.subscribeSection?.classList.remove('hidden');
-                    }
-
-                    // Handle successful subscription from Stripe redirect
-                    const urlParams = new URLSearchParams(window.location.search);
-                    if (urlParams.get('subscribed') === 'true') {
-                        this.showSuccessToast(`Success! You are now subscribed to ${currentCreator.name || '@' + currentCreator.handle}`);
-                        // Clean URL
-                        const cleanUrl = window.location.pathname;
-                        window.history.replaceState({}, document.title, cleanUrl);
-                        // Force refresh subscription status
-                        setTimeout(async () => {
-                            currentUserSubscription = await this.fetchUserSubscription();
-                            this.updateUIForSubscription();
-                            ProfileRenderer.renderPosts();
-                        }, 1000);
+                        AuthModal.open(() => this.createCheckoutSession());
                     }
                 },
 
-                showSuccessToast: function(message) {
-                    const toast = document.createElement('div');
-                    toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-[10000] bg-gradient-to-r from-green-500 to-emerald-500 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 animate-slide-down';
-                    toast.innerHTML = `
-                        <i class="fas fa-check-circle text-xl"></i>
-                        <span class="font-semibold">${message}</span>
-                    `;
-                    document.body.appendChild(toast);
-
-                    // Add animation style if not already present
-                    if (!document.getElementById('toastAnimations')) {
-                        const style = document.createElement('style');
-                        style.id = 'toastAnimations';
-                        style.textContent = `
-                            @keyframes slide-down {
-                                from { transform: translate(-50%, -100%); opacity: 0; }
-                                to { transform: translate(-50%, 0); opacity: 1; }
-                            }
-                            .animate-slide-down { animation: slide-down 0.3s ease-out; }
-                        `;
-                        document.head.appendChild(style);
+                async createCheckoutSession() {
+                    const btn = document.getElementById('subscribeBtn');
+                    if (!currentCreator || (btn && btn.disabled)) return;
+                    
+                    if(btn) {
+                        btn.disabled = true;
+                        btn.innerHTML = 'Creating secure checkout...';
                     }
 
-                    setTimeout(() => {
-                        toast.style.opacity = '0';
-                        toast.style.transition = 'opacity 0.3s';
-                        setTimeout(() => toast.remove(), 300);
-                    }, 4000);
+                    try {
+                        const res = await fetch(`${API_BASE}/api/subscriptions/create-checkout`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AuthModal.getToken()}` },
+                            credentials: 'include',
+                            body: JSON.stringify({ priceKey: 'pro_monthly', creatorId: currentCreator._id, successUrl: window.location.href, cancelUrl: window.location.href })
+                        });
+                        const data = await res.json();
+                        if (!data.success) throw new Error(data.message);
+                        window.location.href = data.data.url;
+                    } catch (err) {
+                        alert('Error creating checkout: ' + err.message);
+                        if(btn) {
+                            btn.disabled = false;
+                            btn.innerHTML = `Subscribe for ${priceFormatted}/mo`;
+                        }
+                    }
                 }
             };
 
-            // --- UI RENDERING ---
-            const UIRenderer = {
-                renderProfileDetails: function(profile, handle) {
-                    document.title = `${profile.name || '@' + handle} | ClockWork`;
-                    safeSet('coverImage', 'src', profile.coverImage || DEFAULT_COVER_IMAGE);
-                    safeSet('profilePicture', 'src', profile.profilePicture || `${DEFAULT_AVATAR_API}${encodeURIComponent(profile.name || handle)}`);
-                    safeSet('creatorName', 'textContent', profile.name || handle);
-                    safeSet('creatorHandle', 'textContent', `@${handle}`);
-                    safeSet('creatorBio', 'textContent', profile.bio || '');
-
-                    if (profile.verified) document.getElementById('verifiedBadge')?.classList.remove('hidden');
-
-                    const price = profile.pricing?.subscriptionPrice || 999;
-                    safeSet('subscribePrice', 'textContent', `$${(price / 100).toFixed(2)}`);
-
-                    currentCreator = { id: profile._id, handle, name: profile.name, price };
-
-                    // Render social links
-                    this.renderSocialLinks(profile.socialLinks);
-
-                    // Render custom links
-                    this.renderCustomLinks(profile.links);
-                },
-
-                renderSocialLinks: function(socialLinks) {
-                    const socialIconsContainer = document.getElementById('socialIcons');
-                    if (!socialIconsContainer || !socialLinks) return;
-
-                    const socialPlatforms = [
-                        { key: 'instagram', icon: 'fab fa-instagram', color: '#E4405F' },
-                        { key: 'tiktok', icon: 'fab fa-tiktok', color: '#000000' },
-                        { key: 'youtube', icon: 'fab fa-youtube', color: '#FF0000' },
-                        { key: 'twitter', icon: 'fab fa-twitter', color: '#1DA1F2' }
-                    ];
-
-                    const linksHTML = socialPlatforms
-                        .filter(platform => socialLinks[platform.key])
-                        .map(platform => `
-                            <a href="${socialLinks[platform.key]}" target="_blank" rel="noopener noreferrer"
-                               class="social-icon w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all">
-                                <i class="${platform.icon} text-lg" style="color: ${platform.color}"></i>
-                            </a>
-                        `).join('');
-
-                    socialIconsContainer.innerHTML = linksHTML;
-                },
-
-                renderCustomLinks: function(links) {
-                    const linksContainer = document.getElementById('linksSection');
-                    if (!linksContainer || !links || links.length === 0) {
-                        linksContainer.innerHTML = '';
-                        return;
-                    }
-
-                    const linksHTML = links.map(link => `
-                        <a href="${link.url}" target="_blank" rel="noopener noreferrer"
-                           class="link-btn block glass-card rounded-xl p-4 hover:border-accent-orange/50 transition-all">
-                            <div class="flex items-center gap-4">
-                                ${link.thumbnail ? `
-                                    <img src="${link.thumbnail}" alt="${link.title}" class="w-12 h-12 rounded-lg object-cover">
-                                ` : `
-                                    <div class="w-12 h-12 rounded-lg bg-gradient-to-r from-accent-orange to-accent-pink flex items-center justify-center">
-                                        <i class="fas fa-link text-white"></i>
-                                    </div>
-                                `}
-                                <div class="flex-1">
-                                    <div class="font-semibold text-white">${link.title}</div>
-                                    ${link.description ? `<div class="text-sm text-gray-400">${link.description}</div>` : ''}
-                                </div>
-                                <i class="fas fa-external-link-alt text-gray-500"></i>
-                            </div>
-                        </a>
-                    `).join('');
-
-                    linksContainer.innerHTML = linksHTML;
-                },
-
-                renderPostArea: function(posts = []) {
-                     if (!DOMElements.postArea) return;
-                     const isSubscribed = currentUserSubscription && currentUserSubscription.status === 'active';
-
-                     if (posts.length === 0) {
-                         DOMElements.postArea.innerHTML = `<div class="text-center py-10 px-6 glass-card rounded-xl"><h3 class="text-xl font-bold">Content Coming Soon</h3><p class="text-gray-400">Check back later for exclusive posts from ${currentCreator.name}.</p></div>`;
-                         return;
-                     }
-                     
-                     DOMElements.postArea.innerHTML = `
-                        <h3 class="text-lg font-semibold mb-4 flex items-center gap-2"><i class="fas fa-fire text-accent-orange"></i> Recent Content</h3>
-                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                            ${posts.slice(0, 6).map(post => {
-                                const shouldBeLocked = post.access === 'subscribers' && !isSubscribed;
-                                const lockedClass = shouldBeLocked ? 'locked' : '';
-                                const thumbnail = post.thumbnail || post.mediaUrl;
-
-                                if (thumbnail) {
-                                    return `
-                                    <div class="post-card ${lockedClass} aspect-square rounded-xl overflow-hidden bg-dark-800">
-                                        <img src="${thumbnail}" alt="Post" class="w-full h-full object-cover">
-                                        ${shouldBeLocked ? `<div class="lock-overlay"><div class="lock-icon"><i class="fas fa-lock text-white text-sm"></i></div><span class="lock-text">Subscribe</span></div>` : ''}
-                                    </div>`;
-                                } else if (post.content) {
-                                    return `
-                                    <div class="post-card text-post ${lockedClass} aspect-square rounded-xl bg-dark-800 p-4 flex flex-col justify-center">
-                                        <p class="post-text text-gray-300 text-sm line-clamp-6">${post.content}</p>
-                                        ${shouldBeLocked ? `<div class="lock-overlay"><div class="lock-icon"><i class="fas fa-lock text-white text-sm"></i></div><span class="lock-text">Subscribe</span></div>` : ''}
-                                    </div>`;
-                                }
-                                return '';
-                            }).join('')}
-                        </div>`;
-                }
-            };
-            
-            // --- INITIALIZATION ---
-            const init = async () => {
-                const handle = getHandle();
-                if (!handle) {
-                    DOMElements.loading.classList.add('hidden');
-                    DOMElements.error.classList.remove('hidden');
-                    return;
-                }
-
-                try {
-                    const profileResponse = await fetch(`${API_BASE}/api/coach/${encodeURIComponent(handle)}/public`);
-                    if (!profileResponse.ok) throw new Error('Profile not found.');
-                    
-                    const profileData = await profileResponse.json();
-                    if (!profileData.coach) throw new Error("API response did not contain a 'coach' object.");
-                    
-                    UIRenderer.renderProfileDetails(profileData.coach, handle);
-                    
-                    // Now that we have a creator, we can fetch the subscription status
-                    currentUserSubscription = await SubscriptionManager.fetchUserSubscription();
-                    
-                    // Render posts and update UI based on subscription
-                    UIRenderer.renderPostArea(profileData.posts);
-                    SubscriptionManager.updateUIForSubscription();
-                    
-                    // Attach event listener now that we know if we need it
-                    if (!currentUserSubscription || currentUserSubscription.status !== 'active') {
-                        DOMElements.subscribeBtn.addEventListener('click', () => SubscriptionManager.handleSubscribeClick());
-                    }
-
-                    DOMElements.loading.classList.add('hidden');
-                    DOMElements.content.classList.remove('hidden');
-
-                } catch (err) {
-                    console.error('Failed to load and render profile:', err);
-                    DOMElements.loading.classList.add('hidden');
-                    DOMElements.error.classList.remove('hidden');
-                }
-            };
-
-            init();
+            PageManager.init();
         });
     </script>
 </body>
