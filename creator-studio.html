@@ -664,7 +664,7 @@
                     });
                     if (res.success) {
                         // Update local state
-                        setPosts(posts.map(p => p._id === editingPost._id ? { ...p, content: editCaption, caption: editCaption, visibility: editVisibility } : p));
+                        setPosts(posts.map(p => p._id === editingPost._id ? { ...p, content: editCaption, visibility: editVisibility } : p));
                         setEditingPost(null);
                     }
                 } catch (err) {
@@ -715,7 +715,7 @@
                                             <i className={`fas fa-${post.mediaType === 'video' ? 'video' : 'image'} text-gray-500 text-2xl`}></i>
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-sm text-gray-300 line-clamp-2 mb-2">{post.caption}</p>
+                                            <p className="text-sm text-gray-300 line-clamp-2 mb-2">{post.content}</p>
                                             <div className="flex gap-4 text-xs text-gray-500">
                                                 <span><i className="fas fa-eye mr-1"></i>{(post.views || 0).toLocaleString()}</span>
                                                 <span><i className="fas fa-heart mr-1"></i>{(post.likes || 0).toLocaleString()}</span>
