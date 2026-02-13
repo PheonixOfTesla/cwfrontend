@@ -162,7 +162,10 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        const API_URL = 'https://cwbackend-production-314e.up.railway.app/api';
+        // Detect environment and use appropriate API URL
+        const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:5000/api'
+            : 'https://cwbackend-production-314e.up.railway.app/api';
 
         const API_TIMEOUT = 30000; // 30 second timeout
         const AI_TIMEOUT = 120000; // 2 minute timeout for AI generation
@@ -185,13 +188,37 @@
                         }
                     });
                     clearTimeout(timeoutId);
+
+                    // Handle non-JSON responses
+                    const contentType = response.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        throw new Error('Server error. Please try again later.');
+                    }
+
                     const data = await response.json();
-                    if (!response.ok) throw new Error(data.message || 'Request failed');
+
+                    // Handle specific error cases
+                    if (!response.ok) {
+                        // Specific error messages for common scenarios
+                        if (response.status === 401) {
+                            throw new Error(data.message || 'Invalid email or password');
+                        } else if (response.status === 403) {
+                            throw new Error(data.message || 'Access denied');
+                        } else if (response.status === 429) {
+                            throw new Error('Too many attempts. Please try again later.');
+                        } else if (response.status >= 500) {
+                            throw new Error('Server error. Please try again later.');
+                        }
+                        throw new Error(data.message || 'Request failed');
+                    }
                     return data;
                 } catch (err) {
                     clearTimeout(timeoutId);
                     if (err.name === 'AbortError') {
                         throw new Error('Request timed out. Please check your connection and try again.');
+                    }
+                    if (err.message === 'Failed to fetch') {
+                        throw new Error('Network error. Please check your internet connection.');
                     }
                     throw err;
                 }
@@ -294,6 +321,12 @@
                 try {
                     const data = await api.get('/users/profile');
                     const userData = data.user || data.data || data;
+
+                    // Validate user data structure
+                    if (!userData || !userData._id) {
+                        throw new Error('Invalid user data received');
+                    }
+
                     setUser(userData);
                     // Coaches skip onboarding - go straight to app
                     if (userData.userType === 'coach') {
@@ -303,14 +336,32 @@
                         setView(userData.onboarding?.completed ? 'app' : 'onboarding');
                     }
                 } catch (err) {
+                    console.error('Auth check failed:', err.message);
+                    // Clear invalid token and redirect to auth
                     localStorage.removeItem('token');
-                    setView('auth');
+                    disconnectSocket();
+                    setUser(null);
+                    setView('landing');
                 }
                 setLoading(false);
             };
 
             const handleLogin = (userData) => {
+                // Validate user data before proceeding
+                if (!userData || !userData._id) {
+                    console.error('Invalid user data on login');
+                    localStorage.removeItem('token');
+                    setView('auth');
+                    return;
+                }
+
                 setUser(userData);
+
+                // Clear any old onboarding data
+                if (userData.onboarding?.completed) {
+                    onboardingStorage.clear();
+                }
+
                 // Coaches skip onboarding - go straight to app
                 if (userData.userType === 'coach') {
                     setView('app');
@@ -320,8 +371,21 @@
                 }
             };
 
-            const handleOnboardingComplete = (updatedUser) => { setUser(updatedUser); setView('app'); };
-            const handleLogout = () => { localStorage.removeItem('token'); chatStorage.clear(); setUser(null); setView('landing'); };
+            const handleOnboardingComplete = (updatedUser) => {
+                setUser(updatedUser);
+                onboardingStorage.clear(); // Clear onboarding data after completion
+                setView('app');
+            };
+
+            const handleLogout = () => {
+                // Clear all user data and disconnect
+                localStorage.removeItem('token');
+                chatStorage.clear();
+                onboardingStorage.clear();
+                disconnectSocket();
+                setUser(null);
+                setView('landing');
+            };
 
             if (loading) return <LoadingScreen />;
             if (view === 'landing') return <LandingPage onGetStarted={() => setView('auth')} />;
@@ -614,6 +678,14 @@
                 setLoading(true);
                 setError('');
 
+                // Validate email format
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(formData.email.trim())) {
+                    setError('Please enter a valid email address');
+                    setLoading(false);
+                    return;
+                }
+
                 // Multi-step signup for coaches
                 if (isSignup && formData.userType === 'coach') {
                     if (signupStep === 1) {
@@ -625,6 +697,11 @@
                         }
                         if (!formData.name || !formData.email || !formData.password) {
                             setError('Please fill in all required fields');
+                            setLoading(false);
+                            return;
+                        }
+                        if (formData.password.length < 6) {
+                            setError('Password must be at least 6 characters');
                             setLoading(false);
                             return;
                         }
@@ -652,11 +729,25 @@
                     setLoading(false);
                     return;
                 }
+                if (isSignup && formData.password.length < 6) {
+                    setError('Password must be at least 6 characters');
+                    setLoading(false);
+                    return;
+                }
                 // Validate coach selection for clients
                 if (isSignup && formData.userType === 'client' && !formData.coachId) {
                     setError('Please select a coach');
                     setLoading(false);
                     return;
+                }
+
+                // Login validation
+                if (!isSignup) {
+                    if (!formData.email || !formData.password) {
+                        setError('Please enter your email and password');
+                        setLoading(false);
+                        return;
+                    }
                 }
 
                 try {
@@ -672,6 +763,7 @@
                         delete payload.bio;
                         delete payload.experienceYears;
                         delete payload.certifications;
+                        delete payload.name;
                     }
 
                     // Clean up empty fields
@@ -692,9 +784,16 @@
                         return;
                     }
 
+                    // Ensure token is present before storing
+                    if (!data.token) {
+                        throw new Error('Authentication failed. Please try again.');
+                    }
+
                     localStorage.setItem('token', data.token);
                     onLogin(data.user);
-                } catch (err) { setError(err.message); }
+                } catch (err) {
+                    setError(err.message || 'An error occurred. Please try again.');
+                }
                 setLoading(false);
             };
 
@@ -891,9 +990,9 @@
                             {/* STEP 1: Basic Info + User Type (All Users) */}
                             {(!isSignup || signupStep === 1) && (
                                 <>
-                                    {isSignup && <input type="text" placeholder="Your Name" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" required />}
-                                    <input type="email" placeholder="Email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" required />
-                                    {isSignup && <input type="tel" placeholder="Phone Number (optional)" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value.replace(/[^\d+\-() ]/g, '')})} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" />}
+                                    {isSignup && <input type="text" placeholder="Your Name" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" autoComplete="name" required />}
+                                    <input type="email" placeholder="Email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" autoComplete="email" required />
+                                    {isSignup && <input type="tel" placeholder="Phone Number (optional)" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value.replace(/[^\d+\-() ]/g, '')})} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" autoComplete="tel" />}
 
                                     {isSignup && (
                                         <div className="w-full bg-white/10 border border-white/20 rounded-xl p-4">
@@ -991,8 +1090,8 @@
                                 </div>
                             )}
 
-                                    <input type="password" placeholder="Password" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" required minLength={6} />
-                                    {isSignup && <input type="password" placeholder="Confirm Password" value={formData.confirmPassword} onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" required minLength={6} />}
+                                    <input type="password" placeholder="Password" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" autoComplete={isSignup ? "new-password" : "current-password"} required minLength={6} />
+                                    {isSignup && <input type="password" placeholder="Confirm Password" value={formData.confirmPassword} onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})} className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-orange-500 focus:outline-none" autoComplete="new-password" required minLength={6} />}
                                 </>
                             )}
 
@@ -1123,9 +1222,14 @@
                                 <button
                                     type="submit"
                                     disabled={loading}
-                                    className={`${signupStep > 1 && isSignup ? 'flex-1' : 'w-full'} bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl transition-all disabled:opacity-50 glow`}
+                                    className={`${signupStep > 1 && isSignup ? 'flex-1' : 'w-full'} bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed glow`}
                                 >
-                                    {loading ? 'Loading...' :
+                                    {loading ? (
+                                        <>
+                                            <i className="fas fa-spinner fa-spin mr-2"></i>
+                                            {isSignup ? 'Creating Account...' : 'Signing In...'}
+                                        </>
+                                    ) : (
                                         isSignup ?
                                             (formData.userType === 'coach' ?
                                                 (signupStep === 1 ? 'Next: Professional Info' :
@@ -1133,7 +1237,7 @@
                                                  'Create Coach Account')
                                                 : 'Create Account')
                                             : 'Sign In'
-                                    }
+                                    )}
                                 </button>
                             </div>
                         </form>

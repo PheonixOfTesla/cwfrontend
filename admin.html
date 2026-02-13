@@ -179,7 +179,14 @@
         }
 
         // User Row Component
-        function UserRow({ user, onAddVIP, onRemoveVIP }) {
+        function UserRow({ user, onAddVIP, onRemoveVIP, onUpdateType, onUpdateTier }) {
+            const [editing, setEditing] = useState(false);
+            const [editingTier, setEditingTier] = useState(false);
+            const [newType, setNewType] = useState(user.userType || 'member');
+            const [newTier, setNewTier] = useState(user.subscription?.tier || 'free');
+            const [saving, setSaving] = useState(false);
+            const [savingTier, setSavingTier] = useState(false);
+
             const tierColors = {
                 free: 'bg-gray-500',
                 pro: 'bg-blue-500',
@@ -192,13 +199,37 @@
             };
 
             const typeColors = {
+                member: 'text-gray-400',
                 individual: 'text-blue-400',
                 coach: 'text-green-400',
-                client: 'text-purple-400'
+                client: 'text-purple-400',
+                influencer: 'text-pink-400'
             };
 
             const tier = user.subscription?.tier || 'free';
             const isVIP = tier === 'vip';
+
+            const handleSaveType = async () => {
+                if (newType === user.userType) {
+                    setEditing(false);
+                    return;
+                }
+                setSaving(true);
+                await onUpdateType(user._id, newType);
+                setSaving(false);
+                setEditing(false);
+            };
+
+            const handleSaveTier = async () => {
+                if (newTier === tier) {
+                    setEditingTier(false);
+                    return;
+                }
+                setSavingTier(true);
+                await onUpdateTier(user._id, newTier);
+                setSavingTier(false);
+                setEditingTier(false);
+            };
 
             return (
                 <tr className="border-b border-white/5 hover:bg-white/5">
@@ -207,18 +238,98 @@
                         <div className="text-gray-500 text-sm">{user.email}</div>
                     </td>
                     <td className="py-3 px-4">
-                        <span className={`${typeColors[user.userType]} capitalize`}>
-                            {user.userType}
-                        </span>
+                        {editing ? (
+                            <div className="flex items-center gap-2">
+                                <select
+                                    value={newType}
+                                    onChange={(e) => setNewType(e.target.value)}
+                                    className="bg-white/10 border border-white/20 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-orange-500"
+                                >
+                                    <option value="member">Member</option>
+                                    <option value="individual">Individual</option>
+                                    <option value="coach">Coach</option>
+                                    <option value="influencer">Influencer</option>
+                                    <option value="client">Client</option>
+                                </select>
+                                <button
+                                    onClick={handleSaveType}
+                                    disabled={saving}
+                                    className="text-green-400 hover:text-green-300 text-sm"
+                                >
+                                    {saving ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-check"></i>}
+                                </button>
+                                <button
+                                    onClick={() => { setEditing(false); setNewType(user.userType || 'member'); }}
+                                    className="text-red-400 hover:text-red-300 text-sm"
+                                >
+                                    <i className="fas fa-times"></i>
+                                </button>
+                            </div>
+                        ) : (
+                            <span
+                                className={`${typeColors[user.userType] || 'text-gray-400'} capitalize cursor-pointer hover:underline`}
+                                onClick={() => setEditing(true)}
+                                title="Click to edit"
+                            >
+                                {user.userType || 'member'}
+                            </span>
+                        )}
                     </td>
                     <td className="py-3 px-4">
-                        <span className={`${tierColors[tier]} text-white text-xs px-2 py-1 rounded-full`}>
-                            {tier.replace('_', ' ').toUpperCase()}
-                        </span>
-                        {user.isEnvVIP && (
-                            <span className="ml-1 text-yellow-500 text-xs" title="Set via VIP_EMAILS env var">
-                                <i className="fas fa-star"></i>
-                            </span>
+                        {editingTier ? (
+                            <div className="flex items-center gap-2">
+                                <select
+                                    value={newTier}
+                                    onChange={(e) => setNewTier(e.target.value)}
+                                    className="bg-white/10 border border-white/20 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-orange-500"
+                                >
+                                    <option value="free">Free</option>
+                                    <option value="pro">Pro</option>
+                                    <option value="vip">VIP</option>
+                                    <option value="elite">Elite</option>
+                                    <option value="coach_starter">Coach Starter</option>
+                                    <option value="coach_pro">Coach Pro</option>
+                                    <option value="coach_scale">Coach Scale</option>
+                                    <option value="coach_enterprise">Coach Enterprise</option>
+                                </select>
+                                <button
+                                    onClick={handleSaveTier}
+                                    disabled={savingTier}
+                                    className="text-green-400 hover:text-green-300 text-sm"
+                                >
+                                    {savingTier ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-check"></i>}
+                                </button>
+                                <button
+                                    onClick={() => { setEditingTier(false); setNewTier(tier); }}
+                                    className="text-red-400 hover:text-red-300 text-sm"
+                                >
+                                    <i className="fas fa-times"></i>
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2">
+                                <span
+                                    className={`${tierColors[tier]} text-white text-xs px-2 py-1 rounded-full cursor-pointer hover:opacity-80`}
+                                    onClick={() => setEditingTier(true)}
+                                    title="Click to edit tier"
+                                >
+                                    {tier.replace('_', ' ').toUpperCase()}
+                                </span>
+                                {user.isEnvVIP && (
+                                    <span className="text-yellow-500 text-xs" title="Set via VIP_EMAILS env var">
+                                        <i className="fas fa-star"></i>
+                                    </span>
+                                )}
+                                {tier !== 'free' && (
+                                    <button
+                                        onClick={() => onUpdateTier(user._id, 'free')}
+                                        className="text-red-400 hover:text-red-300 text-xs"
+                                        title="Remove tier (reset to free)"
+                                    >
+                                        <i className="fas fa-trash-alt"></i>
+                                    </button>
+                                )}
+                            </div>
                         )}
                     </td>
                     <td className="py-3 px-4 text-gray-400 text-sm">
@@ -533,6 +644,34 @@
                 if (!newVIPEmail) return;
                 await handleAddVIP(newVIPEmail);
                 setNewVIPEmail('');
+            };
+
+            const handleUpdateUserType = async (userId, newType) => {
+                try {
+                    await api.fetch(`/admin/users/${userId}/type`, {
+                        method: 'PUT',
+                        body: JSON.stringify({ userType: newType })
+                    });
+                    showMessage(`User type updated to ${newType}!`);
+                    loadUsers(pagination.page);
+                    loadStats();
+                } catch (err) {
+                    showMessage(err.message, 'error');
+                }
+            };
+
+            const handleUpdateTier = async (userId, newTier) => {
+                try {
+                    await api.fetch(`/admin/users/${userId}/tier`, {
+                        method: 'PUT',
+                        body: JSON.stringify({ tier: newTier })
+                    });
+                    showMessage(`User tier updated to ${newTier.replace('_', ' ').toUpperCase()}!`);
+                    loadUsers(pagination.page);
+                    loadStats();
+                } catch (err) {
+                    showMessage(err.message, 'error');
+                }
             };
 
             const handleApproveApp = async (id) => {
@@ -873,6 +1012,8 @@
                                                         user={u}
                                                         onAddVIP={handleAddVIP}
                                                         onRemoveVIP={handleRemoveVIP}
+                                                        onUpdateType={handleUpdateUserType}
+                                                        onUpdateTier={handleUpdateTier}
                                                     />
                                                 ))}
                                             </tbody>
