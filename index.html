@@ -328,6 +328,13 @@
                     }
 
                     setUser(userData);
+
+                    // Members should be redirected to member.html
+                    if (userData.userType === 'member') {
+                        window.location.href = '/member.html';
+                        return;
+                    }
+
                     // Coaches skip onboarding - go straight to app
                     if (userData.userType === 'coach') {
                         setView('app');
@@ -360,6 +367,12 @@
                 // Clear any old onboarding data
                 if (userData.onboarding?.completed) {
                     onboardingStorage.clear();
+                }
+
+                // Members should be redirected to member.html
+                if (userData.userType === 'member') {
+                    window.location.href = '/member.html';
+                    return;
                 }
 
                 // Coaches skip onboarding - go straight to app
@@ -427,6 +440,46 @@
                             </svg>
                         </span>rk
                     </span>
+                </div>
+            );
+        };
+
+        // PortalToggle Component - Navigation for coaches/influencers
+        const PortalToggle = ({ currentPage, userType }) => {
+            const isCoach = userType === 'coach';
+            const isInfluencer = userType === 'influencer';
+
+            // Only show for coach or influencer
+            if (!isCoach && !isInfluencer) return null;
+
+            const pages = [
+                { id: 'main', label: 'Main', icon: 'fa-home', url: '/index.html' },
+                { id: 'creator', label: 'Creator Studio', icon: 'fa-video', url: '/creator-studio.html' },
+            ];
+
+            // Add coach portal only for coaches
+            if (isCoach) {
+                pages.push({ id: 'coach', label: 'Coach Portal', icon: 'fa-users', url: '/coach-portal.html' });
+            }
+
+            return (
+                <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
+                    <div className="glass rounded-2xl p-1 flex gap-1">
+                        {pages.map(page => (
+                            <a
+                                key={page.id}
+                                href={page.url}
+                                className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${
+                                    currentPage === page.id
+                                        ? 'bg-gradient-to-r from-orange-500 to-pink-500 text-white'
+                                        : 'text-gray-400 hover:text-white hover:bg-white/10'
+                                }`}
+                            >
+                                <i className={`fas ${page.icon}`}></i>
+                                <span className="hidden sm:inline">{page.label}</span>
+                            </a>
+                        ))}
+                    </div>
                 </div>
             );
         };
@@ -2599,6 +2652,9 @@
 
             return (
                 <div className="min-h-screen pb-20">
+                    {/* Portal Toggle for coaches/influencers */}
+                    <PortalToggle currentPage="main" userType={user?.userType} />
+
                     {/* Global FORGE Generation Banner */}
                     {globalGenerating && (
                         <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-orange-600 via-red-500 to-orange-600 p-3 z-50 shadow-lg">
@@ -2621,7 +2677,7 @@
                             </div>
                         </div>
                     )}
-                    <div className={`max-w-lg mx-auto px-4 py-6 ${globalGenerating || globalGenerateMessage ? 'pt-16' : ''}`}>{renderContent()}</div>
+                    <div className={`max-w-lg mx-auto px-4 py-6 ${globalGenerating || globalGenerateMessage ? 'pt-16' : (user?.userType === 'coach' || user?.userType === 'influencer') ? 'pt-14' : ''}`}>{renderContent()}</div>
 
                     {/* Workout Builder FAB - Available for all user types */}
                     <WorkoutBuilderFAB user={user} />

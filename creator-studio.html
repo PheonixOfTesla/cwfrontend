@@ -2102,6 +2102,46 @@
             );
         }
 
+        // PortalToggle Component - Navigation for coaches/influencers
+        function PortalToggle({ currentPage, userType }) {
+            const isCoach = userType === 'coach';
+            const isInfluencer = userType === 'influencer';
+
+            // Only show for coach or influencer
+            if (!isCoach && !isInfluencer) return null;
+
+            const pages = [
+                { id: 'main', label: 'Main', icon: 'fa-home', url: '/index.html' },
+                { id: 'creator', label: 'Creator Studio', icon: 'fa-video', url: '/creator-studio.html' },
+            ];
+
+            // Add coach portal only for coaches
+            if (isCoach) {
+                pages.push({ id: 'coach', label: 'Coach Portal', icon: 'fa-users', url: '/coach-portal.html' });
+            }
+
+            return (
+                <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
+                    <div className="glass rounded-2xl p-1 flex gap-1">
+                        {pages.map(page => (
+                            <a
+                                key={page.id}
+                                href={page.url}
+                                className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${
+                                    currentPage === page.id
+                                        ? 'bg-gradient-to-r from-orange-500 to-pink-500 text-white'
+                                        : 'text-gray-400 hover:text-white hover:bg-white/10'
+                                }`}
+                            >
+                                <i className={`fas ${page.icon}`}></i>
+                                <span className="hidden sm:inline">{page.label}</span>
+                            </a>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
         // Main Creator Studio Component
         function CreatorStudio({ user, onLogout }) {
             const [activeTab, setActiveTab] = useState('dashboard');
@@ -2150,9 +2190,12 @@
             }
 
             return (
-                <div className="min-h-screen">
+                <div className="min-h-screen pt-14">
+                    {/* Portal Toggle for coaches/influencers */}
+                    <PortalToggle currentPage="creator" userType={user?.userType} />
+
                     {/* Header */}
-                    <header className="glass border-b border-white/10 sticky top-0 z-50">
+                    <header className="glass border-b border-white/10 sticky top-0 z-40">
                         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <i className="fas fa-video gradient-text text-2xl"></i>

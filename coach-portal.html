@@ -23,6 +23,46 @@
     <script type="text/babel">
         const API_URL = 'https://cwbackend-production-314e.up.railway.app';
 
+        // PortalToggle Component - Navigation for coaches/influencers
+        function PortalToggle({ currentPage, userType }) {
+            const isCoach = userType === 'coach';
+            const isInfluencer = userType === 'influencer';
+
+            // Only show for coach or influencer
+            if (!isCoach && !isInfluencer) return null;
+
+            const pages = [
+                { id: 'main', label: 'Main', icon: 'fa-home', url: '/index.html' },
+                { id: 'creator', label: 'Creator Studio', icon: 'fa-video', url: '/creator-studio.html' },
+            ];
+
+            // Add coach portal only for coaches
+            if (isCoach) {
+                pages.push({ id: 'coach', label: 'Coach Portal', icon: 'fa-users', url: '/coach-portal.html' });
+            }
+
+            return (
+                <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
+                    <div className="glass rounded-2xl p-1 flex gap-1">
+                        {pages.map(page => (
+                            <a
+                                key={page.id}
+                                href={page.url}
+                                className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${
+                                    currentPage === page.id
+                                        ? 'bg-gradient-to-r from-orange-500 to-pink-500 text-white'
+                                        : 'text-gray-400 hover:text-white hover:bg-white/10'
+                                }`}
+                            >
+                                <i className={`fas ${page.icon}`}></i>
+                                <span className="hidden sm:inline">{page.label}</span>
+                            </a>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
         function CoachPortal() {
             const [user, setUser] = React.useState(null);
             const [clients, setClients] = React.useState([]);
@@ -224,7 +264,10 @@
             const coachLink = `${window.location.origin}/coach/${user?._id}`;
 
             return (
-                <div className="min-h-screen bg-[#0a0a0a]">
+                <div className="min-h-screen bg-[#0a0a0a] pt-14">
+                    {/* Portal Toggle for coaches/influencers */}
+                    <PortalToggle currentPage="coach" userType={user?.userType} />
+
                     {/* Header */}
                     <div className="bg-gradient-to-r from-orange-600/20 to-transparent py-6 px-4 border-b border-white/10">
                         <div className="max-w-7xl mx-auto flex items-center justify-between">
